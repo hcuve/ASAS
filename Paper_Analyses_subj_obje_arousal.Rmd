@@ -1,0 +1,249 @@
+---
+title: "Paper_analyses"
+author: "Helio"
+date: "22/07/2021"
+output: html_document
+---
+
+
+Code for the paper: Valence modulated “subjective-objective” arousal
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Participants section
+
+```{r}
+participants_demog <- db_full4new_stim_screen_pupil_nopract %>%
+  subset(Group == "NT")%>%
+  group_by(ssid, Gender)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+# gender
+table(participants_demog$Gender)
+colnames(participants_demog)
+summary(participants_demog$Age)
+sd(participants_demog$Age, na.rm = TRUE)
+# table(is.na(participants_demog$Age))
+```
+
+
+
+Pupil changes and subjective arousal and valence ratings
+
+
+# let's model it formally
+  
+# remember baseline corection is equivalendt to stimuli intercept
+ 
+```{r} 
+pupil_arousal_findings<- list()
+library(lmerTest)
+
+unique(db_full4new_stim_screen_pupil_nopract$stimIAPS)
+unique(substr(db_full4new_stim_screen_pupil_nopract$stimIAPS, 1,8))
+db_full4new_stim_screen_pupil_nopract$Label<- substr(db_full4new_stim_screen_pupil_nopract$stimIAPS, 1,8)
+
+
+db_full4new_stim_screen_pupil_nopract<- left_join(db_full4new_stim_screen_pupil_nopract, imageJ_IAPS, by = "Label")
+
+nrow(db_full4new_stim_screen_pupil_nopract)
+# rows = 2858
+
+db_full4new_stim_screen_pupil_nopract$Mean_gray_z<- scale(db_full4new_stim_screen_pupil_nopract$Mean, center = TRUE, scale = TRUE)[,1]
+
+
+db_full4new_stim_screen_pupil_nopract$ssid_num <- as.numeric(as.character(db_full4new_stim_screen_pupil_nopract$ssid))
+
+
+```
+
+
+lmer pupil
+
+```{r}
+options(contrasts = c("contr.sum","contr.poly"))
+options(scipen = 999)
+
+
+pupil_arousal_findings$pupil_from_arousal <- lmer(pup_basCor ~ arousal_c*Mean_gray_z  +(1 +Mean_gray_z | ssid) + (0+arousal_c| ssid), REML = FALSE,
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    pupil_outlier == FALSE & ssid_num< 500 & 
+                                    arousal_outler == FALSE))
+
+summary(pupil_arousal_findings$pupil_from_arousal)
+# singularity (drop arousal c slope)
+
+# is there a correlation between mean arousal rating and meang, gray(
+
+db_full4new_stim_screen_pupil_nopract%>%
+  group_by(stimIAPS,ground_valence_lab) %>%
+  summarise_at(c('arousal_c', 'Mean_gray_z'), mean, na.rm = TRUE)%>%
+  ggplot(aes(arousal_c, Mean_gray_z, color = ground_valence_lab))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+```
+
+
+# Valence and arousal
+```{r}
+
+pupil_arousal_findings$pupil_from_ar_vale <- lmer(pup_basCor ~ (valence_c* arousal_c) +
+                                                    Mean_gray_z  +
+                                                    (1 + Mean_gray_z | ssid),
+                                                    # (0+ valence_c* arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    pupil_outlier == FALSE & ssid_num< 500 & 
+                                      arousal_outler == FALSE))
+
+summary(pupil_arousal_findings$pupil_from_ar_vale)
+plot(pupil_arousal_findings$pupil_from_ar_vale)
+
+car::vif(pupil_arousal_findings$pupil_from_ar_vale) #curoff 4
+
+
+interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_val_gaze , pred = arousal_c, modx = valence_c)
+
+interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_val_gaze , pred = valence_c , modx = arousal_c)
+
+
+```
+
+
+same analyses as above but regress brightness out of pupil
+
+```{r}
+
+pupil_arousal_findings$pupil_from_brightness <- lmer(pup_basCor ~ 
+                                                    Mean  +
+                                                    (1  | ssid),
+                                                    # (0+ valence_c* arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    # pupil_outlier == FALSE & ssid_num< 500 & 
+                                      # arousal_outler == FALSE
+                                    ))
+
+pupil_arousal_findings$pupil_from_brightness_lm <- lm(pup_basCor ~ 
+                                                    Mean,
+                                                    
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    # pupil_outlier == FALSE & ssid_num< 500 & 
+                                      # arousal_outler == FALSE
+                                    ))
+
+
+
+summary(pupil_arousal_findings$pupil_from_brightness)
+
+plot(pupil_arousal_findings$pupil_from_brightness)
+
+# store residuals
+db_full4new_stim_screen_pupil_nopract$pup_resid <- resid(pupil_arousal_findings$pupil_from_brightness)
+
+db_full4new_stim_screen_pupil_nopract$pup_resid_lm <-
+resid(pupil_arousal_findings$pupil_from_brightness_lm)
+
+
+db_full4new_stim_screen_pupil_nopract%>%
+  ggplot(aes(pup_resid, Mean_gray_z))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+# no correlated with IV - good
+
+
+db_full4new_stim_screen_pupil_nopract%>%
+  ggplot(aes(pup_resid, pup_basCor))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+# strong correlation, in this case this is good, because it means there is a large ammount of unexplain ed variane not acconted for by the predictor
+
+
+
+# predict pupil residuals
+pupil_arousal_findings$pupil_resid_from_ar_vale <- lmer(pup_resid_lm ~ (arousal_c*valence_c) +
+                                                    
+                                                    (1+arousal_c*valence_c  | ssid),
+                                                    # (0+ valence_c* arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    pupil_outlier == FALSE &
+                                    ssid_num< 500 
+                                    &
+                                      arousal_outler == FALSE
+                                      )) # results hold with or withouth outliers 
+
+
+summary(pupil_arousal_findings$pupil_resid_from_ar_vale)
+
+# using residuals from lmer create a singularity as they eliminate individual participants variability, this is solved by using residuals from lm
+
+
+interactions::interact_plot(pupil_arousal_findings$pupil_resid_from_ar_vale , pred = arousal_c, modx = valence_c)
+
+interactions::interact_plot(pupil_arousal_findings$pupil_resid_from_ar_vale , pred = valence_c , modx = arousal_c)
+
+
+```
+
+
+
+Predict arousal from pupil
+
+
+```{r}
+# with arousal as DV
+pupil_arousal_findings$arousal_from_pup <- lmer(arousal_c ~ valence_c*pup_basCor  + (1| stimIAPS)+
+                                                 # (1 | ssid),
+                                                  (0 +valence_c+pup_basCor | ssid),
+                                                REML = FALSE,
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    pupil_outlier == FALSE & ssid_num<500 & 
+                                      arousal_outler == FALSE))
+summary(pupil_arousal_findings$arousal_from_pup)
+anova(pupil_arousal_findings$arousal_from_pup)
+
+# expected correlation between valence and pupil is low
+
+
+
+interactions::interact_plot(pupil_arousal_findings$arousal_from_pup , pred = valence_c, modx = pup_basCor)
+
+interactions::interact_plot(pupil_arousal_findings$arousal_from_pup, pred =pup_basCor , modx =  valence_c) #better 
+# same pattern
+# pupil is more aligned with subjective arousal in the more positive trials
+
+
+
+# flip dv to valence
+
+pupil_arousal_findings$valence_from_pup <- lmer(valence_c ~ arousal_c*pup_basCor  + (1| stimIAPS)+
+                                                 # (1 | ssid),
+                                                  (0 +arousal_c +pup_basCor | ssid),
+                                                REML = FALSE,
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    pupil_outlier == FALSE & ssid_num<500 & 
+                                      arousal_outler == FALSE))
+summary(pupil_arousal_findings$valence_from_pup)
+anova(pupil_arousal_findings$valence_from_pup)
+
+# so it's not the case that pupil is tracking valence
+# it's the case that arousal pupil relation is modulated by valence, and this is true regardless of whether we use a maximal or minimal model
+
+interactions::interact_plot(pupil_arousal_findings$valence_from_pup , pred = valence_c, modx = pup_basCor)
+
+interactions::interact_plot(pupil_arousal_findings$valence_from_pup, pred =pup_basCor , modx =  arousal_c)
+
+
+
+```
+
