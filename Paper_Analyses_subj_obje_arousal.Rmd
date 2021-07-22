@@ -449,5 +449,96 @@ timecourse_result_df_int %>%
 
 ```
 
+Velocity test
+
+```{r}
+nrow(nbins)
+nbins = 30 # number of bins
+unique(tmp.df4_full_stim_downs_jun2021_with_behnew$ssid)
+tmp.df4_full_stim_downs_jun2021_with_behnew <- tmp.df4_full_stim_downs_jun2021_with_behnew%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+  mutate(pup_vel_smooth = zoo::rollmean(pup_velocity, k = 3, fill = NA))
+  
+zoo::rollmean(pup_velocity, k = 3, fill = NA)
+
+tmp.df4_full_stim_downs_jun2021_with_behnew$pup_vel_smooth
+
+# create and empty dataframe for the timecourse analyses
+timecourse_result_df_int_vel <- data.frame(timebins= rep(NA, 30), Estimate= rep(NA, 30), 
+                                   t=rep(NA, 30), p=rep(NA, 30), cov= as.character(rep(NA,30)))
+
+# View(timecourse_result_df)
+nbins<- nbins[1:28]
+
+i = 0 # remember to always rezero it
+# b = 10
+
+rm(b)
+
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_with_behnew$timebin_no)
+
+for (b in 3:length(nbins)) {
+  # for (s in 1:length(nsim)) {
+
+    message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
+        lmer_bin_pup  <- lmer(pup_vel_smooth ~ arousal_c* valence+Mean_gray_z  +
+                                (1 | ssid)+
+                                (0 +arousal_c* valence | ssid),
+                                # (1|stimIAPS),
+                              REML = FALSE,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_with_behnew,
+                                    # mediansplit_self_valence == "More positive" & 
+                                    timebin_no == nbins[b]))
+
+        #store results from the simulation
+            lmer_bin_pup_summary<- summary(lmer_bin_pup)
+            lmer_bin_pup_summary
+            # lmer_bin_pup_summary[["coefficients"]][3,1]
+            timecourse_result_df_int_vel[i,1]<- tmp.df4_full_stim_downs_jun2021_with_behnew$timerezero3[b] #save the exact value of time bin
+            timecourse_result_df_int_vel[i,2]<- lmer_bin_pup_summary[["coefficients"]][2,1] # first number is term(row), second is column
+            timecourse_result_df_int_vel[i,3]<-lmer_bin_pup_summary[["coefficients"]][2,4] # t statistic
+            timecourse_result_df_int_vel[i,4]<-lmer_bin_pup_summary[["coefficients"]][2,5] # p value
+            # simulated_clusters_JEFFE[i,6]<- nsim[s] #store simulation ount
+            timecourse_result_df_int_vel[i,5] <-ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
+                                                   != 0,
+                                               lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
+
+     i = i+1
+}
+
+
+# timecourse_result_df_pos<- timecourse_result_df
+
+timecourse_result_df_int_vel %>%
+  ggplot(aes(timebins, t))+
+  geom_line(size = 2)+
+  geom_line(aes(y = p), linetype = "dashed", size = 2)+
+  geom_hline(yintercept = .05, color = 'red', size = 1.5)+
+  geom_vline(xintercept = 1, color = 'red')
+  # ylim(-4,4)
+
+
+??ma
+?stats::filter
+tmp.df4_full_stim_downs_jun2021_with_behnew%>%
+  subset(ssid == 310 & tNo == 10)%>%
+  ggplot(aes(timerezero3,zoo::rollmean(pup_velocity, k = 3, fill = NA)))+
+  geom_line()+
+  geom_line(aes(y = pup_velocity), color = 'red')+
+  geom_smooth(se = F)
+
+tmp.df4_full_stim_downs_jun2021_with_behnew%>%
+  subset(ssid == 310 & tNo == 15)%>%
+  ggplot(aes(timerezero3,pup_basCor))+
+  geom_point()+
+  # geom_line(aes(y = pup_velocity), color = 'red')+
+  geom_smooth(se = F)
+
+
+
+
+```
+
 
 
