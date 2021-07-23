@@ -593,11 +593,8 @@ timecourse_60bin_result_df %>%
 
 
 Pupil velocity test
+# velocity analyses
 
-```{r}
-
-
-velocity analyses
 ```{r}
 # thought maybe it has soemthing to to with the velcity, velocity is sidderent
 
@@ -714,7 +711,7 @@ tmp.df4_full_stim_downs_jun2021_with_behnew%>%
 ```
 
 
-100ms
+velocity 100ms
 ```{r}
 unique(tmp.df4_full_stim_downs_jun2021_60bins$ssid)
 
@@ -765,6 +762,89 @@ tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%
   
 
 ```
+
+
+velocity timecourse
+```{r}
+# let's test the interaction term
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+range(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+# nbins = 60 # number of bins
+
+# create and empty dataframe for the timecourse analyses
+timecourse_60bin_result_df_vel <- data.frame(timebins= rep(NA, 60), Estimate= rep(NA, 60), 
+                                   t=rep(NA, 60), p=rep(NA, 60), cov= as.character(rep(NA,60)))
+
+# View(timecourse_result_df)
+# nbins<- nbins[1:60]
+
+i = 0 # remember to always rezero it
+# b = 10
+
+# rm(i,b)
+
+# i =1
+tmp.df4_full_stim_downs_jun2021_60bins$pup_vel_smooth
+
+tmp.df4_full_stim_downs_jun2021_60bins$pup_vel_smooth
+
+nbins<- nbins[3:56]
+
+for (b in 3:length(nbins)) {
+  # for (s in 1:length(nsim)) {
+
+    message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
+        lmer_bin_pup  <- lmer(pup_vel_smooth ~ (arousal_c* valence)+Mean_gray_z  +
+                                (1 | ssid),
+                                # (0 +arousal_c* valence | ssid),
+                                # (1|stimIAPS),
+                              REML = FALSE,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    !is.na(pup_vel_smooth)&
+                                    timebin_no == nbins[b]))
+
+        #store results from the simulation
+            lmer_bin_pup_summary<- summary(lmer_bin_pup)
+            lmer_bin_pup_summary
+            # lmer_bin_pup_summary[["coefficients"]][3,1]
+            timecourse_60bin_result_df_vel[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] #save the exact value of time bin
+            timecourse_60bin_result_df_vel[i,2]<-
+              lmer_bin_pup_summary[["coefficients"]][5,1] 
+            # first number is term(row), second is column
+            timecourse_60bin_result_df_vel[i,3]<-
+              lmer_bin_pup_summary[["coefficients"]][5,4] # t statistic
+            timecourse_60bin_result_df_vel[i,4]<-
+              lmer_bin_pup_summary[["coefficients"]][5,5] # p value
+            # simulated_clusters_JEFFE[i,6]<- nsim[s] #store simulation ount
+            timecourse_60bin_result_df_vel[i,5] <-
+              ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
+                                                   != 0,
+                                               lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
+
+     i = i+1
+     }
+
+
+# timecourse_result_df_pos<- timecourse_result_df
+View(timecourse_60bin_result_df_vel)
+
+timecourse_60bin_result_df_vel %>%
+  ggplot(aes(timebins, t))+
+  geom_line(size = 2)+
+  geom_line(aes(y = p), linetype = "dashed", size = 2)+
+  geom_hline(yintercept = .05, color = 'red', size = 1.5)
+
+
+```
+
+
+```
+
+
+
 
 
 
