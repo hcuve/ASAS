@@ -990,5 +990,14 @@ timecourse_60bin_result_df_vel$p_ar_vl_adj_TRUE<- if_else(timecourse_60bin_resul
 # find the first and last true in a sequence of TRUES
 duplicated(timecourse_60bin_result_df_vel$p_ar_adj_TRUE, na.rm = TRUE)
 
+# https://masterr.org/r/how-to-find-consecutive-repeats-in-r/
+timecourse_60bin_result_df_vel$test<- NULL
+
+timecourse_60bin_result_df_vel$test <- rle(timecourse_60bin_result_df_vel$p_ar < 0.05)
+# View(runs)
+# 
+# runs[2]
+# myruns = which(runs$values == TRUE & runs$lengths >= 3)
+
 
 ```
