@@ -8,6 +8,8 @@ output: html_document
 
 Code for the paper: Valence modulated “subjective-objective” arousal
 
+data<- lastopened
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -299,17 +301,13 @@ Timecourse analyses
 ```{r prepare timecourse data}
 rm(justone_test, lucy_plots, test)
 
+nrow(tmp.df4_full_stim_downs_jun2021)
+
 # import the timecourse
 
+nrow(tmp.df4_full_stim_downs_jun2021)
 tmp.df4_full_stim_downs_jun2021 <- readRDS("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/tmp.df4_full_stim_downs_jun2021.rds")
 
-
-# merge with behavioral data
-unique(db_full4new_stim_screen_pupil_nopract$ssid)
-# colnames(db_full4new_stim_screen_pupil_nopract)
-# colnames(tmp.df4_full_stim_downs_jun2021)
-# db_full4new_stim
-# colnames(db_full4new_stim_screen_pupil_nopract)
 db_full4new_stim_subset<- db_full4new_stim_screen_pupil_nopract[,c(1:4,6:7,12:13,16,21:27, 31:56,80:81,84:96,98:114,116:124)]
 
 
@@ -319,9 +317,10 @@ db_full4new_stim_subset$ssid<- as.character(db_full4new_stim_subset$ssid)
 
 # tNo
 tmp.df4_full_stim_downs_jun2021_with_beh2$tNo <- as.character(tmp.df4_full_stim_downs_jun2021_with_beh2$tNo)
+
 db_full4new_stim_subset$tNo <- as.character(db_full4new_stim_subset$tNo)
-unique(db_full4new_stim_subset$tNo)
-unique(tmp.df4_full_stim_downs_jun2021_with_beh2$tNo)
+# unique(db_full4new_stim_subset$tNo)
+# unique(tmp.df4_full_stim_downs_jun2021_with_beh2$tNo)
 
 # merge
 nrow(tmp.df4_full_stim_downs_jun2021_with_beh2)
@@ -330,27 +329,44 @@ nrow(tmp.df4_full_stim_downs_jun2021_with_beh2)
 table(is.na(db_full4new_stim_subset$mediansplit_self_valence))
 
 tmp.df4_full_stim_downs_jun2021_with_beh2$tNo<- as.numeric(tmp.df4_full_stim_downs_jun2021_with_beh2$tNo)
+
 tmp.df4_full_stim_downs_jun2021_with_beh2<- tmp.df4_full_stim_downs_jun2021_with_beh2%>%
   arrange(ssid,tNo, timerezero3)
 
-tmp.df4_full_stim_downs_jun2021_with_beh<- left_join(tmp.df4_full_stim_downs_jun2021_with_beh2, db_full4new_stim_subset)
-
-db_full4new_stim_subset$tNo<- as.numeric(db_full4new_stim_subset$tNo)
+tmp.df4_full_stim_downs_jun2021_with_beh <- left_join(tmp.df4_full_stim_downs_jun2021_with_beh2, db_full4new_stim_subset)
 
 
-table(is.na(db_full4new_stim_subset$arousal))
+```
 
-tmp.df4_full_stim_downs_jun2021_with_behnew<- right_join(tmp.df4_full_stim_downs_jun2021_with_beh2, db_full4new_stim_subset,
-                                                     by = c('ssid', 'tNo'))
 
-nrow(tmp.df4_full_stim_downs_jun2021_with_beh)
+# higher sample dataset
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+install.packages("gazer")
+library(gazer)
+
+tmp.df4_full_stim_downs_jun2021$tNo<- as.numeric(tmp.df4_full_stim_downs_jun2021$tNo)
+
+tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021, db_full4new_stim_subset, by = c("ssid", "tNo", "trial"))
+
+
+# create a dataframe version where we downsample to60 and not to 30
+tmp.df4_full_stim_downs_jun2021_60bins$Label<- substr(tmp.df4_full_stim_downs_jun2021_60bins$stimIAPS, 1,8)
+
+tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021_60bins, imageJ_IAPS, by = "Label")
+
+
+tmp.df4_full_stim_downs_jun2021_60bins$Mean_gray_z<- scale(tmp.df4_full_stim_downs_jun2021_60bins$Mean, center = TRUE, scale = TRUE)[,1]
+
+
+
+
+
+
+nrow(tmp.df4_full_stim_downs_jun2021_60bins)
 # 172168 good
-
-nrow(tmp.df4_full_stim_downs_jun2021_with_beh2)
-# 87529
-nrow(tmp.df4_full_stim_downs_jun2021_with_behnew)
-
-table(is.na(tmp.df4_full_stim_downs_jun2021_with_behnew$mediansplit_self_valence))
 
 
 ```
@@ -372,8 +388,42 @@ theme_classic()+
   xlim(0,6)+
    facet_grid(~mediansplit_self_valence)
 
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(ground_arousal_lab))%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  stat_smooth(aes(group= ground_arousal_lab, color = ground_arousal_lab), fun = mean,geom = "line",
+               se = F, alpha = .1, size = 1.5)+
+  stat_smooth(aes(group=ground_arousal_lab, color = ground_arousal_lab), size = 3)+  
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)+
+   facet_grid(~mediansplit_self_valence)
+
+
+
+
+
 # group_by(stimIAPS)%>%
 tmp.df4_full_stim_downs_jun2021_with_beh<- tmp.df4_full_stim_downs_jun2021_with_beh %>%
+  ungroup()%>%
+  mutate(mediansplit_sample_valence2 = 
+           if_else(ValenceMeanThisSample >= 
+                     median(ValenceMeanThisSample,
+                            na.rm = TRUE), 
+                   "More positive", "More negative"))%>%
+  mutate(mediansplit_sample_arousal2 = if_else(ArousalMeanThisSample >=
+                                                  median(ArousalMeanThisSample,
+                                                         na.rm = TRUE), "High", "Low"))
+
+
+
+# higher samp[le rate]
+
+tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins %>%
   ungroup()%>%
   mutate(mediansplit_sample_valence2 = 
            if_else(ValenceMeanThisSample >= 
@@ -390,7 +440,16 @@ tmp.df4_full_stim_downs_jun2021_with_beh<- tmp.df4_full_stim_downs_jun2021_with_
 
 
 let's test the interaction term
+<!-- 30 bins -->
 ```{r}
+
+# create number s for time bins
+tmp.df4_full_stim_downs_jun2021_with_behnew<- tmp.df4_full_stim_downs_jun2021_with_behnew%>%
+  group_by(ssid, tNo)%>%
+  mutate(timebin_no = 1:n())
+
+range(tmp.df4_full_stim_downs_jun2021_with_behnew$timebin_no)
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_with_behnew$timebin_no)
 nrow(nbins)
 nbins = 30 # number of bins
 
@@ -404,17 +463,16 @@ nbins<- nbins[1:28]
 i = 0 # remember to always rezero it
 # b = 10
 
-rm(i,b)
+# rm(i,b)
 
-nbins<- unique(tmp.df4_full_stim_downs_jun2021_with_behnew$timebin_no)
 
 for (b in 1:length(nbins)) {
   # for (s in 1:length(nsim)) {
 
     message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
         lmer_bin_pup  <- lmer(pup_basCor ~ arousal_c* valence+Mean_gray_z  +
-                                (1 | ssid)+
-                                (0 +arousal_c* valence | ssid),
+                                (1 | ssid),
+                                # (0 +arousal_c* valence | ssid),
                                 # (1|stimIAPS),
                               REML = FALSE,
                       data = subset(tmp.df4_full_stim_downs_jun2021_with_behnew,
@@ -449,9 +507,124 @@ timecourse_result_df_int %>%
 
 ```
 
-Velocity test
+
+60 bins
+
+10 hz
+each bin is an average of 100ms
+<!-- https://link.springer.com/article/10.3758/s13428-018-1075-y -->
 
 ```{r}
+
+# create number s for time bins
+tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(ssid, tNo)%>%
+  mutate(timebin_no = 1:n())
+
+# let's test the interaction term
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+range(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+# nbins = 60 # number of bins
+
+# create and empty dataframe for the timecourse analyses
+timecourse_60bin_result_df <- data.frame(timebins= rep(NA, 60), Estimate= rep(NA, 60), 
+                                   t=rep(NA, 60), p=rep(NA, 60), cov= as.character(rep(NA,60)))
+
+# View(timecourse_result_df)
+# nbins<- nbins[1:60]
+
+i = 0 # remember to always rezero it
+# b = 10
+
+# rm(i,b)
+
+# i =1
+
+for (b in 1:length(nbins)) {
+  # for (s in 1:length(nsim)) {
+
+    message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
+        lmer_bin_pup  <- lmer(pup_basCor ~ (arousal_c* valence)+Mean_gray_z  +
+                                (1 | ssid),
+                                # (0 +arousal_c* valence | ssid),
+                                # (1|stimIAPS),
+                              REML = FALSE,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    # mediansplit_self_valence == "More positive" & 
+                                    timebin_no == nbins[b]))
+
+        #store results from the simulation
+            lmer_bin_pup_summary<- summary(lmer_bin_pup)
+            lmer_bin_pup_summary
+            # lmer_bin_pup_summary[["coefficients"]][3,1]
+            timecourse_60bin_result_df[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] #save the exact value of time bin
+            timecourse_60bin_result_df[i,2]<-
+              lmer_bin_pup_summary[["coefficients"]][4,1] 
+            # first number is term(row), second is column
+            timecourse_60bin_result_df[i,3]<-
+              lmer_bin_pup_summary[["coefficients"]][4,4] # t statistic
+            timecourse_60bin_result_df[i,4]<-
+              lmer_bin_pup_summary[["coefficients"]][4,5] # p value
+            # simulated_clusters_JEFFE[i,6]<- nsim[s] #store simulation ount
+            timecourse_60bin_result_df[i,5] <-
+              ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
+                                                   != 0,
+                                               lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
+
+     i = i+1
+}
+
+
+# timecourse_result_df_pos<- timecourse_result_df
+View(timecourse_60bin_result_df)
+
+timecourse_60bin_result_df %>%
+  ggplot(aes(timebins, t))+
+  geom_line(size = 2)+
+  geom_line(aes(y = p), linetype = "dashed", size = 2)+
+  geom_hline(yintercept = .05, color = 'red', size = 1.5)
+
+
+```
+
+
+
+Pupil velocity test
+
+```{r}
+
+
+velocity analyses
+```{r}
+# thought maybe it has soemthing to to with the velcity, velocity is sidderent
+
+install.packages("pspline")
+library(pspline)
+
+predict(sm.spline(tmp.df4_full_stim_downs_jun2021_with_beh$timerezero3, 
+                  tmp.df4_full_stim_downs_jun2021_with_beh$pup_basCor), 
+        tmp.df4_full_stim_downs_jun2021_with_beh$timerezero3, 1)
+
+D(tmp.df4_full_stim_downs_jun2021_with_beh$pup_basCor, 'x')
+
+tmp.df4_full_stim_downs_jun2021_with_behnew
+
+tmp.df4_full_stim_downs_jun2021_with_behnew <- tmp.df4_full_stim_downs_jun2021_with_behnew %>%
+  # subset(!is.na(mediansplit_sample_arousal2))%>%
+  # subset(valencearousal_outliers == TRUE) %>%
+  # subset(!is.na(mediansplit_sample_arousal2))%>%
+  group_by(ssid, stimIAPS) %>%
+  mutate(pup_velocity = (abs(lag(pup_basCor)-pup_basCor)/abs(lag(timerezero3)-timerezero3)))
+  # mutate(pup_velocity_peak = max(pup_velocity, na.rm = TRUE))
+
+
+tmp.df4_full_stim_downs_jun2021_with_behnew$pup_velocity
+
+# global
+
 nrow(nbins)
 nbins = 30 # number of bins
 unique(tmp.df4_full_stim_downs_jun2021_with_behnew$ssid)
@@ -537,6 +710,59 @@ tmp.df4_full_stim_downs_jun2021_with_behnew%>%
 
 
 
+
+```
+
+
+100ms
+```{r}
+unique(tmp.df4_full_stim_downs_jun2021_60bins$ssid)
+
+tmp.df4_full_stim_downs_jun2021_60bins$ssid_num<- as.numeric(as.character(tmp.df4_full_stim_downs_jun2021_60bins$ssid))
+
+tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins %>%
+  # subset(!is.na(mediansplit_sample_arousal2))%>%
+  # subset(valencearousal_outliers == TRUE) %>%
+  # subset(!is.na(mediansplit_sample_arousal2))%>%
+  group_by(ssid, tNo) %>%
+  mutate(pup_velocity = (abs(lag(pup_basCor)-pup_basCor)/abs(lag(timerezero3)-timerezero3)))
+  # mutate(pup_velocity_peak = max(pup_velocity, na.rm = TRUE))
+
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  subset(ssid == 325 & tNo ==38)%>%
+  ggplot(aes(timerezero3, pup_velocity))+
+  geom_line()
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  subset(ssid == 325 & tNo ==38)%>%
+  ggplot(aes(timerezero3, pup_basCor))+
+  geom_line()
+
+# compared to pupil velocity is much more jerky
+
+# smooth belocity
+# number of bins
+unique(tmp.df4_full_stim_downs_jun2021_with_behnew$ssid)
+tmp.df4_full_stim_downs_jun2021_with_behnew
+
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  subset(ssid == 331 & tNo ==40)%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+  mutate(pup_vel_smooth = zoo::rollmean(pup_velocity, k = 3, fill = NA))%>%
+   ggplot(aes(timerezero3, pup_velocity))+
+  geom_line()+
+  geom_line(aes(y = pup_vel_smooth), color = 'red')
+
+
+tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
+  # subset(ssid == 331 & tNo ==40)%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+  mutate(pup_vel_smooth = zoo::rollmean(pup_velocity, k = 3, fill = NA))
+  
 
 ```
 
