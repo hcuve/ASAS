@@ -668,14 +668,93 @@ timecourse_60bin_result_df %>%
   geom_line(aes(y = Estimate_ar_vl), linetype = "dotdash", size = 1, color = "red")
 
 
+View(timecourse_60bin_result_df)
+
+
+
 timecourse_60bin_result_df %>%
-  ggplot(aes(timebins, t_ar))+
-  geom_line(size = 1)+
-  geom_line(aes(y = t_vl), linetype = "dashed", size = 1)+
-  # geom_line(aes(y = t_br), linetype = "dotted", size = 1)+
-  geom_line(aes(y = t_ar_vl), linetype = "dotdash", size = 1, color = "red")
+  ggplot(aes(timebins, Estimate_ar))+
+  geom_line(size = 1, linetype = 'dotted', color = 1)+
+  # geom_line(aes(y = Estimate_vl), linetype = "dashed", size = 1)+
+  geom_line(aes(y = Estimate_br), size = 1, color = 2)+
+  # geom_line(aes(y = Estimate_ar_vl), linetype = "dotdash", size = 1, color = "red")+
+  geom_rect(aes(xmin = 1,
+                xmax = 5.89,
+                ymin = -2,
+                ymax = -2+.1,
+                fill = "red", linetype = 'dashed'), alpha = .01)+
+  p$graphstyle+
+  scale_color_brewer(palette="Dark2")
+  scale_color_manual(values=wes_palette(n=3, name="GrandBudapest"))
 
+library(RColorBrewer)
 
+  brewer.pal(4, "Dark2")
+  # "#1B9E77" "#D95F02" "#7570B3" "#E7298A"
+  # timecourse_60bin_result_df$
+  # Estimate_ar, Estimate_ar_vl,Estimate_br. Estimate_v
+  
+  
+  timecourse_60bin_result_df %>% 
+  select("timebins","Estimate_ar", "Estimate_vl", "Estimate_br", "Estimate_ar_vl") %>% 
+  pivot_longer(-timebins, names_to = "variable", values_to = "Estimate")%>%
+    subset(!is.na(Estimate))%>%
+  ggplot(aes(timebins, Estimate, group = variable, fill = variable, color= variable))+
+  geom_line(aes(linetype = variable), size = 1)+
+    p$graphstyle+
+    scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))+
+  # use correction for significance
+    # brighteness
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_br_adj_TRUE == TRUE]
+    annotate(geom = 'rect', 
+             xmin = .16,
+                xmax = 6,
+                ymin = -2,
+                ymax = -2+.1,
+                fill = "#7570B3", alpha = .5)+
+    
+      annotate("text", 
+                x = (1+5.4)/2,
+                y = ((-2) +(-2+.1))/2,
+                label = "brightness") +
+    
+    # arousal
+    # timecourse_60bin_result_df$p_ar_adj
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_adj_TRUE == TRUE]
+     annotate(geom = 'rect', xmin = 1,
+                xmax = 5.89,
+                ymin = -2+.1+.1,
+                ymax = -2+.1+.1+.1,
+                fill = "#1B9E77", alpha = .5)+
+        annotate("text", 
+                x = (1+5.4)/2,
+                y = ((-2+.1+.1) +(-2+.1+.1+.1))/2,
+                label = "arousal") +
+    
+    # arousal-valence
+   # timecourse_60bin_result_df$p_ar_vl_adj
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_vl_adj_TRUE == TRUE]
+       annotate(geom = 'rect', 
+                xmin = 1,
+                xmax = 5.4,
+                ymin = -2+.1+.1+.1+.1,
+                ymax = -2+.1+.1+.1+.1+.1,
+                fill = "#D95F02", alpha = .5, label = "text")+
+    annotate("text", 
+                x = (1+5.4)/2,
+                y = ((-2+.1+.1+.1+.1) +(-2+.1+.1+.1+.1+.1))/2,
+                label = "arousal x valence") +
+        xlab("Time (s)")+
+    ylab("Effect size")+
+    xlab("Time (s)")+
+    ylab("Effect size")
+    
+    # valence - no significance
+      
+    
+    # scale_fill_brewer()
+    
+?annotate
 ```
 
 
@@ -1094,5 +1173,145 @@ timecourse_60bin_result_df_vel$test <- rle(timecourse_60bin_result_df_vel$p_ar <
 # runs[2]
 # myruns = which(runs$values == TRUE & runs$lengths >= 3)
 
-
+View(timecourse_60bin_result_df_vel)
 ```
+
+
+
+velocity = actual velocity unlike speed (which is what I actually computed above. velocity encodes durection( constriction or dilation)
+
+
+```{r}
+# let's test the interaction term
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+range(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+# nbins = 60 # number of bins
+
+# create and empty dataframe for the timecourse analyses
+timecourse_60bin_result_df_vel_dir <- data.frame(timebins= rep(NA, 60), 
+                                       Estimate_ar= rep(NA, 60), 
+                                       t_ar=rep(NA, 60), 
+                                       p_ar=rep(NA, 60),
+                                       Estimate_vl= rep(NA, 60), 
+                                       t_vl=rep(NA, 60), 
+                                       p_vl=rep(NA, 60),
+                                       Estimate_br= rep(NA, 60), 
+                                       t_br=rep(NA, 60), 
+                                       p_br=rep(NA, 60),
+                                       Estimate_ar_vl= rep(NA, 60), 
+                                       t_ar_vl=rep(NA, 60), 
+                                       p_ar_vl=rep(NA, 60),
+                                       cov= as.character(rep(NA,60)))
+
+
+i = 0 # remember to always rezero it
+# rm(i,b)
+
+# i =1
+
+for (b in 3:length(nbins)) {
+  # for (s in 1:length(nsim)) {
+
+    message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
+        lmer_bin_pup  <- lmer(pup_velocity_dir ~ (arousal_c* valence)+Mean_gray_z  +
+                                (1 | ssid),
+                                # (0 +arousal_c* valence | ssid),
+                                # (1|stimIAPS),
+                              REML = FALSE,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    ssid_num< 500&
+                                    !is.na(pup_vel_smooth) &
+                                    timebin_no == nbins[b]))
+
+        # store results from the simulation
+            lmer_bin_pup_summary<- summary(lmer_bin_pup)
+            lmer_bin_pup_summary
+            # lmer_bin_pup_summary[["coefficients"]][3,1]
+            timecourse_60bin_result_df_vel_dir[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] 
+            #save the exact value of time bin
+            # store arousal (2,parameter)            # first number is term(row), second is column
+            timecourse_60bin_result_df_vel_dir[i,2]<-
+            lmer_bin_pup_summary[["coefficients"]][2,1] #estimate
+            timecourse_60bin_result_df_vel_dir[i,3]<-
+              lmer_bin_pup_summary[["coefficients"]][2,4] # t statistic
+            timecourse_60bin_result_df_vel_dir[i,4]<-
+            lmer_bin_pup_summary[["coefficients"]][2,5] # p value
+            
+            # valence
+            
+            timecourse_60bin_result_df_vel_dir[i,5]<-
+            lmer_bin_pup_summary[["coefficients"]][3,1] #estimate
+            timecourse_60bin_result_df_vel_dir[i,6]<-
+              lmer_bin_pup_summary[["coefficients"]][3,4] # t statistic
+            timecourse_60bin_result_df_vel_dir[i,7]<-
+              lmer_bin_pup_summary[["coefficients"]][3,5] # p value
+            
+            # brightness
+            
+            timecourse_60bin_result_df_vel_dir[i,8]<-
+            lmer_bin_pup_summary[["coefficients"]][4,1] #estimate
+            timecourse_60bin_result_df_vel_dir[i,9]<-
+              lmer_bin_pup_summary[["coefficients"]][4,4] # t statistic
+            timecourse_60bin_result_df_vel_dir[i,10]<-
+              lmer_bin_pup_summary[["coefficients"]][4,5] # p value
+            
+            # interaction arousal x brighteness
+            
+            timecourse_60bin_result_df_vel_dir[i,11]<-
+            lmer_bin_pup_summary[["coefficients"]][5,1] #estimate
+            timecourse_60bin_result_df_vel_dir[i,12]<-
+              lmer_bin_pup_summary[["coefficients"]][5,4] # t statistic
+            timecourse_60bin_result_df_vel_dir[i,13]<-
+              lmer_bin_pup_summary[["coefficients"]][5,5] # p value
+            
+            
+            timecourse_60bin_result_df_vel_dir[i,14] <-
+              ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
+                                                   != 0,
+                                               lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
+
+     i = i+1
+}
+# timecourse_result_df_pos<- timecourse_result_df
+View(timecourse_60bin_result_df_vel_dir)
+
+View(timecourse_60bin_result_df_vel_dir)
+
+timecourse_60bin_result_df_vel_dir %>%
+  ggplot(aes(timebins, Estimate_ar))+
+  geom_line(size = 1)+
+  geom_line(aes(y = Estimate_vl), linetype = "dashed", size = 1)+
+  geom_line(aes(y = Estimate_br), linetype = "dotted", size = 1)+
+  geom_line(aes(y = Estimate_ar_vl), linetype = "dotdash", size = 1, color = "red")
+  ylim(-.1,5)
+  
+  
+# adjust p values and tag as TRUE whenevee there is at least 3 consecutive p values below .05
+?p.adjust
+timecourse_60bin_result_df_vel_dir$p_ar_adj<- p.adjust(timecourse_60bin_result_df_vel_dir$p_ar, method = "holm")
+timecourse_60bin_result_df_vel_dir$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df_vel_dir$p_ar_adj<.05, TRUE, FALSE)
+
+
+timecourse_60bin_result_df_vel_dir$p_vl_adj <- p.adjust(timecourse_60bin_result_df_vel_dir$p_vl, method = "holm")
+timecourse_60bin_result_df_vel_dir$p_vl_adj_TRUE<- if_else(timecourse_60bin_result_df_vel_dir$p_vl_adj<.05, TRUE, FALSE)
+
+timecourse_60bin_result_df_vel_dir$p_br_adj <- p.adjust(timecourse_60bin_result_df_vel_dir$p_br, method = "holm")
+timecourse_60bin_result_df_vel_dir$p_br_adj_TRUE<- if_else(timecourse_60bin_result_df_vel_dir$p_br_adj<.05, TRUE, FALSE)
+
+timecourse_60bin_result_df_vel_dir$p_ar_vl_adj <- p.adjust(timecourse_60bin_result_df_vel_dir$p_ar_vl, method = "holm")
+timecourse_60bin_result_df_vel_dir$p_ar_vl_adj_TRUE<- if_else(timecourse_60bin_result_df_vel_dir$p_ar_vl_adj<.05, TRUE, NULL)
+
+# find the first and last true in a sequence of TRUES
+duplicated(timecourse_60bin_result_df_vel_dir$p_ar_adj_TRUE, na.rm = TRUE)
+
+# https://masterr.org/r/how-to-find-consecutive-repeats-in-r/
+timecourse_60bin_result_df_vel_dir$test<- NULL
+
+timecourse_60bin_result_df_vel_dir$test <- rle(timecourse_60bin_result_df_vel_dir$p_ar < 0.05)
+```
+
+
+pupiul velocity and speed might better caprure arousal dynamics because the temporal dynamics are less adffected by a susrtauned effect of brighetenss. whereas amplitude is p[robably strongly affected by brighteness which restricts variability in input from a arousal componenets
