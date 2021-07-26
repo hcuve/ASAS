@@ -51,6 +51,8 @@ tmp.df4_full_stim$timebin<- OneR::bin(tmp.df4_full_stim$timerezero3, nbin = 60)
 
 # dowsample by averaging?
 colnames(tmp.df4_full_stim)
+
+tmp.df4_full_stim_downs
 tmp.df4_full_stim_downs <- tmp.df4_full_stim %>%
   group_by(ssid, tNo, timebin, trial,trialUnq)%>%
   summarise_at(c('timerezero3','pup_basCor', 'gaze_x_cor_pix', 'gaze_y_cor_pix'), 
@@ -61,11 +63,13 @@ tmp.df4_full_stim_downs <- tmp.df4_full_stim %>%
 saveRDS(tmp.df4_full_stim_downs, "tmp.df4_full_stim_downs.rds")
 
 # create klarger bins
+
+tmp.df4_full_stim_downs_jun2021
 tmp.df4_full_stim_downs_jun2021_with_beh
 
 range(tmp.df4_full_stim_downs$timerezero3)
 
-tmp.df4_full_stim_downs_jun2021_with_beh$timebin2<- OneR::bin(tmp.df4_full_stim_downs_jun2021_with_beh$timerezero3, nbin = 30)
+tmp.df4_full_stim_downs_jun2021_with_beh$timebin2 <- OneR::bin(tmp.df4_full_stim_downs_jun2021_with_beh$timerezero3, nbin = 30)
 
 tmp.df4_full_stim_downs_jun2021_with_beh2 <- tmp.df4_full_stim_downs_jun2021_with_beh %>%
   group_by(ssid, tNo, timebin2, trial,trialUnq)%>%
@@ -1670,6 +1674,9 @@ let's put pupil scr and ht prediction on subjective arousal
 rm(justone_test, lucy_plots, test)
 
 # import the timecourse
+unique(tmp.df4_full_stim_downs_jun2021)
+
+tmp.df4_full_stim_downs_jun2021_with_beh2$
 
 tmp.df4_full_stim_downs_jun2021 <- readRDS("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/tmp.df4_full_stim_downs_jun2021.rds")
 
