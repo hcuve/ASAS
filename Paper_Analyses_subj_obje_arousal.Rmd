@@ -8,7 +8,7 @@ output: html_document
 
 Code for the paper: Valence modulated “subjective-objective” arousal
 
-data<- lastopened
+data<- last opened
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
