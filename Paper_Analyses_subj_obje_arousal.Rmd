@@ -683,6 +683,9 @@ timecourse_60bin_result_df %>%
 Pupil velocity test
 # velocity analyses
 
+
+
+
 ```{r}
 # install.packages("pspline")
 library(pspline)
@@ -777,19 +780,23 @@ timecourse_result_df_int_vel %>%
 
 ??ma
 ?stats::filter
-tmp.df4_full_stim_downs_jun2021_with_behnew%>%
+tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(ssid == 310 & tNo == 10)%>%
-  ggplot(aes(timerezero3,zoo::rollmean(pup_velocity, k = 3, fill = NA)))+
+  ggplot(aes(timerezero3,pup_vel_smooth))+
   geom_line()+
-  geom_line(aes(y = pup_velocity), color = 'red')+
-  geom_smooth(se = F)
+  geom_point()
+  # geom_line(aes(y = pup_velocity),Ç color = 'red')
+  # geom_smooth(se = F)
 
-tmp.df4_full_stim_downs_jun2021_with_behnew%>%
-  subset(ssid == 310 & tNo == 15)%>%
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+    subset(ssid == 320 & tNo == 20)%>%
   ggplot(aes(timerezero3,pup_basCor))+
   geom_point()+
+  geom_line()+
+  geom_line(aes(y = pup_vel_smooth), color = 'red')+
+  geom_point(aes(y = pup_vel_smooth), color = 'red')
   # geom_line(aes(y = pup_velocity), color = 'red')+
-  geom_smooth(se = F)
+  # geom_smooth(se = F)
 
 
 
@@ -808,7 +815,8 @@ tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins
   # subset(valencearousal_outliers == TRUE) %>%
   # subset(!is.na(mediansplit_sample_arousal2))%>%
   group_by(ssid, tNo) %>%
-  mutate(pup_velocity = (abs(lag(pup_basCor)-pup_basCor)/abs(lag(timerezero3)-timerezero3)))
+  mutate(pup_velocity = (abs(lag(pup_basCor)-pup_basCor)/abs(lag(timerezero3)-timerezero3)))%>%
+  mutate(pup_velocity_dir = ((lag(pup_basCor)-pup_basCor) / abs(lag(timerezero3)-timerezero3)))
   # mutate(pup_velocity_peak = max(pup_velocity, na.rm = TRUE))
 
 
@@ -840,16 +848,103 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
   geom_line(aes(y = pup_vel_smooth), color = 'red')
 
 
-tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
-  # subset(ssid == 331 & tNo ==40)%>%
+tmp.df4_full_stim_downs_jun2021_60bins$four<- paste0(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2,
+                                                     paste0(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_valence2))
+                                                     
+paste0(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2)
+
+
+# unique(tmp.df4_full_stim_downs_jun2021_60bins)
+
+
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num < 500)%>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
   group_by(ssid, tNo)%>%
   arrange(ssid,tNo, timerezero3)%>%
-  mutate(pup_vel_smooth = zoo::rollmean(pup_velocity, k = 3, fill = NA))
+   ggplot(aes(timerezero3, pup_basCor, color = four))+
+  stat_smooth(se = F)
+  # geom_line(aes(y = pup_vel_smooth), color = 'red')
+  
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num < 500)%>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+   ggplot(aes(timerezero3, pup_velocity, color = four))+
+  stat_smooth(se = T)
+  # stat_smooth(aes(y = pup_velocity_dir),se = F, linetype = 'dashed')
+  # geom_line(aes(y = pup_vel_smooth), color = 'red')
+
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num < 500)%>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+   ggplot(aes(timerezero3, pup_velocity_dir, color = four))+
+  # stat_summary(fun = mean, geom = 'line')
+  stat_smooth(se = T)
+  # stat_smooth(aes(y = pup_velocity_dir),se = F, linetype = 'dashed')
+  # geom_line(aes(y = pup_vel_smooth), color = 'red')
+
+
+```
+
+```{r}  
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num < 500)%>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+   ggplot(aes(timerezero3, pup_basCor, color = four))+
+  stat_smooth(se = F)
+  geom_line(aes(y = pup_vel_smooth), color = 'red')
+  
+  
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num < 500)%>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+   ggplot(aes(timerezero3, pup_vel_smooth, color = four))+
+  stat_smooth(se = F)
+  geom_line(aes(y = pup_vel_smooth), color = 'red')
+
+  
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num < 500)%>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
+  group_by(ssid, tNo)%>%
+  arrange(ssid,tNo, timerezero3)%>%
+   ggplot(aes(timerezero3, pup_basCor, color = four))+
+  stat_smooth(se = F)
+  geom_line(aes(y = pup_vel_smooth), color = 'red')
+
+
+
   
 
 ```
 
 
+
+
+is velocity correlated with puypil amplitude
+```{r}
+require(tidyverse)
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  group_by(stimIAPS)%>%
+  mutate(cor_vel_pup = cor(pup_vel_smooth,pup_basCor, use = 'complete'))%>%
+  mutate(vel_max = max(pup_vel_smooth,na.rm = TRUE))%>%
+  summarise_if(is.numeric, mean,na.rm = TRUE)%>%
+  ggplot(aes(vel_max,pup_basCor))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  ggpubr::stat_cor()
+
+```
 velocity timecourse
 ```{r}
 # let's test the interaction term
