@@ -34,3 +34,4 @@ vignettes/*.pdf
 
 # Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
 rsconnect/
+Old scripts/pupil_arousal_datarmd.nb.html
