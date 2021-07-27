@@ -568,6 +568,7 @@ i = 0 # remember to always rezero it
 # rm(i,b)
 
 # i =1
+# unique(tmp.df4_full_stim_downs_jun2021_60bins$)
 
 for (b in 1:length(nbins)) {
   # for (s in 1:length(nsim)) {
@@ -579,6 +580,7 @@ for (b in 1:length(nbins)) {
                                 # (1|stimIAPS),
                               REML = FALSE,
                       data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    ssid_num< 500 &
                                     timebin_no == nbins[b]))
 
         #store results from the simulation
@@ -641,6 +643,7 @@ View(timecourse_60bin_result_df)
 
 # adjust p values and tag as TRUE whenevee there is at least 3 consecutive p values below .05
 ?p.adjust
+
 timecourse_60bin_result_df$p_ar_adj<- p.adjust(timecourse_60bin_result_df$p_ar, method = "holm")
 timecourse_60bin_result_df$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df$p_ar_adj<.05, TRUE, FALSE)
 
@@ -659,96 +662,163 @@ duplicated(timecourse_60bin_result_df$p_ar_adj_TRUE, na.rm = TRUE)
 
 
 
-?linetype
 timecourse_60bin_result_df %>%
   ggplot(aes(timebins, Estimate_ar_vl))+
-  geom_line(size = 1)+
-  geom_line(aes(y = Estimate_vl), linetype = "dashed", size = 1)+
-  geom_line(aes(y = Estimate_br), linetype = "dotted", size = 1)+
-  geom_line(aes(y = Estimate_ar_vl), linetype = "dotdash", size = 1, color = "red")
+  geom_line(size = 1)
+  geom_line(aes(y = t_vl), linetype = "dashed", size = 1)+
+  geom_line(aes(y = t_br), linetype = "dotted", size = 1)+
+  geom_line(aes(y = t_ar), linetype = "dotdash", size = 1, color = "red")
 
 
 View(timecourse_60bin_result_df)
 
+```
+
+# # figure preferences
+good blog in customization 
+https://www.datanovia.com/en/blog/ggplot-legend-title-position-and-labels/#rename-legend-labels-and-change-the-order-of-items
+```{r}
+p<- list()
+
+sf = 1 # scaling factor to make it easier to change sizes of everything, in which case change here
+
+p$graphstyle <-  theme(#base plot theme
+  
+  # axis lines
+  axis.line.y = element_line(color="black"),
+  axis.line.x = element_line(color="black"),
+  
+  axis.title.y=element_text(size = 16*(sf+.5), margin=margin(0,5,0,0)),
+  axis.title.x=element_text(size = 16*(sf+.5), margin=margin(0,5,0,0)),
+  
+  # text
+  strip.text.x = element_text(size = 12*(sf+.5),  colour = "black"),
+  strip.text.y = element_text(size = 12*(sf+.5),  colour = "black"),
+  
+  text=element_text(size = 14, family = "sans"),
+  axis.text.x = element_text(size = 14*(sf+.5), family = "sans", colour = "black",),
+  axis.text.y = element_text(size = 14*(sf+.5), family = "sans", colour = "black"),
+  
+  
+  # panel
+  panel.grid.major = element_blank(),
+  panel.background = element_blank(),
+  # panel.background = element_rect(fill="transparent"),
+  # panel.border = element_rect(fill="transparent"),
+  # strip shades (reco rectagles)
+   strip.background = element_blank(),
+  
+  # legend
+  legend.position = "top",
+  legend.key = element_rect(colour = "transparent", fill="transparent"),
+  #legend.direction = "horizontal",
+
+  legend.text = element_text(size = 10*(sf+.3)),
+  # legend.title = element_text(size = 10*(sf+.3)),
+  # legend line tends to be really small in print so adjust here
+  legend.key.height = unit(.5, "cm"),
+  legend.key.width = unit(2, "cm"),
+  
+  #legend.text = element_text(size = 10*sf),
+  legend.title=element_blank(),
+  #legend.text = element_blank(),
+  #axis.ticks = element_blank(),
+)
 
 
-timecourse_60bin_result_df %>%
-  ggplot(aes(timebins, Estimate_ar))+
-  geom_line(size = 1, linetype = 'dotted', color = 1)+
-  # geom_line(aes(y = Estimate_vl), linetype = "dashed", size = 1)+
-  geom_line(aes(y = Estimate_br), size = 1, color = 2)+
-  # geom_line(aes(y = Estimate_ar_vl), linetype = "dotdash", size = 1, color = "red")+
-  geom_rect(aes(xmin = 1,
-                xmax = 5.89,
-                ymin = -2,
-                ymax = -2+.1,
-                fill = "red", linetype = 'dashed'), alpha = .01)+
-  p$graphstyle+
-  scale_color_brewer(palette="Dark2")
-  scale_color_manual(values=wes_palette(n=3, name="GrandBudapest"))
+```
 
-library(RColorBrewer)
 
-  brewer.pal(4, "Dark2")
+timecourse stats plots
+```{r}
+require(RColorBrewer) # make color friendly plots
+require(tidyverse)
+
+brewer.pal(4, "Dark2") # gives the exact names of pallets
   # "#1B9E77" "#D95F02" "#7570B3" "#E7298A"
   # timecourse_60bin_result_df$
   # Estimate_ar, Estimate_ar_vl,Estimate_br. Estimate_v
   
-  
-  timecourse_60bin_result_df %>% 
+plots_timecourse <- list()
+
+#  let's use the order arousal, valence, arousal x valence brightness
+plots_timecourse$eff_size_pup_amp <-   timecourse_60bin_result_df %>% 
   select("timebins","Estimate_ar", "Estimate_vl", "Estimate_br", "Estimate_ar_vl") %>% 
   pivot_longer(-timebins, names_to = "variable", values_to = "Estimate")%>%
     subset(!is.na(Estimate))%>%
-  ggplot(aes(timebins, Estimate, group = variable, fill = variable, color= variable))+
+  #change the order of the coloring variable here and the name of legends
+  mutate(variable = factor(variable, c("Estimate_ar", "Estimate_vl","Estimate_ar_vl",  "Estimate_br"), labels = c("arousal", "valence", "arousal x valence", "brightness")))%>%
+  ggplot(aes(timebins, Estimate, group = variable, color= variable))+
   geom_line(aes(linetype = variable), size = 1)+
-    p$graphstyle+
-    scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))+
-  # use correction for significance
+  
+  scale_color_brewer(palette = "Dark2")+
+    # scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))+
+  # use hom correction for significance
+  
     # brighteness
     # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_br_adj_TRUE == TRUE]
-    annotate(geom = 'rect', 
-             xmin = .16,
+  
+    annotate(geom = 'rect', # use annotate instead of geom_rect, as it is more flexible
+             xmin = .16, # got these values from the data-frame. need to fidn a way to automate this
                 xmax = 6,
-                ymin = -2,
-                ymax = -2+.1,
-                fill = "#7570B3", alpha = .5)+
+                ymin = -2.03+(sf*.3), # if I ever need to change this, use the scaling factor sf
+                ymax = -2+.1+.01+(sf*.3),
+                fill =  "#E7298A" , alpha = .5)+ 
     
       annotate("text", 
                 x = (1+5.4)/2,
-                y = ((-2) +(-2+.1))/2,
+                y = ((-2) +(-2+.1))/2+(sf*.3),
                 label = "brightness") +
     
     # arousal
+  
     # timecourse_60bin_result_df$p_ar_adj
     # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_adj_TRUE == TRUE]
      annotate(geom = 'rect', xmin = 1,
                 xmax = 5.89,
-                ymin = -2+.1+.1,
-                ymax = -2+.1+.1+.1,
+                ymin = -2.03+.1+.1+.1+.1+(sf*.3),
+                ymax = -2+.1+.1+.1+.1+.1+.01+(sf*.3),
                 fill = "#1B9E77", alpha = .5)+
         annotate("text", 
-                x = (1+5.4)/2,
-                y = ((-2+.1+.1) +(-2+.1+.1+.1))/2,
-                label = "arousal") +
-    
+                  x = (1+5.4)/2,
+                y = ((-2+.1+.1+.1+.1) +(-2+.1+.1+.1+.1+.1))/2+(sf*.3),
+                 label = "arousal") +
+
     # arousal-valence
    # timecourse_60bin_result_df$p_ar_vl_adj
     # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_vl_adj_TRUE == TRUE]
        annotate(geom = 'rect', 
                 xmin = 1,
                 xmax = 5.4,
-                ymin = -2+.1+.1+.1+.1,
-                ymax = -2+.1+.1+.1+.1+.1,
-                fill = "#D95F02", alpha = .5, label = "text")+
+                ymin = -2.03+.1+.1+(sf*.3),
+                ymax = -2+.1+.1+.1+.01+(sf*.3),
+                
+                fill ="#7570B3", alpha = .5, label = "text")+
     annotate("text", 
                 x = (1+5.4)/2,
-                y = ((-2+.1+.1+.1+.1) +(-2+.1+.1+.1+.1+.1))/2,
+                y = ((-2+.1+.1) +(-2+.1+.1+.1))/2+(sf*.3),
                 label = "arousal x valence") +
         xlab("Time (s)")+
     ylab("Effect size")+
     xlab("Time (s)")+
     ylab("Effect size")
-    
+
+plots_timecourse$eff_size_pup_amp 
+# need to rename the label legends
+
+
+# Edit legend title and labels
+plots_timecourse$eff_size_pup_amp <- plots_timecourse$eff_size_pup_amp + 
+  p$graphstyle +
+    guides(colour = guide_legend(override.aes = list(size=2)))+ #the line size of the legend tends to be smaller in print
+  scale_x_continuous(limits = c(0,6), breaks = c(0,2,4,6))+
+  scale_y_continuous(limits = c(-2,.7), breaks = c(-1, -0.5, 0,0.5))
+  
+
+
+plots_timecourse$eff_size_pup_amp
+
+
     # valence - no significance
       
     
@@ -757,12 +827,11 @@ library(RColorBrewer)
 ?annotate
 ```
 
+I think this clustering might 
 
 
 Pupil velocity test
 # velocity analyses
-
-
 
 
 ```{r}
@@ -1058,24 +1127,22 @@ i = 0 # remember to always rezero it
 
 # rm(i,b)
 
-# i =1
 tmp.df4_full_stim_downs_jun2021_60bins$pup_vel_smooth
 
-tmp.df4_full_stim_downs_jun2021_60bins$pup_vel_smooth
-
-nbins<- nbins[3:56]
+nbins<- nbins[3:59]
 
 for (b in 3:length(nbins)) {
   # for (s in 1:length(nsim)) {
 
     message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
-        lmer_bin_pup  <- lmer(pup_vel_smooth ~ (arousal_c* valence)+Mean_gray_z  +
+        lmer_bin_pup  <- lmer(pup_velocity ~ (arousal_c* valence)+Mean_gray_z  +
                                 (1 | ssid),
                                 # (0 +arousal_c* valence | ssid),
                                 # (1|stimIAPS),
                               REML = FALSE,
                       data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
                                     !is.na(pup_vel_smooth)&
+                                      ssid_num< 500 &
                                     timebin_no == nbins[b]))
 
         # store results from the simulation
@@ -1137,15 +1204,21 @@ timecourse_60bin_result_df_vel %>%
   geom_hline(yintercept = .05, color = 'red', size = 1.5)
 
 View(timecourse_60bin_result_df_vel)
+
+range(timecourse_60bin_result_df_vel$Estimate_ar, na.rm = TRUE)
 timecourse_60bin_result_df_vel %>%
+  subset(!is.na(Estimate_ar))%>%
   ggplot(aes(timebins, Estimate_ar))+
   geom_line(size = 1)+
   geom_line(aes(y = Estimate_vl), linetype = "dashed", size = 1)+
   geom_line(aes(y = Estimate_br), linetype = "dotted", size = 1)+
   geom_line(aes(y = Estimate_ar_vl), linetype = "dotdash", size = 1, color = "red")+
+  geom_hline(yintercept = 0.2)
   ylim(-.1,.25)
+  
+```
 
-
+```{r}
 # adjust p values and tag as TRUE whenevee there is at least 3 consecutive p values below .05
 ?p.adjust
 timecourse_60bin_result_df_vel$p_ar_adj<- p.adjust(timecourse_60bin_result_df_vel$p_ar, method = "holm")
@@ -1176,9 +1249,98 @@ timecourse_60bin_result_df_vel$test <- rle(timecourse_60bin_result_df_vel$p_ar <
 View(timecourse_60bin_result_df_vel)
 ```
 
+```{r}
+#  let's use the order arousal, valence, arousal x valence brightness
+timecourse_60bin_result_df_vel %>% 
+  select("timebins","Estimate_ar", "Estimate_vl", "Estimate_br", "Estimate_ar_vl") %>% 
+  pivot_longer(-timebins, names_to = "variable", values_to = "Estimate")%>%
+    subset(!is.na(Estimate))%>%
+  #change the order of the coloring variable here and the name of legends
+  mutate(variable = factor(variable, c("Estimate_ar", "Estimate_vl","Estimate_ar_vl",  "Estimate_br"), labels = c("arousal", "valence", "arousal x valence", "brightness")))%>%
+  ggplot(aes(timebins, Estimate, group = variable, color= variable))+
+  geom_line(aes(linetype = variable), size = 1)+
+  
+  scale_color_brewer(palette = "Dark2")
+    # scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))+
+  # use hom correction for significance
+  
+    # brighteness
+    timecourse_60bin_result_df_vel$timebins[timecourse_60bin_result_df_vel$p_br_adj_TRUE == TRUE]
+  
+    annotate(geom = 'rect', # use annotate instead of geom_rect, as it is more flexible
+             xmin = .16, # got these values from the data-frame. need to fidn a way to automate this
+                xmax = 6,
+                ymin = -2.03+(sf*.3), # if I ever need to change this, use the scaling factor sf
+                ymax = -2+.1+.01+(sf*.3),
+                fill =  "#E7298A" , alpha = .5)+ 
+    
+      annotate("text", 
+                x = (1+5.4)/2,
+                y = ((-2) +(-2+.1))/2+(sf*.3),
+                label = "brightness") +
+    
+    # arousal
+  
+    # timecourse_60bin_result_df$p_ar_adj
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_adj_TRUE == TRUE]
+     annotate(geom = 'rect', xmin = 1,
+                xmax = 5.89,
+                ymin = -2.03+.1+.1+.1+.1+(sf*.3),
+                ymax = -2+.1+.1+.1+.1+.1+.01+(sf*.3),
+                fill = "#1B9E77", alpha = .5)+
+        annotate("text", 
+                  x = (1+5.4)/2,
+                y = ((-2+.1+.1+.1+.1) +(-2+.1+.1+.1+.1+.1))/2+(sf*.3),
+                 label = "arousal") +
+
+    # arousal-valence
+   # timecourse_60bin_result_df$p_ar_vl_adj
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_vl_adj_TRUE == TRUE]
+       annotate(geom = 'rect', 
+                xmin = 1,
+                xmax = 5.4,
+                ymin = -2.03+.1+.1+(sf*.3),
+                ymax = -2+.1+.1+.1+.01+(sf*.3),
+                
+                fill ="#7570B3", alpha = .5, label = "text")+
+    annotate("text", 
+                x = (1+5.4)/2,
+                y = ((-2+.1+.1) +(-2+.1+.1+.1))/2+(sf*.3),
+                label = "arousal x valence") +
+        xlab("Time (s)")+
+    ylab("Effect size")+
+    xlab("Time (s)")+
+    ylab("Effect size")
+
+plots_timecourse$eff_size_pup_amp 
+# need to rename the label legends
 
 
-velocity = actual velocity unlike speed (which is what I actually computed above. velocity encodes durection( constriction or dilation)
+# Edit legend title and labels
+plots_timecourse$eff_size_pup_amp <- plots_timecourse$eff_size_pup_amp + 
+  p$graphstyle +
+    guides(colour = guide_legend(override.aes = list(size=2)))+ #the line size of the legend tends to be smaller in print
+  scale_x_continuous(limits = c(0,6), breaks = c(0,2,4,6))+
+  scale_y_continuous(limits = c(-2,.7), breaks = c(-1, -0.5, 0,0.5))
+  
+
+
+plots_timecourse$eff_size_pup_amp
+
+
+    # valence - no significance
+      
+    
+    # scale_fill_brewer()
+    
+?annotate
+
+
+
+```
+
+
+velocity = actual velocity unlike speed (which is what I actually computed above. velocity encodes direction( constriction or dilation)
 
 
 ```{r}
