@@ -672,6 +672,38 @@ timecourse_60bin_result_df %>%
 
 View(timecourse_60bin_result_df)
 
+
+?p.adjust
+
+# flad when 3 consecutive rows have a p <.05
+require(zoo)
+
+# rle performs lenght encoding
+rletest<- rle(timecourse_60bin_result_df$p_ar<.05)
+?rle
+
+  (rletest$lengths[rletest$lengths > 3 & rletest$values== TRUE]) # length of each sequence
+
+# To get the vector with only a sequence of "TRUE" you can try
+
+rletest$values[rletest$values != TRUE] <- 0
+timecourse_60bin_result_df$p_ar_3below.5<- rep(rletest$values,  rletest$lengths)
+
+table(timecourse_60bin_result_df$p_ar_3below.5)
+?p.adjust
+
+timecourse_60bin_result_df%>%
+  group_by(p_ar_3below.5)%>%
+  mutate(p_ar_adj_clust= p.adjust(p_ar, method = "holm"))
+
+timecourse_60bin_result_df %>%
+  mutate(test=rollapply(p_ar, width=3, max, align="left", fill=NA, na.rm=TRUE))%>%
+  
+
+  
+
+
+
 ```
 
 # # figure preferences
@@ -819,15 +851,190 @@ plots_timecourse$eff_size_pup_amp <- plots_timecourse$eff_size_pup_amp +
 plots_timecourse$eff_size_pup_amp
 
 
-    # valence - no significance
-      
-    
-    # scale_fill_brewer()
-    
-?annotate
 ```
 
-I think this clustering might 
+
+split neutral positive and negative usign ground
+
+```{r}
+
+colnames(tmp.df4_full_stim_downs_jun2021_60bins)
+
+# create number s for time bins
+tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(ssid, tNo)%>%
+  mutate(timebin_no = 1:n())
+
+# let's test the interaction term
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+range(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+# nbins = 60 # number of bins
+
+# create and empty dataframe for the timecourse analyses
+timecourse_60bin_result_df <- data.frame(timebins= rep(NA, 60), 
+                                       Estimate_ar= rep(NA, 60), 
+                                       t_ar=rep(NA, 60), 
+                                       p_ar=rep(NA, 60),
+                                       Estimate_vl= rep(NA, 60), 
+                                       t_vl=rep(NA, 60), 
+                                       p_vl=rep(NA, 60),
+                                       Estimate_br= rep(NA, 60), 
+                                       t_br=rep(NA, 60), 
+                                       p_br=rep(NA, 60),
+                                       Estimate_ar_vl= rep(NA, 60), 
+                                       t_ar_vl=rep(NA, 60), 
+                                       p_ar_vl=rep(NA, 60),
+                                       cov= as.character(rep(NA,60)))
+
+# View(timecourse_result_df)
+# nbins<- nbins[1:60]
+
+i = 0 # remember to always rezero it
+# b = 10
+
+# rm(i,b)
+
+# i =1
+# unique(tmp.df4_full_stim_downs_jun2021_60bins$)
+
+for (b in 1:length(nbins)) {
+  # for (s in 1:length(nsim)) {
+
+    message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
+        lmer_bin_pup  <- lmer(pup_basCor ~ (arousal_c* valence)+Mean_gray_z  +
+                                (1 | ssid),
+                                # (0 +arousal_c* valence | ssid),
+                                # (1|stimIAPS),
+                              REML = FALSE,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    ssid_num< 500 &
+                                    timebin_no == nbins[b]))
+
+        #store results from the simulation
+            lmer_bin_pup_summary<- summary(lmer_bin_pup)
+            lmer_bin_pup_summary
+            # lmer_bin_pup_summary[["coefficients"]][3,1]
+            timecourse_60bin_result_df[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] 
+            #save the exact value of time bin
+            # store arousal (2,parameter)            # first number is term(row), second is column
+            timecourse_60bin_result_df[i,2]<-
+            lmer_bin_pup_summary[["coefficients"]][2,1] #estimate
+            timecourse_60bin_result_df[i,3]<-
+              lmer_bin_pup_summary[["coefficients"]][2,4] # t statistic
+            timecourse_60bin_result_df[i,4]<-
+            lmer_bin_pup_summary[["coefficients"]][2,5] # p value
+            
+            # valence
+            
+            timecourse_60bin_result_df[i,5]<-
+            lmer_bin_pup_summary[["coefficients"]][3,1] #estimate
+            timecourse_60bin_result_df[i,6]<-
+              lmer_bin_pup_summary[["coefficients"]][3,4] # t statistic
+            timecourse_60bin_result_df[i,7]<-
+              lmer_bin_pup_summary[["coefficients"]][3,5] # p value
+            
+            # brighteness
+            
+            timecourse_60bin_result_df[i,8]<-
+            lmer_bin_pup_summary[["coefficients"]][4,1] #estimate
+            timecourse_60bin_result_df[i,9]<-
+              lmer_bin_pup_summary[["coefficients"]][4,4] # t statistic
+            timecourse_60bin_result_df[i,10]<-
+              lmer_bin_pup_summary[["coefficients"]][4,5] # p value
+            
+            # interaction arousal x brighteness
+            
+            timecourse_60bin_result_df[i,11]<-
+            lmer_bin_pup_summary[["coefficients"]][5,1] #estimate
+            timecourse_60bin_result_df[i,12]<-
+              lmer_bin_pup_summary[["coefficients"]][5,4] # t statistic
+            timecourse_60bin_result_df[i,13]<-
+              lmer_bin_pup_summary[["coefficients"]][5,5] # p value
+            
+            
+            timecourse_60bin_result_df[i,14] <-
+              ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
+                                                   != 0,
+                                               lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
+
+     i = i+1
+}
+
+
+# timecourse_result_df_pos<- timecourse_result_df
+View(timecourse_60bin_result_df)
+
+  
+  # geom_hline(yintercept = .05, color = 'red', size = 1.5)
+  
+
+# adjust p values and tag as TRUE whenevee there is at least 3 consecutive p values below .05
+?p.adjust
+
+timecourse_60bin_result_df$p_ar_adj<- p.adjust(timecourse_60bin_result_df$p_ar, method = "holm")
+timecourse_60bin_result_df$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df$p_ar_adj<.05, TRUE, FALSE)
+
+
+timecourse_60bin_result_df$p_vl_adj <- p.adjust(timecourse_60bin_result_df$p_vl, method = "holm")
+timecourse_60bin_result_df$p_vl_adj_TRUE<- if_else(timecourse_60bin_result_df$p_vl_adj<.05, TRUE, FALSE)
+
+timecourse_60bin_result_df$p_br_adj <- p.adjust(timecourse_60bin_result_df$p_br, method = "holm")
+timecourse_60bin_result_df$p_br_adj_TRUE<- if_else(timecourse_60bin_result_df$p_br_adj<.05, TRUE, FALSE)
+
+timecourse_60bin_result_df$p_ar_vl_adj <- p.adjust(timecourse_60bin_result_df$p_ar_vl, method = "holm")
+timecourse_60bin_result_df$p_ar_vl_adj_TRUE<- if_else(timecourse_60bin_result_df$p_ar_vl_adj<.05, TRUE, NULL)
+
+# find the first and last true in a sequence of TRUES
+duplicated(timecourse_60bin_result_df$p_ar_adj_TRUE, na.rm = TRUE)
+
+
+
+timecourse_60bin_result_df %>%
+  ggplot(aes(timebins, Estimate_ar_vl))+
+  geom_line(size = 1)
+  geom_line(aes(y = t_vl), linetype = "dashed", size = 1)+
+  geom_line(aes(y = t_br), linetype = "dotted", size = 1)+
+  geom_line(aes(y = t_ar), linetype = "dotdash", size = 1, color = "red")
+
+
+View(timecourse_60bin_result_df)
+
+
+?p.adjust
+
+# flad when 3 consecutive rows have a p <.05
+require(zoo)
+
+# rle performs lenght encoding
+rletest<- rle(timecourse_60bin_result_df$p_ar<.05)
+?rle
+
+  (rletest$lengths[rletest$lengths > 3 & rletest$values== TRUE]) # length of each sequence
+
+# To get the vector with only a sequence of "TRUE" you can try
+
+rletest$values[rletest$values != TRUE] <- 0
+timecourse_60bin_result_df$p_ar_3below.5<- rep(rletest$values,  rletest$lengths)
+
+table(timecourse_60bin_result_df$p_ar_3below.5)
+?p.adjust
+
+timecourse_60bin_result_df%>%
+  group_by(p_ar_3below.5)%>%
+  mutate(p_ar_adj_clust= p.adjust(p_ar, method = "holm"))
+
+timecourse_60bin_result_df %>%
+  mutate(test=rollapply(p_ar, width=3, max, align="left", fill=NA, na.rm=TRUE))%>%
+  
+
+```
+
+
+
+```
 
 
 Pupil velocity test
@@ -1220,7 +1427,16 @@ timecourse_60bin_result_df_vel %>%
 
 ```{r}
 # adjust p values and tag as TRUE whenevee there is at least 3 consecutive p values below .05
-?p.adjust
+
+```
+
+
+mutate(ANC=rollapply(ANC, width=3, max, align="left", fill=NA, na.rm=TRUE)) %>%
+  filter(ANC >= 0.5) %>%  
+  filter(row_number() == 1)
+  
+  
+```{r}
 timecourse_60bin_result_df_vel$p_ar_adj<- p.adjust(timecourse_60bin_result_df_vel$p_ar, method = "holm")
 timecourse_60bin_result_df_vel$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df_vel$p_ar_adj<.05, TRUE, FALSE)
 
@@ -1250,7 +1466,11 @@ View(timecourse_60bin_result_df_vel)
 ```
 
 ```{r}
+
+View(timecourse_60bin_result_df_vel)
 #  let's use the order arousal, valence, arousal x valence brightness
+
+plots_timecourse$eff_size_pup_velocity<-
 timecourse_60bin_result_df_vel %>% 
   select("timebins","Estimate_ar", "Estimate_vl", "Estimate_br", "Estimate_ar_vl") %>% 
   pivot_longer(-timebins, names_to = "variable", values_to = "Estimate")%>%
@@ -1260,68 +1480,76 @@ timecourse_60bin_result_df_vel %>%
   ggplot(aes(timebins, Estimate, group = variable, color= variable))+
   geom_line(aes(linetype = variable), size = 1)+
   
-  scale_color_brewer(palette = "Dark2")
+  scale_color_brewer(palette = "Dark2")+
     # scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))+
   # use hom correction for significance
   
     # brighteness
-    timecourse_60bin_result_df_vel$timebins[timecourse_60bin_result_df_vel$p_br_adj_TRUE == TRUE]
+    # timecourse_60bin_result_df_vel$timebins[timecourse_60bin_result_df_vel$p_br_adj_TRUE == TRUE]
   
     annotate(geom = 'rect', # use annotate instead of geom_rect, as it is more flexible
-             xmin = .16, # got these values from the data-frame. need to fidn a way to automate this
-                xmax = 6,
-                ymin = -2.03+(sf*.3), # if I ever need to change this, use the scaling factor sf
-                ymax = -2+.1+.01+(sf*.3),
-                fill =  "#E7298A" , alpha = .5)+ 
+             xmin = .37, # got these values from the data-frame. need to fidn a way to automate this
+                xmax = .81,
+                ymin = -2.03+(sf*1.2), # if I ever need to change this, use the scaling factor sf
+                ymax = -2+.1+.01+(sf*1.2),
+                fill =  "#E7298A" , alpha = .5)+
     
-      annotate("text", 
-                x = (1+5.4)/2,
-                y = ((-2) +(-2+.1))/2+(sf*.3),
-                label = "brightness") +
+      # annotate("text", 
+      #           x = (1+5.4)/2,
+      #           y = ((-2) +(-2+.1))/2+(sf*.3),
+      #           label = "brightness") +
     
     # arousal
   
     # timecourse_60bin_result_df$p_ar_adj
-    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_adj_TRUE == TRUE]
-     annotate(geom = 'rect', xmin = 1,
-                xmax = 5.89,
-                ymin = -2.03+.1+.1+.1+.1+(sf*.3),
-                ymax = -2+.1+.1+.1+.1+.1+.01+(sf*.3),
+      
+    # timecourse_60bin_result_df_vel$timebins[timecourse_60bin_result_df_vel$p_ar_adj_TRUE == TRUE]
+    
+    # timecourse_60bin_result_df_vel$timebins
+    
+    annotate(geom = 'rect', 
+              xmin = 1.028329,
+                xmax = 1.028329+.1,
+                ymin = -2.03+.1+.1+.1+.1+(sf*1.2),
+                ymax = -2+.1+.1+.1+.1+.1+.01+(sf*1.2),
                 fill = "#1B9E77", alpha = .5)+
-        annotate("text", 
-                  x = (1+5.4)/2,
-                y = ((-2+.1+.1+.1+.1) +(-2+.1+.1+.1+.1+.1))/2+(sf*.3),
-                 label = "arousal") +
+        # annotate("text", 
+        #           x = (1+5.4)/2,
+        #         y = ((-2+.1+.1+.1+.1) +(-2+.1+.1+.1+.1+.1))/2+(sf*.3),
+        #          label = "arousal") +
 
     # arousal-valence
    # timecourse_60bin_result_df$p_ar_vl_adj
-    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_vl_adj_TRUE == TRUE]
+    # timecourse_60bin_result_df_vel$timebins[timecourse_60bin_result_df_vel$p_ar_vl_adj_TRUE == TRUE]
        annotate(geom = 'rect', 
-                xmin = 1,
-                xmax = 5.4,
-                ymin = -2.03+.1+.1+(sf*.3),
-                ymax = -2+.1+.1+.1+.01+(sf*.3),
+                xmin = 5.5730353,
+                xmax = 5.5730353+.1,
+                ymin = -2.03+.1+.1+(sf*1.2),
+                ymax = -2+.1+.1+.1+.01+(sf*1.2),
                 
                 fill ="#7570B3", alpha = .5, label = "text")+
-    annotate("text", 
-                x = (1+5.4)/2,
-                y = ((-2+.1+.1) +(-2+.1+.1+.1))/2+(sf*.3),
-                label = "arousal x valence") +
+    
+  # annotate("text", 
+  #               x = (1+5.4)/2,
+  #               y = ((-2+.1+.1) +(-2+.1+.1+.1))/2+(sf*.3),
+  #               label = "arousal x valence") +
         xlab("Time (s)")+
     ylab("Effect size")+
     xlab("Time (s)")+
     ylab("Effect size")
 
-plots_timecourse$eff_size_pup_amp 
+plots_timecourse$eff_size_pup_velocity
 # need to rename the label legends
 
 
 # Edit legend title and labels
-plots_timecourse$eff_size_pup_amp <- plots_timecourse$eff_size_pup_amp + 
+plots_timecourse$eff_size_pup_velocity
+
+plots_timecourse$eff_size_pup_velocity + 
   p$graphstyle +
     guides(colour = guide_legend(override.aes = list(size=2)))+ #the line size of the legend tends to be smaller in print
   scale_x_continuous(limits = c(0,6), breaks = c(0,2,4,6))+
-  scale_y_continuous(limits = c(-2,.7), breaks = c(-1, -0.5, 0,0.5))
+  scale_y_continuous(limits = c(-1,1.5), breaks = c(-0.5, 0,0.5,1))
   
 
 
@@ -1334,6 +1562,7 @@ plots_timecourse$eff_size_pup_amp
     # scale_fill_brewer()
     
 ?annotate
+
 
 
 
