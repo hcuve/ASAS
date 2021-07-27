@@ -854,39 +854,32 @@ plots_timecourse$eff_size_pup_amp
 ```
 
 
-split neutral positive and negative usign ground
+split neutral positive and negative using IAPS validation data and fit the same
 
 ```{r}
 
 colnames(tmp.df4_full_stim_downs_jun2021_60bins)
 
-# create number s for time bins
-tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
-  group_by(ssid, tNo)%>%
-  mutate(timebin_no = 1:n())
+tmp.df4_full_stim_downs_jun2021_60bins$ground_arousal_lab
+tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab
 
-# let's test the interaction term
 nbins<- unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
-range(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+# create and empty data-frame for the time-course analyses
 
-unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
-
-# nbins = 60 # number of bins
-
-# create and empty dataframe for the timecourse analyses
-timecourse_60bin_result_df <- data.frame(timebins= rep(NA, 60), 
+View(timecourse_60bin_result_df_pos)
+timecourse_60bin_result_df_pos <- data.frame(timebins= rep(NA, 60), 
                                        Estimate_ar= rep(NA, 60), 
                                        t_ar=rep(NA, 60), 
                                        p_ar=rep(NA, 60),
-                                       Estimate_vl= rep(NA, 60), 
-                                       t_vl=rep(NA, 60), 
-                                       p_vl=rep(NA, 60),
+                                       # Estimate_vl= rep(NA, 60), 
+                                       # t_vl=rep(NA, 60), 
+                                       # p_vl=rep(NA, 60),
                                        Estimate_br= rep(NA, 60), 
                                        t_br=rep(NA, 60), 
                                        p_br=rep(NA, 60),
-                                       Estimate_ar_vl= rep(NA, 60), 
-                                       t_ar_vl=rep(NA, 60), 
-                                       p_ar_vl=rep(NA, 60),
+                                       # Estimate_ar_vl= rep(NA, 60), 
+                                       # t_ar_vl=rep(NA, 60), 
+                                       # p_ar_vl=rep(NA, 60),
                                        cov= as.character(rep(NA,60)))
 
 # View(timecourse_result_df)
@@ -904,58 +897,38 @@ for (b in 1:length(nbins)) {
   # for (s in 1:length(nsim)) {
 
     message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
-        lmer_bin_pup  <- lmer(pup_basCor ~ (arousal_c* valence)+Mean_gray_z  +
+        lmer_bin_pup  <- lmer(pup_basCor ~ arousal_c + Mean_gray_z  +
                                 (1 | ssid),
-                                # (0 +arousal_c* valence | ssid),
-                                # (1|stimIAPS),
                               REML = FALSE,
                       data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
-                                    ssid_num< 500 &
+                                    ssid_num < 500 & ground_valence_lab == "More positive" &
                                     timebin_no == nbins[b]))
 
         #store results from the simulation
             lmer_bin_pup_summary<- summary(lmer_bin_pup)
             lmer_bin_pup_summary
             # lmer_bin_pup_summary[["coefficients"]][3,1]
-            timecourse_60bin_result_df[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] 
+            timecourse_60bin_result_df_pos[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] 
             #save the exact value of time bin
             # store arousal (2,parameter)            # first number is term(row), second is column
-            timecourse_60bin_result_df[i,2]<-
+            timecourse_60bin_result_df_pos[i,2]<-
             lmer_bin_pup_summary[["coefficients"]][2,1] #estimate
-            timecourse_60bin_result_df[i,3]<-
+            timecourse_60bin_result_df_pos[i,3]<-
               lmer_bin_pup_summary[["coefficients"]][2,4] # t statistic
-            timecourse_60bin_result_df[i,4]<-
+            timecourse_60bin_result_df_pos[i,4]<-
             lmer_bin_pup_summary[["coefficients"]][2,5] # p value
             
-            # valence
+            # brightness
             
-            timecourse_60bin_result_df[i,5]<-
+            timecourse_60bin_result_df_pos[i,5]<-
             lmer_bin_pup_summary[["coefficients"]][3,1] #estimate
-            timecourse_60bin_result_df[i,6]<-
+            timecourse_60bin_result_df_pos[i,6]<-
               lmer_bin_pup_summary[["coefficients"]][3,4] # t statistic
-            timecourse_60bin_result_df[i,7]<-
+            timecourse_60bin_result_df_pos[i,7]<-
               lmer_bin_pup_summary[["coefficients"]][3,5] # p value
+
             
-            # brighteness
-            
-            timecourse_60bin_result_df[i,8]<-
-            lmer_bin_pup_summary[["coefficients"]][4,1] #estimate
-            timecourse_60bin_result_df[i,9]<-
-              lmer_bin_pup_summary[["coefficients"]][4,4] # t statistic
-            timecourse_60bin_result_df[i,10]<-
-              lmer_bin_pup_summary[["coefficients"]][4,5] # p value
-            
-            # interaction arousal x brighteness
-            
-            timecourse_60bin_result_df[i,11]<-
-            lmer_bin_pup_summary[["coefficients"]][5,1] #estimate
-            timecourse_60bin_result_df[i,12]<-
-              lmer_bin_pup_summary[["coefficients"]][5,4] # t statistic
-            timecourse_60bin_result_df[i,13]<-
-              lmer_bin_pup_summary[["coefficients"]][5,5] # p value
-            
-            
-            timecourse_60bin_result_df[i,14] <-
+            timecourse_60bin_result_df_pos[i,8] <-
               ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
                                                    != 0,
                                                lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
@@ -965,78 +938,249 @@ for (b in 1:length(nbins)) {
 
 
 # timecourse_result_df_pos<- timecourse_result_df
-View(timecourse_60bin_result_df)
+View(timecourse_60bin_result_df_pos)
 
   
   # geom_hline(yintercept = .05, color = 'red', size = 1.5)
   
 
 # adjust p values and tag as TRUE whenevee there is at least 3 consecutive p values below .05
-?p.adjust
 
-timecourse_60bin_result_df$p_ar_adj<- p.adjust(timecourse_60bin_result_df$p_ar, method = "holm")
-timecourse_60bin_result_df$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df$p_ar_adj<.05, TRUE, FALSE)
-
-
-timecourse_60bin_result_df$p_vl_adj <- p.adjust(timecourse_60bin_result_df$p_vl, method = "holm")
-timecourse_60bin_result_df$p_vl_adj_TRUE<- if_else(timecourse_60bin_result_df$p_vl_adj<.05, TRUE, FALSE)
-
-timecourse_60bin_result_df$p_br_adj <- p.adjust(timecourse_60bin_result_df$p_br, method = "holm")
-timecourse_60bin_result_df$p_br_adj_TRUE<- if_else(timecourse_60bin_result_df$p_br_adj<.05, TRUE, FALSE)
-
-timecourse_60bin_result_df$p_ar_vl_adj <- p.adjust(timecourse_60bin_result_df$p_ar_vl, method = "holm")
-timecourse_60bin_result_df$p_ar_vl_adj_TRUE<- if_else(timecourse_60bin_result_df$p_ar_vl_adj<.05, TRUE, NULL)
-
-# find the first and last true in a sequence of TRUES
-duplicated(timecourse_60bin_result_df$p_ar_adj_TRUE, na.rm = TRUE)
+timecourse_60bin_result_df_pos$p_ar_adj<- p.adjust(timecourse_60bin_result_df_pos$p_ar, method = "holm")
+timecourse_60bin_result_df_pos$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df_pos$p_ar_adj<.05, TRUE, FALSE)
 
 
-
-timecourse_60bin_result_df %>%
-  ggplot(aes(timebins, Estimate_ar_vl))+
-  geom_line(size = 1)
-  geom_line(aes(y = t_vl), linetype = "dashed", size = 1)+
-  geom_line(aes(y = t_br), linetype = "dotted", size = 1)+
-  geom_line(aes(y = t_ar), linetype = "dotdash", size = 1, color = "red")
+timecourse_60bin_result_df_pos$p_br_adj <- p.adjust(timecourse_60bin_result_df_pos$p_br, method = "holm")
+timecourse_60bin_result_df_pos$p_br_adj_TRUE<- if_else(timecourse_60bin_result_df_pos$p_br_adj<.05, TRUE, FALSE)
 
 
-View(timecourse_60bin_result_df)
+timecourse_60bin_result_df_pos[1:56,] %>%
+  ggplot(aes(timebins, Estimate_ar))+
+  geom_line(size = 1)+
+  geom_line(aes(y = Estimate_br), linetype = "dashed", size = 1)
 
-
-?p.adjust
-
-# flad when 3 consecutive rows have a p <.05
-require(zoo)
-
-# rle performs lenght encoding
-rletest<- rle(timecourse_60bin_result_df$p_ar<.05)
-?rle
-
-  (rletest$lengths[rletest$lengths > 3 & rletest$values== TRUE]) # length of each sequence
-
-# To get the vector with only a sequence of "TRUE" you can try
-
-rletest$values[rletest$values != TRUE] <- 0
-timecourse_60bin_result_df$p_ar_3below.5<- rep(rletest$values,  rletest$lengths)
-
-table(timecourse_60bin_result_df$p_ar_3below.5)
-?p.adjust
-
-timecourse_60bin_result_df%>%
-  group_by(p_ar_3below.5)%>%
-  mutate(p_ar_adj_clust= p.adjust(p_ar, method = "holm"))
-
-timecourse_60bin_result_df %>%
-  mutate(test=rollapply(p_ar, width=3, max, align="left", fill=NA, na.rm=TRUE))%>%
   
 
+# subset(tmp.df4_full_stim_downs_jun2021_60bins,
+#                                     ssid_num < 500 & ground_valence_lab == "More positive"
+#                                    )%>%
+#   # group_by(stimIAPS)%>%
+#   # summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+#   # ggplot(aes(valence, Mean))+
+#   # geom_point()+
+#   # geom_smooth(method = 'lm', se = F)+
+#   # ggpubr::stat_cor()
+
+```
+neutral
+
+
+```{r}
+
+
+
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+# create and empty data-frame for the time-course analyses
+
+View(timecourse_60bin_result_df_pos)
+
+timecourse_60bin_result_df_neutral <- data.frame(timebins= rep(NA, 60), 
+                                       Estimate_ar= rep(NA, 60), 
+                                       t_ar=rep(NA, 60), 
+                                       p_ar=rep(NA, 60),
+                                       # Estimate_vl= rep(NA, 60), 
+                                       # t_vl=rep(NA, 60), 
+                                       # p_vl=rep(NA, 60),
+                                       Estimate_br= rep(NA, 60), 
+                                       t_br=rep(NA, 60), 
+                                       p_br=rep(NA, 60),
+                                       # Estimate_ar_vl= rep(NA, 60), 
+                                       # t_ar_vl=rep(NA, 60), 
+                                       # p_ar_vl=rep(NA, 60),
+                                       cov= as.character(rep(NA,60)))
+
+# View(timecourse_result_df)
+# nbins<- nbins[1:60]
+
+i = 0 # remember to always rezero it
+# b = 10
+
+# rm(i,b)
+
+# i =1
+# unique(tmp.df4_full_stim_downs_jun2021_60bins$)
+
+for (b in 1:length(nbins)) {
+  # for (s in 1:length(nsim)) {
+
+    message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
+        lmer_bin_pup  <- lmer(pup_basCor ~ arousal_c + Mean_gray_z  +
+                                (1 | ssid),
+                              REML = FALSE,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    ssid_num < 500 & ground_valence_lab == "Mild" &
+                                    timebin_no == nbins[b]))
+
+        #store results from the simulation
+            lmer_bin_pup_summary<- summary(lmer_bin_pup)
+            lmer_bin_pup_summary
+            # lmer_bin_pup_summary[["coefficients"]][3,1]
+            timecourse_60bin_result_df_neutral[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] 
+            #save the exact value of time bin
+            # store arousal (2,parameter)            # first number is term(row), second is column
+            timecourse_60bin_result_df_neutral[i,2]<-
+            lmer_bin_pup_summary[["coefficients"]][2,1] #estimate
+            timecourse_60bin_result_df_neutral[i,3]<-
+              lmer_bin_pup_summary[["coefficients"]][2,4] # t statistic
+            timecourse_60bin_result_df_neutral[i,4]<-
+            lmer_bin_pup_summary[["coefficients"]][2,5] # p value
+            
+            # brightness
+            
+            timecourse_60bin_result_df_neutral[i,5]<-
+            lmer_bin_pup_summary[["coefficients"]][3,1] #estimate
+            timecourse_60bin_result_df_neutral[i,6]<-
+              lmer_bin_pup_summary[["coefficients"]][3,4] # t statistic
+            timecourse_60bin_result_df_neutral[i,7]<-
+              lmer_bin_pup_summary[["coefficients"]][3,5] # p value
+
+            
+            timecourse_60bin_result_df_neutral[i,8] <-
+              ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
+                                                   != 0,
+                                               lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
+
+     i = i+1
+}
+
+
+# timecourse_result_df_pos<- timecourse_result_df
+View(timecourse_60bin_result_df_neutral)
+
+
+timecourse_60bin_result_df_neutral$p_ar_adj<- p.adjust(timecourse_60bin_result_df_neutral$p_ar, method = "holm")
+timecourse_60bin_result_df_neutral$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df_neutral$p_ar_adj<.05, TRUE, FALSE)
+
+
+timecourse_60bin_result_df_neutral$p_br_adj <- p.adjust(timecourse_60bin_result_df_neutral$p_br, method = "holm")
+timecourse_60bin_result_df_neutral$p_br_adj_TRUE<- if_else(timecourse_60bin_result_df_neutral$p_br_adj<.05, TRUE, FALSE)
+
+
+
+View(timecourse_60bin_result_df_neutral)
+timecourse_60bin_result_df_neutral[1:56,] %>%
+  ggplot(aes(timebins, Estimate_ar))+
+  geom_line(size = 1)+
+  geom_line(aes(y = Estimate_br), linetype = "dashed", size = 1)
+
+
 ```
 
 
+negative
+
+
+```{r}
+
+
+
+nbins<- unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+# create and empty data-frame for the time-course analyses
+
+View(timecourse_60bin_result_df_pos)
+
+timecourse_60bin_result_df_neg <- data.frame(timebins= rep(NA, 60), 
+                                       Estimate_ar= rep(NA, 60), 
+                                       t_ar=rep(NA, 60), 
+                                       p_ar=rep(NA, 60),
+                                       # Estimate_vl= rep(NA, 60), 
+                                       # t_vl=rep(NA, 60), 
+                                       # p_vl=rep(NA, 60),
+                                       Estimate_br= rep(NA, 60), 
+                                       t_br=rep(NA, 60), 
+                                       p_br=rep(NA, 60),
+                                       # Estimate_ar_vl= rep(NA, 60), 
+                                       # t_ar_vl=rep(NA, 60), 
+                                       # p_ar_vl=rep(NA, 60),
+                                       cov= as.character(rep(NA,60)))
+
+# View(timecourse_result_df)
+# nbins<- nbins[1:60]
+
+i = 0 # remember to always rezero it
+# b = 10
+
+# rm(i,b)
+
+# i =1
+# unique(tmp.df4_full_stim_downs_jun2021_60bins$)
+
+for (b in 1:length(nbins)) {
+  # for (s in 1:length(nsim)) {
+
+    message(sprintf("$$$$$RUNING lmer %i", nbins[b]))
+        lmer_bin_pup  <- lmer(pup_basCor ~ arousal_c + Mean_gray_z  +
+                                (1 | ssid),
+                              REML = FALSE,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    ssid_num < 500 & ground_valence_lab == "More negative" &
+                                    timebin_no == nbins[b]))
+
+        #store results from the simulation
+            lmer_bin_pup_summary<- summary(lmer_bin_pup)
+            lmer_bin_pup_summary
+            # lmer_bin_pup_summary[["coefficients"]][3,1]
+            timecourse_60bin_result_df_neg[i,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] 
+            #save the exact value of time bin
+            # store arousal (2,parameter)            # first number is term(row), second is column
+            timecourse_60bin_result_df_neg[i,2]<-
+            lmer_bin_pup_summary[["coefficients"]][2,1] #estimate
+            timecourse_60bin_result_df_neg[i,3]<-
+              lmer_bin_pup_summary[["coefficients"]][2,4] # t statistic
+            timecourse_60bin_result_df_neg[i,4]<-
+            lmer_bin_pup_summary[["coefficients"]][2,5] # p value
+            
+            # brightness
+            
+            timecourse_60bin_result_df_neg[i,5]<-
+            lmer_bin_pup_summary[["coefficients"]][3,1] #estimate
+            timecourse_60bin_result_df_neg[i,6]<-
+              lmer_bin_pup_summary[["coefficients"]][3,4] # t statistic
+            timecourse_60bin_result_df_neg[i,7]<-
+              lmer_bin_pup_summary[["coefficients"]][3,5] # p value
+
+            
+            timecourse_60bin_result_df_neg[i,8] <-
+              ifelse(length(lmer_bin_pup_summary$optinfo$conv$lme4$message)
+                                                   != 0,
+                                               lmer_bin_pup_summary$optinfo$conv$lme4$message, 'pass')
+
+     i = i+1
+}
+
+
+# timecourse_result_df_pos<- timecourse_result_df
+View(timecourse_60bin_result_df_neg)
+
+# adjust p values
+timecourse_60bin_result_df_neg$p_ar_adj<- p.adjust(timecourse_60bin_result_df_neg$p_ar, method = "holm")
+timecourse_60bin_result_df_neg$p_ar_adj_TRUE<- if_else(timecourse_60bin_result_df_neg$p_ar_adj<.05, TRUE, FALSE)
+
+
+timecourse_60bin_result_df_neg$p_br_adj <- p.adjust(timecourse_60bin_result_df_neg$p_br, method = "holm")
+timecourse_60bin_result_df_neg$p_br_adj_TRUE<- if_else(timecourse_60bin_result_df_neg$p_br_adj<.05, TRUE, FALSE)
+
+
+
+View(timecourse_60bin_result_df_neg)
+
+timecourse_60bin_result_df_neg[1:56,] %>%
+  ggplot(aes(timebins, Estimate_ar))+
+  geom_line(size = 1)+
+  geom_line(aes(y = Estimate_br), linetype = "dashed", size = 1)
+
 
 ```
-
-
 Pupil velocity test
 # velocity analyses
 
