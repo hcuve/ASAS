@@ -1010,6 +1010,7 @@ i = 0 # remember to always rezero it
 # i =1
 # unique(tmp.df4_full_stim_downs_jun2021_60bins$)
 
+
 for (b in 1:length(nbins)) {
   # for (s in 1:length(nsim)) {
 
