@@ -88,6 +88,25 @@ db_full4new_stim_screen_pupil_nopract%>%
   geom_point()+
   ggpubr::stat_cor()
 
+
+db_full4new_stim_screen_pupil_nopract %>%
+  subset(ssid_num<500)%>%
+  group_by(ssid)%>%
+  mutate(cor_ar_vl = cor(arousal, valence, use = "complete"))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ssid,cor_ar_vl))+
+  geom_point()+
+  geom_hline(yintercept = -.75)+
+  geom_hline(yintercept = -.90)
+  geom_histogram()
+  
+  
+  
+  ggplot(aes(arousal_c, Mean_gray_z, color = ground_valence_lab))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+
 ```
 
 
@@ -421,6 +440,11 @@ theme_classic()+
    facet_grid(~mediansplit_self_valence)
 
 
+```
+
+
+
+```{r}
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(!is.na(ground_arousal_lab))%>%
   ggplot(aes(x = timerezero3, y = pup_basCor))+
@@ -435,7 +459,9 @@ theme_classic()+
   xlim(0,6)+
    facet_grid(~mediansplit_self_valence)
 
+```
 
+```{r}
 
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(!is.na(ground_arousal_lab))%>%
@@ -516,19 +542,224 @@ theme_classic()+
      # geom_text(aes(label = stimIAPS))+
    facet_grid(~ ground_valence_lab)
 
+
+
+```
+
+
+```{r Scrap this}
+
 # - use IAPS data to split valence - positive negative
 # - within that - compute arousal low mid high within each valence both for the iaps data and my study
 # do this on a participant basis or sampleÇ? try sample first
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   ungroup()%>%
-  mutate(mediansplit_sample_valence2 = 
-           if_else(ValenceMeanThisSample > 
-                     median(ValenceMeanThisSample,
-                            na.rm = TRUE), 
-                   "More positive", "More negative"))%>%
-  mutate(mediansplit_sample_arousal2 = if_else(ArousalMeanThisSample >
-                                                  median(ArousalMeanThisSample,
-                                                         na.rm = TRUE), "High", "Low"))
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(ground_valence_lab, Arousal_z_by_val ))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')
+
+# hpw does this relate to the original ratigs
+
+# do this on a participant basis or sampleÇ? try sample first
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  # group_by(stimIAPS,ground_valence_lab)%>%
+  # summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(ValenceMean, ArousalMean_z_by_val ))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  # geom_smooth(aes(group = ground_valence_lab), method = 'lm', se = F)
+  # stat_summary(geom = 'pointrange')+
+      ggpubr::stat_cor()
+
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(Arousal_z_by_val, valence_c))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  # geom_smooth(aes(group = ground_valence_lab), method = 'lm', se = F)
+  # stat_summary(geom = 'pointrange')+
+      ggpubr::stat_cor()
+
+
+
+
+?cut
+tmp.df4_full_stim_downs_jun2021_60bins$valence_self<- cut(tmp.df4_full_stim_downs_jun2021_60bins$valence, 3,
+                                                          labels = c("Negative", "Neutral", "Positive"))
+
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  # mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(ground_valence_lab, Arousal_z_by_val))+
+  geom_point()+
+  # geom_smooth(aes(group = ground_valence_lab), method = 'lm', se = F)
+  stat_summary(geom = 'pointrange')+
+      ggpubr::stat_cor()
+
+  
+  # mean center within neutral positive, neutral negative
+
+
+tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos<- if_else(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab!= "More negative", TRUE, FALSE)
+
+tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg <- if_else(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab!= "More positive", TRUE, FALSE)
+
+tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(neutral_pos)%>%
+  mutate(neutral_pos_mean_arousal = mean(ArousalMean, na.rm = TRUE),
+                                         neutral_pos_sd_arousal = sd(ArousalMean, na.rm = TRUE))%>%
+  mutate(neutral_pos_mean_arousal_self = mean(arousal, na.rm = TRUE),
+         neutral_pos_sd_arousal_self = sd(arousal, na.rm = TRUE))%>%
+  group_by(neutral_neg)%>%
+  
+  mutate(neutral_neg_mean_arousal = mean(ArousalMean, na.rm = TRUE),
+                                         neutral_sd_mean_arousal = sd(ArousalMean, na.rm = TRUE)) %>%
+  mutate(neutral_neg_mean_arousal_self = mean(arousal, na.rm = TRUE),
+         neutral_neg_sd_arousal_self = sd(arousal, na.rm = TRUE))
+  
+# group_by()
+
+# replace the values when neutral_pos and neutral_neg is FALSE respectivelly
+# library(dplyr)
+# check how many nas do we have before we start
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_mean_arousal))
+ # FALSE   TRUE 
+# 158193  13975 
+tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins %>%
+    mutate_at(vars(matches('^neutral_pos_.*$')), ~ 
+                  replace(., neutral_pos == FALSE, NA))
+  
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_mean_arousal))
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_sd_arousal_self))
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_mean_arousal_self))
+
+
+tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins %>%
+    mutate_at(vars(matches('^neutral_neg_.*$')), ~ 
+                  replace(., neutral_neg == FALSE, NA))
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_sd_arousal_self))
+
+
+tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_mean_arousal <- if_else(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE, tmp.df4_full_stim_downs_jun2021_60bins$)
+  
+  
+  
+```
+    
+  
+  
+```{r}
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(valence_c, ArousalMean ))+
+  geom_point()+
+  # geom_smooth(aes(group = ground_valence_lab), method = 'lm', se = F)
+  stat_summary(geom = 'pointrange')+
+  ggpubr::stat_cor()
+  
+  
+
+      tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+      
+      group_by(ground_valence_lab)%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(ArousalMean_z_by_val,pup_basCor ))+
+  geom_point()+
+      geom_smooth(method = 'lm', se = F)+
+      ggpubr::stat_cor()
+    
+    tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+      
+      group_by(ground_valence_lab)%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(Arousal_z_by_val,pup_basCor ))+
+  geom_point()+
+      geom_smooth(method = 'lm', se = F)+
+      ggpubr::stat_cor()
+  # geom_smooth(aes(color = ground_valence_lab), method = 'lm', se = F)
+    
+    
+    
+    # original variable
+  
+      tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+      
+      group_by(ground_valence_lab)%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(pup_basCor,arousal))+
+  geom_point()+
+      geom_smooth(method = 'lm', se = F)+
+      ggpubr::stat_cor()
+      
+      
+      
+  geom_smooth(aes(color = ground_valence_lab), method = 'lm', se = F)
+        tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  group_by(ground_valence_lab)%>%
+  mutate(ArousalMean_z_by_val = scale(ArousalMean, center = TRUE, scale = TRUE)[,1])%>%
+      
+      group_by(ground_valence_lab)%>%
+   mutate(Arousal_z_by_val = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # ggplot(aes(ground_valence_lab, ArousalMean_z_by_val ))+
+  ggplot(aes(pup_basCor, ArousalMean))+
+  geom_point()+
+          geom_smooth(method = 'lm', se = F)+
+          ggpubr::stat_cor()
+  # geom_smooth(aes(group = ground_valence_lab), method = 'lm', se = F)
+        
 
 ```
 
