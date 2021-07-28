@@ -2140,7 +2140,7 @@ for (b in 1:length(nbins)) {
 # timecourse_result_df_pos<- timecourse_result_df
 
 timecourse_result_df%>%
-  ggplot(aes(timebins, t))+
+  ggplot(aes(timebins, Estimate))+
   geom_line(size = 2)+
   geom_line(aes(y = p), linetype = "dashed", size = 2)+
   geom_hline(yintercept = .05, color = 'red', size = 1.5)
@@ -2195,6 +2195,12 @@ timecourse_result_df_neg%>%
   geom_line(size = 2)+
   geom_line(aes(y = p), linetype = "dashed", size = 2)+
   geom_hline(yintercept = .1, color = 'red', size = 1.5)
+
+
+subset(tmp.df4_full_stim_downs_jun2021_with_behnew,
+                                    mediansplit_ground_valence == "More negative" & 
+                                    timebin_no == nbins[b])%>%
+  ggplot(aes(ArousalMean))
 
 ```
 
@@ -2296,7 +2302,7 @@ for (b in 1:length(nbins)) {
 
 
 timecourse_result_df_val_and_ar%>%
-  ggplot(aes(timebins, t))+
+  ggplot(aes(timebins, Estimate))+
   geom_line(size = 2)+
   geom_line(aes(y = p), linetype = "dashed", size = 2)+
   geom_hline(yintercept = .05, color = 'red', size = 1.5)
@@ -2390,7 +2396,7 @@ for (b in 1:length(nbins)) {
 View(timecourse_result_df_val_and_ar_neg)
 
 timecourse_result_df_val_and_ar_low%>%
-  ggplot(aes(timebins, t))+
+  ggplot(aes(timebins, Estimate))+
   geom_line(size = 2)+
   geom_line(aes(y = p), linetype = "dashed", size = 2)+
   geom_hline(yintercept = .05, color = 'red', size = 1.5)
@@ -2922,7 +2928,7 @@ anova(pupil_arousal_findings$arousal_phas_max)
 BIO_CDA.PhasicMax
 
 
-pupil_arousal_findings$arousal_scr <- lmer(BIO_CDA.PhasicMax_z ~ valence_c +(1+arousal_c|ssid),
+pupil_arousal_findings$arousal_scr <- lmer(BIO_CDA.PhasicMax_z ~ valence_c +(1|ssid),
                         REML = FALSE,
                         data = subset(db_full4new_stim_screen_pupil_nopract_nt,
                                       pp_arousal_outler == FALSE))
@@ -3293,7 +3299,7 @@ interactions::interact_plot(scr_models$scr1.1, pred = arousal_c, modx = valence_
 
 
 
-scr_models$scr2<- lmer(BIO_CDA.ISCR_collapsed ~  arousal_c*valence_c *TASc+
+scr_models$scr2<- lmer(BIO_CDA.ISCR_collapsed ~  arousal_c*valence_c+
                                            (1| ssid) +
                                            (1 | stimIAPS),
                         REML = FALSE,
@@ -3306,7 +3312,7 @@ summary(scr_models$scr2)
 interactions::interact_plot(scr_models$scr2, pred = arousal_c, modx = valence_c)
 
 
-scr_models$scr2<- lmer(BIO_CDA.SCR_collapsed ~  arousal_c* valence_c *TASc+
+scr_models$scr2<- lmer(BIO_CDA.SCR_collapsed ~  arousal_c* valence_c +
                                            (1| ssid) +
                                            (1 | stimIAPS),
                         REML = FALSE,
@@ -3576,11 +3582,8 @@ deathgg = ggplot(db_full4new_stim_screen_pupil_nopract_nt) +
 rayshader:: plot_gg(deathgg, multicore=TRUE)
 height=5,width=6,scale=500
 
-```
 
 heart rate
-
-
 ```{r}
 
 
@@ -3609,7 +3612,6 @@ db_full4new_stim_screen_pupil_nopract
 ```
 
 
-```
 
 ```{r}
 
@@ -3943,30 +3945,144 @@ db_full6new_hr_fix_stim_nt1%>%
   geom_histogram()
 
 ```{r}
+unique(db_full6new_hr_fix_stim_nt1$Group)
 # test - analyse just positive
-hr_dif_models$arousal_val <- lmer(Bio_Mean_HR_dif ~  valence_c *arousal_c+
-                                        + (1 | ssid) + (1|stimIAPS),
+hr_dif_models$arousal_val <- lmer(Bio_Mean_HR_dif ~   valence_c+
+                                        + (1 | ssid) + 
+                                    (1|stimIAPS),
                                         # (1|mediansplit_sample_arousal2),
      REML = FALSE,
-     data = subset(db_full6new_hr_fix_stim_nt1, mediansplit_ground_valence == "More positive" & Bio_Mean_HR_dif_outl == "not outlier"  & Group == "NT"))
+     data = subset(db_full6new_hr_fix_stim_nt1, 
+                   # mediansplit_ground_valence == "More negative" &
+                     Bio_Mean_HR_dif_outl == "not outlier"  & Group == "NT"))
 
 
-summary(hr_dif_models$arousal_val)
+hr_dif_models$arousal_AR <- lmer(Bio_Mean_HR_dif ~   arousal_c+
+                                        + (1 | ssid) + 
+                                    (1|stimIAPS),
+                                        # (1|mediansplit_sample_arousal2),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1, 
+                   # mediansplit_ground_valence == "More negative" &
+                     Bio_Mean_HR_dif_outl == "not outlier"  & Group == "NT"))
+
+
+summary(hr_dif_models$arousal_AR)
 
 
 unique(db_full6new_hr_fix_stim_nt1$ssid)
-hr_dif_models$valfrom_hr <- lmer(valence_c ~   Bio_Mean_HR_dif* arousal_c+
+hr_dif_models$valfrom_hr <- lmer(arousal_c ~   Bio_Mean_HR_dif* valence_c+
                                         + (1 | ssid) + (1|stimIAPS),
                                         # (1|mediansplit_sample_arousal2),
      REML = FALSE,
-     data = subset(db_full6new_hr_fix_stim_nt1, mediansplit_ground_valence == "More positive" &
+     data = subset(db_full6new_hr_fix_stim_nt1, 
+                   # mediansplit_ground_valence == "More positive" &
                    Bio_Mean_HR_dif_outl == "not outlier" & Group == "NT"))
 arousal_c
-
-
 summary(hr_dif_models$valfrom_hr)
 
+
+install.packages("glmmLasso")
+require(glmmLasso)
+?glmmLasso::glmmLasso()
+
+HR_dif_forlasso<- subset(db_full6new_hr_fix_stim_nt1, 
+                   # mediansplit_ground_valence == "More positive" &
+                   Bio_Mean_HR_dif_outl == "not outlier" & Group == "NT")
+
+HR_dif_forlasso<- HR_dif_forlasso%>%subset(!is.na(valence_c))
+
+HR_dif_forlasso$ssid<- as.factor(HR_dif_forlasso$ssid)
+lassomodels<- list()
+
+lassomodels$firt<- glmmLasso(Bio_Mean_HR_dif ~ arousal_c + valence_c, rnd = list(ssid=~1), 
+       lambda=1000, data = HR_dif_forlasso, final.re=TRUE)
+
+# table(is.na(HR_dif_forlasso$arousal_c))
+# 
+# table(is.na(HR_dif_forlasso$valence_c))
+
+summary(lassomodels$firt)
+
+
+
+################# More Elegant Method ############################################
+## Idea: start with big lambda and use the estimates of the previous fit (BUT: before
+## the final re-estimation Fisher scoring is performed!) as starting values for the next fit;
+## make sure, that your lambda sequence starts at a value big enough such that all covariates are
+## shrinked to zero;
+
+## Using BIC (or AIC, respectively) to determine the optimal tuning parameter lambda
+lambda <- seq(500,0,by=-5)
+
+
+BIC_vec<-rep(Inf,length(lambda))
+# family = poisson(link = log)
+
+# specify starting values for the very first fit; pay attention that Delta.start has suitable length! 
+Delta.start<-as.matrix(t(rep(02)))
+Q.start<-0.1  
+HR_dif_forlasso_1<- select(HR_dif_forlasso, c(ssid, valence_c, arousal_c,Bio_Mean_HR_dif))
+table(is.na(HR_dif_forlasso$Bio_Mean_HR_dif))
+J = 1
+
+for (j in lambda) {
+  
+  glm3 <- glmmLasso(Bio_Mean_HR_dif ~ arousal_c + valence_c, rnd = list(ssid=~1),  
+                    # family = family,
+                    data = HR_dif_forlasso_1, 
+                    lambda=500, 
+                    switch.NR=F,
+                    final.re=TRUE,
+                    control = list(start=Delta.start[j],
+                                   q_start=Q.start[j]))
+  
+  # print(colnames(glm3$Deltamatrix)[2:7][glm3$Deltamatrix[glm3$conv.step,2:7]!=0])
+  # BIC_vec[j]<-glm3$bic
+  # Delta.start<-rbind(Delta.start,glm3$Deltamatrix[glm3$conv.step,])
+  # Q.start<-c(Q.start,glm3$Q_long[[glm3$conv.step+1]])
+  }
+
+opt3<-which.min(BIC_vec)
+
+glm3_final <- glmmLasso(points~transfer.spendings + ave.unfair.score 
+                        + ball.possession
+                        + tackles + ave.attend + sold.out, rnd = list(team=~1),  
+                        family = family, data = soccer, lambda=lambda[opt3],
+                        switch.NR=F,final.re=TRUE,
+                        control = list(start=Delta.start[opt3,],q_start=Q.start[opt3]))  
+
+
+summary(glm3_final)
+
+## plot coefficient paths
+par(mar=c(6,6,4,4))
+plot(lambda,Delta.start[2:(length(lambda)+1),2],type="l",ylim=c(-1e-1,1e-1),ylab=expression(hat(beta[j])))
+lines(c(-1000,1000),c(0,0),lty=2)
+for(i in 3:7){
+  lines(lambda[1:length(lambda)],Delta.start[2:(length(lambda)+1),i])
+}
+abline(v=lambda[opt3],lty=2)
+```
+
+hr_dif_models$arousal_val <- lmer(Bio_Mean_HR_dif ~   valence_c* arousal_c+
+                                        + (1 | ssid),
+                                    # (1|stimIAPS),
+                                        # (1|mediansplit_sample_arousal2),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1, 
+                   # mediansplit_ground_valence == "More negative" &
+                     # Bio_Mean_HR_dif_outl == "not outlier"  & 
+                     Group == "NT"))
+
+summary(hr_dif_models$arousal_val)
+
+car::vif(hr_dif_models$arousal_val)
+
 interactions::interact_plot(hr_dif_models$valfrom_hr, pred = Bio_Mean_HR_dif, modx = arousal_c)
+
+
+interactions::interact_plot(hr_dif_models$arousal_val, pred =arousal_c , modx =  valence_c)
 
 plot(hr_dif_models$arousal_val)
 
@@ -4012,7 +4128,7 @@ db_full6new_hr_fix_stim_nt1%>%
 
 
 
-db_full6new_hr_fix_stim_nt1%>%
+db_full6new_hr_fix_stim_nt1$groung%>%
   subset(Condition == "IAPS")%>%
   group_by(stimIAPS, mediansplit_ground_valence)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
@@ -4079,6 +4195,7 @@ subset(db_full6new_hr_fix_stim_nt1)%>%
 
 
 # try and regress valence our oarousal_val
+```{r}
 
 db_full6new_hr_fix_stim_nt2
 
@@ -4153,9 +4270,11 @@ summary(hr_dif_models$biohr_dif_arous_res)
 
 # analyses of residuals also suggets that effects on bio_hr are related to common arousal and valence relation
 
-```
+
 
 interactions::interact_plot(hr_dif_models$arousal_val, pred= arousal_c, modx = valence_c)
+
+```
 
 
 # alexithjymia
@@ -4187,6 +4306,11 @@ hr_dif_models$arousal_val_cat <- lmer(Bio_Mean_HR_dif~  mediansplit_sample_arous
      data = db_full6new_hr_fix_stim_nt1)
 
 
+
+
+```
+
+```{r}
 summary(hr_dif_models$arousal_val_cat)
 
 interactions::cat_plot(hr_dif_models$arousal_val_cat, pred = mediansplit_sample_arousal2, modx = mediansplit_sample_valence2)
