@@ -374,6 +374,38 @@ nrow(tmp.df4_full_stim_downs_jun2021_60bins)
 
 Quick check that things make sense
 ```{r}
+
+
+# group_by(stimIAPS)%>%
+tmp.df4_full_stim_downs_jun2021_with_beh<- tmp.df4_full_stim_downs_jun2021_with_beh %>%
+  ungroup()%>%
+  mutate(mediansplit_sample_valence2 = 
+           if_else(ValenceMeanThisSample >= 
+                     median(ValenceMeanThisSample,
+                            na.rm = TRUE), 
+                   "More positive", "More negative"))%>%
+  mutate(mediansplit_sample_arousal2 = if_else(ArousalMeanThisSample >=
+                                                  median(ArousalMeanThisSample,
+                                                         na.rm = TRUE), "High", "Low"))
+
+
+
+# higher sample rate]
+
+tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins %>%
+  ungroup()%>%
+  mutate(mediansplit_sample_valence2 = 
+           if_else(ValenceMeanThisSample > 
+                     median(ValenceMeanThisSample,
+                            na.rm = TRUE), 
+                   "More positive", "More negative"))%>%
+  mutate(mediansplit_sample_arousal2 = if_else(ArousalMeanThisSample >
+                                                  median(ArousalMeanThisSample,
+                                                         na.rm = TRUE), "High", "Low"))
+
+
+
+
 tmp.df4_full_stim_downs_jun2021_with_beh %>%
   subset(!is.na(ground_arousal_lab))%>%
   ggplot(aes(x = timerezero3, y = pup_basCor))+
@@ -405,36 +437,98 @@ theme_classic()+
 
 
 
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(ground_arousal_lab))%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  stat_smooth(aes(group= mediansplit_sample_arousal2, color = mediansplit_sample_arousal2), fun = mean,geom = "line",
+               se = F, alpha = .1, size = 1.5)+
+  stat_smooth(aes(group=mediansplit_sample_arousal2, color = mediansplit_sample_arousal2), size = 3)+  
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)+
+   facet_grid(~mediansplit_sample_valence2)
 
 
-# group_by(stimIAPS)%>%
-tmp.df4_full_stim_downs_jun2021_with_beh<- tmp.df4_full_stim_downs_jun2021_with_beh %>%
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(ground_arousal_lab))%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  stat_smooth(aes(group= mediansplit_sample_valence2, color = mediansplit_sample_valence2), fun = mean,geom = "line",
+               se = F, alpha = .1, size = 1.5)+
+  stat_smooth(aes(group=, color = mediansplit_sample_valence2), size = 3)+  
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)+
+   facet_grid(~ mediansplit_sample_arousal2)
+
+
+# what causes 
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(ground_arousal_lab))%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  stat_smooth(aes(group= mediansplit_sample_valence2, color = mediansplit_sample_valence2), fun = mean,geom = "line",
+               se = F, alpha = .1, size = 1.5)+
+  stat_smooth(aes(group=, color = mediansplit_sample_valence2), size = 3)+  
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)
+   facet_grid(~ mediansplit_sample_arousal2)
+   
+   
+   tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(ground_arousal_lab))%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  stat_smooth(aes(color = mediansplit_sample_arousal2), fun = mean,geom = "line",
+               se = F, alpha = .1, size = 1.5)+
+  stat_smooth(aes(group=stimIAPS, color = mediansplit_sample_arousal2), size = .6, se = F)+
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+     # geom_text(aes(label = ssid))+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)+
+     geom_text(aes(label = stimIAPS))
+   facet_grid(~ mediansplit_sample_valence2)
+   
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(ground_arousal_lab))%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  # stat_smooth(aes(color = mediansplit_ground_arousal), fun = mean,geom = "line",
+  #              se = F, alpha = .1, size = 1.5)+
+  stat_smooth(aes(group=stimIAPS, color = ground_arousal_lab), size = .6, se = F)+
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+     # geom_text(aes(label = ssid))+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)+
+     # geom_text(aes(label = stimIAPS))+
+   facet_grid(~ ground_valence_lab)
+
+# - use IAPS data to split valence - positive negative
+# - within that - compute arousal low mid high within each valence both for the iaps data and my study
+# do this on a participant basis or sampleÇ? try sample first
+tmp.df4_full_stim_downs_jun2021_60bins %>%
   ungroup()%>%
   mutate(mediansplit_sample_valence2 = 
-           if_else(ValenceMeanThisSample >= 
+           if_else(ValenceMeanThisSample > 
                      median(ValenceMeanThisSample,
                             na.rm = TRUE), 
                    "More positive", "More negative"))%>%
-  mutate(mediansplit_sample_arousal2 = if_else(ArousalMeanThisSample >=
+  mutate(mediansplit_sample_arousal2 = if_else(ArousalMeanThisSample >
                                                   median(ArousalMeanThisSample,
                                                          na.rm = TRUE), "High", "Low"))
-
-
-
-# higher samp[le rate]
-
-tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins %>%
-  ungroup()%>%
-  mutate(mediansplit_sample_valence2 = 
-           if_else(ValenceMeanThisSample >= 
-                     median(ValenceMeanThisSample,
-                            na.rm = TRUE), 
-                   "More positive", "More negative"))%>%
-  mutate(mediansplit_sample_arousal2 = if_else(ArousalMeanThisSample >=
-                                                  median(ArousalMeanThisSample,
-                                                         na.rm = TRUE), "High", "Low"))
-
-
 
 ```
 
@@ -1688,26 +1782,15 @@ plots_timecourse$eff_size_pup_velocity
 # Edit legend title and labels
 plots_timecourse$eff_size_pup_velocity
 
-plots_timecourse$eff_size_pup_velocity + 
+plots_timecourse$eff_size_pup_velocity<- plots_timecourse$eff_size_pup_velocity + 
   p$graphstyle +
     guides(colour = guide_legend(override.aes = list(size=2)))+ #the line size of the legend tends to be smaller in print
   scale_x_continuous(limits = c(0,6), breaks = c(0,2,4,6))+
   scale_y_continuous(limits = c(-1,1.5), breaks = c(-0.5, 0,0.5,1))
   
 
-
+plots_timecourse$eff_size_pup_velocity
 plots_timecourse$eff_size_pup_amp
-
-
-    # valence - no significance
-      
-    
-    # scale_fill_brewer()
-    
-?annotate
-
-
-
 
 ```
 
