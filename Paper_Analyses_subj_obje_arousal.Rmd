@@ -637,7 +637,7 @@ tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins
   group_by(neutral_neg)%>%
   
   mutate(neutral_neg_mean_arousal = mean(ArousalMean, na.rm = TRUE),
-                                         neutral_sd_mean_arousal = sd(ArousalMean, na.rm = TRUE)) %>%
+                                         neutral_neg_sd_arousal = sd(ArousalMean, na.rm = TRUE)) %>%
   mutate(neutral_neg_mean_arousal_self = mean(arousal, na.rm = TRUE),
          neutral_neg_sd_arousal_self = sd(arousal, na.rm = TRUE))
   
@@ -651,7 +651,7 @@ table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_mean_arousal))
 # 158193  13975 
 
 
-# compute new varoables where arousal is scaled to negative (negative value - mean of negative and neutral) same to positive
+# compute new variables where arousal is scaled to negative (negative value - mean of negative and neutral) same to positive
 tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins %>%
     mutate_at(vars(matches('^neutral_pos_.*$')), ~ 
                   replace(., neutral_pos == FALSE, NA))
@@ -673,9 +673,67 @@ tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_mean_arousal <- if_else(tmp.d
   
 
 colnames(tmp.df4_full_stim_downs_jun2021_60bins)
+
+
+tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground <- ifelse(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE & 
+                                                                      tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More positive", tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean - tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_mean_arousal,
+                                                                    ifelse(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More negative" & tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg == TRUE, tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean - 
+                                                                             tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_mean_arousal, 
+                                                                           tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean - mean(tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean, na.rm = TRUE)))
+
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground))
   
-  
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground), tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab)
+
+library(tidyverse)
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_lab, ArousalMean))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_lab, arousal_rel_neutral_ground))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')
+
+
+
+tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground_z <- ifelse(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE & 
+                                                                      tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More positive", tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground/ tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_sd_arousal,
+                                                                    ifelse(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More negative" & tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg == TRUE, tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground / 
+                                                                             tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_sd_arousal, 
+                                                                           tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground/ sd(tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean, na.rm = TRUE)))
+
+
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground))
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground), tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab)
+
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_lab, ArousalMean))+
+  # geom_point()+
+  # stat_summary(geom = 'pointrange')
+ geom_boxplot()
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  group_by(stimIAPS, ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_lab, arousal_rel_neutral_ground_z ))+
+  # geom_point()+
+  geom_boxplot()
+  # stat_summary(geom = 'pointrange')
 ```
+
+
+
     
   
   
