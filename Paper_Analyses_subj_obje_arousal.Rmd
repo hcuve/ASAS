@@ -649,6 +649,9 @@ tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins
 table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_mean_arousal))
  # FALSE   TRUE 
 # 158193  13975 
+
+
+# compute new varoables where arousal is scaled to negative (negative value - mean of negative and neutral) same to positive
 tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins %>%
     mutate_at(vars(matches('^neutral_pos_.*$')), ~ 
                   replace(., neutral_pos == FALSE, NA))
@@ -666,8 +669,10 @@ tmp.df4_full_stim_downs_jun2021_60bins <- tmp.df4_full_stim_downs_jun2021_60bins
 table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_sd_arousal_self))
 
 
-tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_mean_arousal <- if_else(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE, tmp.df4_full_stim_downs_jun2021_60bins$)
+tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_mean_arousal <- if_else(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE, tmp.df4_full_stim_downs_jun2021_60bins)
   
+
+colnames(tmp.df4_full_stim_downs_jun2021_60bins)
   
   
 ```
