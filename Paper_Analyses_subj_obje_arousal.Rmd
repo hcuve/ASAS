@@ -721,6 +721,75 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
   stat_summary(geom = 'pointrange')
 
 arousal_rel_neutral_self
+
+# ?cut
+# is the cutoff for positive in the prevopis variable too large
+tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_2<- cut(tmp.df4_full_stim_downs_jun2021_60bins$ValenceMean, c(0,4,5,9), 
+                                                              labels = c("negative", "neutral", "positive"))
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ssid,ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimIAPS, abs(arousal), color = ground_valence))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')
+
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ssid,ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence, abs(arousal), color = ground_valence))+
+  geom_boxplot()+
+  stat_summary(funy = mean, geom = 'pointrange')
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  subset(!is.na(ground_valence))%>%
+  group_by(stimIAPS, ssid,ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence, abs(arousal), color = ground_valence))+
+  geom_boxplot()+
+  stat_summary(funy = mean, geom = 'pointrange')
+
+# absoluting 
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  subset(!is.na(ground_valence))%>%
+  group_by(ssid,ground_valence)%>%
+  mutate(mean_abs_arousal = mean(abs(arousal), na.rm = TRUE))%>%
+  summarise_at(mean_abs_arousal)
+
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ssid,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimIAPS, abs(arousal), color = ground_valence_2))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')
+
+```
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ssid,valence_self)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimIAPS, arousal, color = valence_self))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')
+
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ssid,valence_self)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimIAPS, abs(valence), color = valence_self))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')
+
+
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ssid,ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimIAPS, abs(valence), color = ground_valence))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')
 ```
 ```{r}
 # create the new arousal corrected within positive/negative - neutral
