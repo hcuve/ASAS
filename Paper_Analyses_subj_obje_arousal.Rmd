@@ -682,6 +682,16 @@ tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground <- ifelse(tmp.
                                                                            tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean - mean(tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean, na.rm = TRUE)))
 
 
+# same with self report
+
+tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_self <- ifelse(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE & 
+                                                                      tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More positive", tmp.df4_full_stim_downs_jun2021_60bins$arousal - tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_mean_arousal_self,
+                                                                    ifelse(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More negative" & tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg == TRUE, tmp.df4_full_stim_downs_jun2021_60bins$arousal - 
+                                                                             tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_mean_arousal_self, 
+                                                                           tmp.df4_full_stim_downs_jun2021_60bins$arousal - mean(tmp.df4_full_stim_downs_jun2021_60bins$arousal, na.rm = TRUE)))
+
+
+# visualise new ground and self report arousal baseline separetelly for positive and negative valenced stimuli (based on IAPS validation)
 table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground))
   
 table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground), tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab)
@@ -703,9 +713,27 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
   stat_summary(geom = 'pointrange')
 
 
+tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimIAPS, ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_lab, arousal_rel_neutral_self))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
 
+arousal_rel_neutral_self
+```
+```{r}
+# create the new arousal corrected within positive/negative - neutral
 tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground_z <- ifelse(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE & 
                                                                       tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More positive", tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground/ tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_sd_arousal,
+                                                                    ifelse(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More negative" & tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg == TRUE, tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground / 
+                                                                             tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_sd_arousal, 
+                                                                           tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground/ sd(tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean, na.rm = TRUE)))
+
+
+# do the same with self report arousal but using ground valence?
+tmp.df4_full_stim_downs_jun2021_60bins$arousal_self_rel_neutral_ground_z <- ifelse(tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos == TRUE & 
+                                                                                     tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More positive", tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground/ tmp.df4_full_stim_downs_jun2021_60bins$neutral_pos_sd_arousal,
                                                                     ifelse(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_lab == "More negative" & tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg == TRUE, tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground / 
                                                                              tmp.df4_full_stim_downs_jun2021_60bins$neutral_neg_sd_arousal, 
                                                                            tmp.df4_full_stim_downs_jun2021_60bins$arousal_rel_neutral_ground/ sd(tmp.df4_full_stim_downs_jun2021_60bins$ArousalMean, na.rm = TRUE)))
@@ -730,6 +758,27 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
   # geom_point()+
   geom_boxplot()
   # stat_summary(geom = 'pointrange')
+
+
+# original valence arousal
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  group_by(stimIAPS, ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ValenceMean, ArousalMean ))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  group_by(stimIAPS, ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ValenceMean, arousal_rel_neutral_ground_z ))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+
+
 ```
 
 
