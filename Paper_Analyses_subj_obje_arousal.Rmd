@@ -754,9 +754,17 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
 
 tmp.df4_full_stim_downs_jun2021_60bins%>%
   subset(!is.na(ground_valence))%>%
-  group_by(ssid,ground_valence)%>%
-  mutate(mean_abs_arousal = mean(abs(arousal), na.rm = TRUE))%>%
-  summarise_at(mean_abs_arousal)
+  # group_by(ground_valence)%>%
+  ungroup()%>%
+  mutate(abs_arousal = abs(arousal), na.rm = TRUE)%>%
+  mutate(abs_arousal_z = abs_arousal - mean(abs_arousal, na.rm = TRUE))%>%
+  # summarise_at(c('mean_abs_arousal'), median, na.rm = TRUE)
+  group_by(ssid,ground_valence_2)%>%
+  summarise_if(is.numeric, median, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_2, abs_arousal_z, color = ground_valence_2))+
+  geom_point()+
+  stat_summary(funy = median, geom = 'pointrange')+
+  geom_boxplot()
 
 
 tmp.df4_full_stim_downs_jun2021_60bins%>%
@@ -766,6 +774,55 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
   # geom_point()+
   stat_summary(funy = mean, geom = 'pointrange')
 
+
+# does absolute arousal correlate with other variables of interest
+tmp.df4_full_stim_downs_jun2021_60bins$abs_arousal<- abs(tmp.df4_full_stim_downs_jun2021_60bins$arousal)
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num< 500)%>%
+  subset(!is.na(groun_valence))%>%
+  group_by(ssid, stimIAPS)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(pup_basCor, arousal))+
+  geom_point()+
+  stat_smooth(aes(group = ssid),method = 'lm', se = F)
+    ggpubr::stat_cor()
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(groun_valence))%>%
+  group_by(ssid, stimIAPS)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(pup_basCor, abs_arousal))+
+  geom_point()+
+  geom_smooth(aes(group = ssid),method = 'lm', se = F)+
+  ggpubr::stat_cor()+
+  facet_grid()
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(!is.na(groun_valence))%>%
+  group_by(ssid, stimIAPS,ground_valence_lab)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  group_by(ssid,ground_valence_lab)%>%
+  mutate(corar = cor(abs_arousal, pup_basCor, use = "complete"))%>%
+  ggplot(aes(ground_valence_lab, corar))+
+  # geom_point()
+  stat_summary(geom = 'pointrange')
+
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  group_by(stimIAPS)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ArousalMean, ArousalMeanThisSample))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  group_by(stimIAPS)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ArousalMean, abs_arousal))+
+  geom_point()+
+  ggpubr::stat_cor()
+# this again suggests that there is not too much of a problem in our response format as the absolute would be the equivalent of an scale that encodes for calence (direction)
 ```
 
 tmp.df4_full_stim_downs_jun2021_60bins%>%
