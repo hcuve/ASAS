@@ -2660,8 +2660,95 @@ plots_paper$pupil_correlation
 # timecourse plot pupil
 
 tmp.df4_full_stim_downs_jun2021_60bins$sample_arousal_lab2<-
-  cut(tmp.df4_full_stim_downs_jun2021_60bins$ArousalMeanThisSample, c(-10,-1,1,10), 
+  cut(tmp.df4_full_stim_downs_jun2021_60bins$ArousalMeanThisSample, 3, 
                                                               labels = c("low", "mid", "high"))
+
+
+
+tmp.df4_full_stim_downs_jun2021_60bins$sample_valence_lab2<-
+  cut(tmp.df4_full_stim_downs_jun2021_60bins$ValenceMeanThisSample, 3 , 
+                                                              labels = c("negative", "mid", "positive"))
+
+tmp.df4_full_stim_downs_jun2021_60bins$newvalence <- if_else(tmp.df4_full_stim_downs_jun2021_60bins$sample_valence_lab2 == "mid" & tmp.df4_full_stim_downs_jun2021_60bins$sample_arousal_lab2 == "mid", "neutral", 
+                                                             if_else(tmp.df4_full_stim_downs_jun2021_60bins$ValenceMeanThisSample> median(tmp.df4_full_stim_downs_jun2021_60bins$ValenceMeanThisSample, na.rm = TRUE), "positive", "negative")
+                                                           )
+
+table(tmp.df4_full_stim_downs_jun2021_60bins$newvalence)
+unique(tmp.df4_full_stim_downs_jun2021_60bins$newvalence)
+
+test<- tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num<500)%>%
+  subset(!is.na(ground_arousal_lab))%>%
+  # subset(stimIAPS!= "4573")%>%
+  # subset(pupil_outlier == FALSE)%>%
+  # subset(arousal_outler== FALSE)%>%
+  group_by(mediansplit_sample_valence2)%>%
+  mutate(mediantotes = median(ArousalMeanThisSample, na.rm = TRUE))%>%
+  ungroup()%>%
+  group_by(mediansplit_sample_valence2)%>%
+  mutate(high_lowtes = if_else(arousal> mediantotes, "high", "low"))
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num<500)%>%
+  subset(!is.na(ground_arousal_lab))%>%
+  # subset(stimIAPS!= "4573")%>%
+  # subset(pupil_outlier == FALSE)%>%
+  # subset(arousal_outler== FALSE)%>%
+  # group_by(mediansplit_sample_valence2)%>%
+  # mutate(mediantotes = median(ArousalMeanThisSample, na.rm = TRUE))%>%
+  # ungroup()%>%
+  # group_by(mediansplit_sample_valence2)%>%
+  # mutate(high_lowtes = if_else(arousal> mediantotes, "high", "low")) %>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  # stat_summary(geom = 'pointrange')+
+    # facet_grid(~mediansplit_self_valence)
+  
+  # stat_smooth(aes(group= stimIAPS, color = sample_arousal_lab2), fun = mean,
+               # se = F, alpha = .15, size = 1.5)+
+  stat_smooth(aes(group=sample_arousal_lab2, color = sample_arousal_lab2), size = 3)+
+  # stat_summary(aes(group=stimIAPS, color = high_lowtes), fun = mean, geom = "pointrange")+
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # geom_text(aes(label = stimIAPS))+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")
+
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num<500)%>%
+  subset(!is.na(ground_arousal_lab))%>%
+  # subset(stimIAPS!= "4573")%>%
+  # subset(pupil_outlier == FALSE)%>%
+  # subset(arousal_outler== FALSE)%>%
+  # group_by(mediansplit_sample_valence2)%>%
+  # mutate(mediantotes = median(ArousalMeanThisSample, na.rm = TRUE))%>%
+  # ungroup()%>%
+  # group_by(mediansplit_sample_valence2)%>%
+  # mutate(high_lowtes = if_else(arousal> mediantotes, "high", "low")) %>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  # stat_summary(geom = 'pointrange')+
+    # facet_grid(~mediansplit_self_valence)
+  
+  # stat_smooth(aes(group= stimIAPS, color = sample_valence_lab2), fun = mean,
+  #              se = F, alpha = .15, size = 1.5)+
+  stat_smooth(aes(group=newvalence, color = newvalence), size = 3)+
+  # stat_summary(aes(group=stimIAPS, color = high_lowtes), fun = mean, geom = "pointrange")+
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # geom_text(aes(label = stimIAPS))+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")
+  facet_grid(~newvalence)
+
+```
+  # xlim(0,6)+
+  facet_grid(~mediansplit_sample_valence2)
+# plot separatelly
+
+
+
 
 test<- tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(ssid_num<500)%>%
@@ -2699,10 +2786,37 @@ theme_classic()+
   xlab("Time (s)")+
   # geom_text(aes(label = stimIAPS))+
   # p$graphstyle+
-  scale_color_brewer(palette = "Dark2")+
+  scale_color_brewer(palette = "Dark2")
   # xlim(0,6)+
   facet_grid(~mediansplit_sample_valence2)
-# plot separatelly
+  
+  
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ssid_num<500)%>%
+  subset(!is.na(ground_arousal_lab))%>%
+  # subset(stimIAPS!= "4573")%>%
+  # subset(pupil_outlier == FALSE)%>%
+  # subset(arousal_outler== FALSE)%>%
+  # group_by(mediansplit_sample_valence2)%>%
+  # mutate(mediantotes = median(ArousalMeanThisSample, na.rm = TRUE))%>%
+  # ungroup()%>%
+  # group_by(mediansplit_sample_valence2)%>%
+  # mutate(high_lowtes = if_else(arousal> mediantotes, "high", "low")) %>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  # stat_summary(geom = 'pointrange')+
+    # facet_grid(~mediansplit_self_valence)
+  
+  # stat_smooth(aes(group= stimIAPS, color = sample_arousal_lab2), fun = mean,
+  #              se = F, alpha = .15, size = 1.5)+
+  stat_smooth(aes(group=sample_arousal_lab2, color = sample_arousal_lab2), size = 3)+
+  # stat_summary(aes(group=stimIAPS, color = high_lowtes), fun = mean, geom = "pointrange")+
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # geom_text(aes(label = stimIAPS))+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")
+
 
 # negative
 
