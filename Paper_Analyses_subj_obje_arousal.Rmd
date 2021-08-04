@@ -1124,6 +1124,8 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
 # this again suggests that there is not too much of a problem in our response format as the absolute would be the equivalent of an scale that encodes for calence (direction)
 ```
 
+a few checks on stim by ratings 
+```{r eval=FALSE, include=FALSE}
 <!-- tmp.df4_full_stim_downs_jun2021_60bins%>% -->
 <!--   group_by(stimIAPS, ssid,valence_self)%>% -->
 <!--   summarise_if(is.numeric, mean, na.rm = TRUE)%>% -->
@@ -1146,6 +1148,8 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
 <!--   ggplot(aes(stimIAPS, abs(valence), color = ground_valence))+ -->
 <!--   # geom_point()+ -->
 <!--   stat_summary(funy = mean, geom = 'pointrange') -->
+  
+```
 
 ```{r}
 # create the new arousal corrected within positive/negative - neutral
