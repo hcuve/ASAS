@@ -852,6 +852,67 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
   stat_summary(funy = mean, geom = 'pointrange')
 
 
+# Plot just positive
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "positive")%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimDescription, arousal))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
+   stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
+  theme(axis.text.x = element_text(angle = 60))
+
+
+# negative
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "negative")%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimDescription, arousal))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
+   stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
+  theme(axis.text.x = element_text(angle = 60))
+
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "positive")%>%
+  group_by(stimIAPS,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ArousalMean, arousal))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  ggpubr::stat_cor()
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "negative")%>%
+  group_by(stimIAPS,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ArousalMean, arousal))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  ggpubr::stat_cor()
+
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "neutral")%>%
+  group_by(stimIAPS,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ArousalMean, arousal))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  ggpubr::stat_cor()
+  
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
+   stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
+  theme(axis.text.x = element_text(angle = 60))
+
+
+```
+
+
 # does absolute arousal correlate with other variables of interest
 tmp.df4_full_stim_downs_jun2021_60bins$abs_arousal<- abs(tmp.df4_full_stim_downs_jun2021_60bins$arousal)
 
