@@ -623,7 +623,7 @@ theme_classic()+
 
 ```
 
-
+check baselining onto specific valences
 ```{r Scrap this}
 
 # - use IAPS data to split valence - positive negative
@@ -844,14 +844,73 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
   geom_boxplot()
 
 
+absolutetest<- tmp.df4_full_stim_downs_jun2021_60bins%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  # summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  mutate(arousal_abs = abs(arousal), valence_abs = abs(valence))%>%
+  
+  summarise_at(c("arousal", "ArousalMean", "ValenceMean","arousal_abs", "valence", "valence_abs", "arousal_abs_on_pos"), mean, na.rm = TRUE) 
+
+
+
+absolutetest %>%
+  ggplot(aes(ValenceMean,arousal_abs))+
+  geom_point()+
+  geom_text(aes(label = stimDescription))
+
+absolutetest %>%
+  ggplot(aes(ArousalMean,arousal_abs))+
+  geom_point()+
+  geom_text(aes(label = stimDescription))
+
+# he U shape relationship seems to hold dependign on whether arousal is absolute - converting actovation to absolute
+
+# absolute arousal don't correlate with iaps arousal
+# we we taking valence absolute as intensity
+absolutetest %>%
+  ggplot(aes(ValenceMean,valence_abs))+
+  geom_point()+
+  geom_text(aes(label = stimDescription))
+
+# arousal vs absolute valence
+absolutetest %>%
+  ggplot(aes(ArousalMean,valence_abs))+
+  geom_point()+
+  geom_text(aes(label = stimDescription))+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+# it seems like arousal in our case is picking something that is not just intemnsity of vaence, as it correlates better with arousal Mean
+
+absolutetest %>%
+  ggplot(aes(valence,valence_abs))+
+  geom_point()+
+  geom_text(aes(label = stimDescription))+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+# try and compute correlation using valencabs(
+
 tmp.df4_full_stim_downs_jun2021_60bins%>%
-  group_by(stimIAPS, ssid,ground_valence_2)%>%
-  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
-  ggplot(aes(stimIAPS, abs(arousal), color = ground_valence_2))+
+  subset(!is.na(ground_valence_2))%>%
+  group_by(ssid, stimIAPS,ground_valence_2)%>%
+  
+  mutate(arousal_abs = abs(arousal), valence_abs = abs(valence))%>%
+  group_by(ssid, ground_valence_2)%>%
+  mutate(cortest = cor(valence_abs, pup_basCor, use = "complete"))%>%
+  
+  # summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # summarise_at(c("arousal", "ArousalMean","ValenceMean", "arousal_abs", "valence", "valence_abs", "arousal_abs_on_pos"), mean, na.rm = TRUE) %>%
+  
+  ggplot(aes(ground_valence_2, cortest, color = ground_valence_2))+
   # geom_point()+
   stat_summary(funy = mean, geom = 'pointrange')
+    theme(axis.text.x = element_text(angle = 60))
 
 
+```
+
+just positive check
+```{r}
 # Plot just positive
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(ground_valence_2 == "positive")%>%
@@ -933,8 +992,48 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
   stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
    stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
   theme(axis.text.x = element_text(angle = 60))
+  
 
-# if we removed the erotic ones would we have positive tracking arousal better
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 != "negative")%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimDescription, abs(arousal), color = ground_valence_2))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')+
+   # stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange')+
+  theme(axis.text.x = element_text(angle = 60))
+  
+  
+  tmp.df4_full_stim_downs_jun2021_60bins$arousal_abs_on_pos<- if_else(tmp.df4_full_stim_downs_jun2021_60bins$ground_valence_2!= "negative", abs(tmp.df4_full_stim_downs_jun2021_60bins$arousal), tmp.df4_full_stim_downs_jun2021_60bins$arousal)
+  
+  
+    tmp.df4_full_stim_downs_jun2021_60bins %>%
+  # subset(ground_valence_2 != "negative")%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_2, arousal_abs_on_pos, color = ground_valence_2))+
+  geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')+
+   # stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange')+
+  theme(axis.text.x = element_text(angle = 60))
+    
+    
+        tmp.df4_full_stim_downs_jun2021_60bins %>%
+  # subset(ground_valence_2 != "negative")%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(ground_valence_2, abs(arousal), color = ground_valence_2))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange')+
+   # stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange')+
+  theme(axis.text.x = element_text(angle = 60))
+  
+```
+
+erotica check
+```{r}
+# if we removed the erotic ones would we have positive tracking arousal better?
   
   
   # organise pupil by growing order of positivearousal
@@ -974,7 +1073,7 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
 # preparing ubjects might allow them to calibrate
 ```
 
-
+```{r}
 # does absolute arousal correlate with other variables of interest
 tmp.df4_full_stim_downs_jun2021_60bins$abs_arousal<- abs(tmp.df4_full_stim_downs_jun2021_60bins$arousal)
 
