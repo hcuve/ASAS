@@ -263,6 +263,8 @@ plots_paper$interaction_ar_vl <- interactions::interact_plot(pupil_arousal_findi
 interactions::interact_plot(pupil_arousal_findings$pupil_resid_from_ar_vale , pred = valence_c , modx = arousal_c)
 
 plots_paper$interaction_ar_vl+p$graphstyle
+
+plots_paper$interaction_ar_vl
 ```
 interaction plot
 
@@ -1640,7 +1642,8 @@ brewer.pal(4, "Dark2") # gives the exact names of pallets
 plots_timecourse <- list()
 
 #  let's use the order arousal, valence, arousal x valence brightness
-plots_timecourse$eff_size_pup_amp <-   timecourse_60bin_result_df %>% 
+View(timecourse_60bin_result_df)
+plots_timecourse$eff_size_pup_amp <-   timecourse_60bin_result_df[1:56,] %>% 
   select("timebins","Estimate_ar", "Estimate_vl", "Estimate_br", "Estimate_ar_vl") %>% 
   pivot_longer(-timebins, names_to = "variable", values_to = "Estimate")%>%
     subset(!is.na(Estimate))%>%
@@ -1715,7 +1718,7 @@ plots_timecourse$eff_size_pup_amp <- plots_timecourse$eff_size_pup_amp +
 
 
 plots_timecourse$eff_size_pup_amp
-
+plots_timecourse$eff_size_pup_velocity
 
 ```
 
@@ -2570,7 +2573,7 @@ plots_timecourse$eff_size_pup_amp
 velocity = actual velocity unlike speed (which is what I actually computed above. velocity encodes direction( constriction or dilation)
 
 
-use the same dataas timecourse to plot aggregated analyses
+use the same datas timecourse to plot aggregated analyses
 aggregate arousal plot
 ```{r}
 
@@ -2627,6 +2630,34 @@ subset(db_full4new_stim_screen_pupil_nopract,
   stat_summary(geom = 'pointrange')
   
 
+
+plots_paper$interaction_ar_vl
+
+# correlation plot
+
+plots_paper$pupil_correlation <-   db_full4new_stim_screen_pupil_nopract %>%
+    subset(ssid_num<500)%>%
+  subset(pupil_outlier == FALSE & arousal_outler == FALSE)%>%
+   group_by(ssid,Alexithymia, mediansplit_ground_valence)%>%
+    mutate(cortest = cor.test(arousal_c, pup_basCor)$estimate)%>%
+   group_by(ssid,Alexithymia, mediansplit_ground_valence)%>%
+    summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+     ggplot(aes(mediansplit_ground_valence, cortest, fill = mediansplit_ground_valence))+
+     geom_bar(stat="summary", fun.y = "mean", alpha = .5)+
+     geom_jitter(width = .1, alpha = .1)+
+        stat_summary( geom = 'pointrange')+
+        stat_summary(aes(group = ssid), geom = 'line', alpha = .1)+
+    ylab("R sujective vs pupil arousal")+
+     scale_fill_brewer(palette = "Dark2")+
+     p$graphstyle+
+     theme(axis.title.x = element_blank())
+   
+plots_paper$pupil_correlation  
+
+
+
+
+# timecourse plot pupil
 
 
 
