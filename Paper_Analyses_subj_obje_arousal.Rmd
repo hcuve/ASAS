@@ -864,6 +864,19 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
   theme(axis.text.x = element_text(angle = 60))
 
 
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "positive")%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimDescription, arousal))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
+   stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
+  theme(axis.text.x = element_text(angle = 60))
+
+# if we removed the erotic ones would we have positive tracking arousal better
+
+
 # negative
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(ground_valence_2 == "negative")%>%
@@ -908,8 +921,57 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
   stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
    stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
   theme(axis.text.x = element_text(angle = 60))
+  
+  
+  
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "positive")%>%
+  group_by(stimDescription,ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(stimDescription, arousal))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
+   stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
+  theme(axis.text.x = element_text(angle = 60))
 
+# if we removed the erotic ones would we have positive tracking arousal better
+  
+  
+  # organise pupil by growing order of positivearousal
+  tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "positive")%>%
+  group_by(stimIAPS,stimDescription, ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+    arrange(arousal)%>%
+  ggplot(aes(arousal, pup_basCor))+
+    geom_text(aes(label = stimDescription))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
+    xlim(-7,-2)+
+    ggpubr::stat_cor()
+   stat_summary(aes( y = ArousalMean), funy = mean, geom = 'pointrange', color = "red")+
+  theme(axis.text.x = element_text(angle = 60))
+   
+   # so arousal (ativation) sis till being tracked even if we exclude the sexual stimuli
+   
+   
+   
+     tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(ground_valence_2 == "negative")%>%
+  group_by(stimIAPS,stimDescription, ground_valence_2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+    arrange(arousal)%>%
+  ggplot(aes(arousal, pup_basCor))+
+    geom_text(aes(label = stimDescription))+
+  # geom_point()+
+  stat_summary(funy = mean, geom = 'pointrange', color = "blue")+
+    # xlim(-7,-2)+
+    ggpubr::stat_cor()
 
+# if we removed the erotic ones would we have positive tracking arousal better
+
+# maybe not every emotional experience causes a detectable physiologicachangedFiles(
+# preparing ubjects might allow them to calibrate
 ```
 
 
