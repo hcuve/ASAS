@@ -110,7 +110,7 @@ db_full4new_stim_screen_pupil_nopract %>%
 ```
 
 
-# Valence and arousal
+# Valence and arousal - ridge
 ```{r}
 
 db_full4new_stim_screen_pupil_nopract$ssid<- as.factor(as.character(db_full4new_stim_screen_pupil_nopract$ssid))
@@ -144,6 +144,101 @@ library(MuMIn)
 library(sjmisc)
 sjPlot::tab_model(pupil_arousal_findings$pupil_from_ar_vale)
 
+# lassomodels$firt
+
+ridgemodels<-list()
+
+# ridge
+unique(db_new$exp)
+# "3b" "3b"
+db_full4new_stim_screen_pupil_nopract
+unique(db_new$exp)
+
+db_new_exp3b<- subset(db_full4new_stim_screen_pupil_nopract, 
+                                     ssid_num< 500)
+
+pp_id_3b<- unique(db_new_exp3b$ssid)
+
+db_new_exp3b$ar_x_val<- db_new_exp3b$arousal_c* db_new_exp3b$valence_c
+
+db_new_exp3b_1 <- select(db_new_exp3b, c(ssid, arousal_c, valence_c, ar_x_val, Mean_gray_z,pup_basCor))
+i = 10
+?glmnet::cv.glmnet
+set.seed(808)
+
+cv_fits_3b<- list(list())
+cv_fits<-list(list())
+library(glmnet)
+
+for (i in pp_id_3b) {
+  temp_3b <- subset(db_new_exp3b_1, ssid == 304)
+  # cv_fits <- list(i)
+  cv_fits_3b[[i]]<- list(cv.glmnet(as.matrix(temp_3b[,2:5]),temp_3b$pup_basCor, 
+                                alpha = 0, nfolds = 8))
+  
+  cv_fits[[i]]<- list(glmnet(as.matrix(temp_3b[,2:5]),temp_3b$pup_basCor,
+                             family = "gaussian",
+                             alpha = 0, lambda = cv_fits_3b[[i]][[1]]$lambda.min))
+  }
+
+coef(cv_fits_3b[[i]][[1]], s = cv_fits_3b[[i]][[1]]$lambda.min)
+
+coef(cv_fits[[i]][[1]], s = cv_fits[[i]][[1]]$lambda)
+# 5 x 1 sparse Matrix of class "dgCMatrix"
+#                       1
+# (Intercept)  0.57036534
+# arousal_c    0.34759064
+# valence_c    0.34825059
+# ar_x_val    -0.03044521
+# Mean_gray_z -0.22724284
+
+my_vector_ar<- vector(mode="numeric")
+i
+
+plot(cv_fits[["306"]][[1]])
+
+plot(cv_fits[[2]][[1]])
+plot(cv_fits[[2]][[1]],xvar="lambda",label=TRUE)
+fit3=glmnet(x,g4,family="multinomial")
+plot(cv_fits[[2]][[1]],pch=19)
+
+View(my_vectors)
+for (i in pp_id_3b) {
+my_vector_ar[i]<- coef(cv_fits[[i]][[1]], s = cv_fits[[i]][[1]]$lambda)[2] # 3 is gender sd
+}
+
+my_vector_vl<- vector(mode="numeric")
+# non gender sd
+for (i in pp_id_3b) {
+my_vector_vl[i]<- coef(cv_fits[[i]][[1]], s = cv_fits[[i]][[1]]$lambda)[3] 
+}
+
+# status
+my_vector_ar_vl<- vector(mode="numeric")
+
+for (i in pp_id_3b) {
+my_vector_ar_vl[i]<- coef(cv_fits[[i]][[1]], s = cv_fits[[i]][[1]]$lambda)[4] 
+}
+
+# physical
+my_vector_gray<- vector(mode="numeric")
+
+for (i in pp_id_3b) {
+my_vector_gray[i]<- coef(cv_fits[[i]][[1]], s = cv_fits[[i]][[1]]$lambda)[5] 
+}
+
+
+
+t.test(my_vector_ar)
+# t = 41.071, df = 42, p-value < 0.00000000000000022
+t.test(my_vector_vl)
+# t = 34.501, df = 42, p-value < 0.00000000000000022
+
+t.test(my_vector_ar_vl)
+# t = -16.486, df = 42, p-value < 0.00000000000000022
+
+t.test(my_vector_gray)
+# t = -62.057, df = 42, p-value < 0.00000000000000022
 ```
 
 Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
@@ -2745,6 +2840,7 @@ theme_classic()+
 ```
   # xlim(0,6)+
   facet_grid(~mediansplit_sample_valence2)
+```{r}
 # plot separatelly
 
 
@@ -2844,7 +2940,6 @@ theme_classic()+
   geom_hline(yintercept = 0)+
   geom_hline(yintercept = -0.5)
 
-  
   
 ```
 
