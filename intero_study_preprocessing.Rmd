@@ -450,20 +450,25 @@ gp.extractor = function(hdf5FilesPath) {
 
 # tmp_full<- gp.extractor(hdf5FilesPath)
 
+# for some reason 355 is creating duplicate event ids
+library(readr)
+ss355_GPdata_ <- read_csv("ss355_GPdata .csv")
 
+View(ss355_GPdata_)
 
+ss355_GPdata_nodup <- subset(ss355_GPdata_, !duplicated(ss355_GPdata_$event_id))
+
+write_csv(ss355_GPdata_nodup, "ss355_GPdata_nodup.csv")
 
 ```
 
 now cleaning
 we need to have data for ledalab
 gaze path
-clean and tracloss
+clean and trackloss
 
 ```{r, cleaning}
 # function to read all the csvs into one dataframe
-
-
 
 rm(tmp_full)
 read_plus <- function(flnm) {
@@ -473,7 +478,8 @@ read_plus <- function(flnm) {
 }
 
 # now read them
-setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Step1_GpExtractor_Output")
+# setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Step1_GpExtractor_Output")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021/step1")
 
 tmp.df2 <-
   list.files(pattern = "*.csv", 
@@ -518,7 +524,7 @@ gp_preprocessing = function(tmp.df2) {
   table(is.na(tmp.df2$right_pupil_measure1))
   
   # tmp.df2$right_pupil_measure1<- if_else(tmp.df2$pupil_meas>7, tmp.df2$right_pupil_measure1, NULL)
-  message(sprintf("step 4 cutingt off screen in points and repixel"))
+  message(sprintf("step 4 cuting off screen in points and repixel"))
   tmp.df2$left_gaze_x_cor<- if_else(tmp.df2$left_gaze_x_cor >= -960 & tmp.df2$left_gaze_x_cor <= 960, tmp.df2$left_gaze_x_cor, NULL)
   tmp.df2$right_gaze_x_cor<- if_else(tmp.df2$right_gaze_x_cor >= -960 & tmp.df2$right_gaze_x_cor <= 960, tmp.df2$right_gaze_x_cor, NULL)
   
@@ -637,7 +643,7 @@ min(tmp.df3$timerezero, na.rm = TRUE)
 
 natest<-subset(tmp.df3, is.na(tmp.df3$ssid) == TRUE)
 
-# let's check to see if it looks fine
+# let's check to see if it looks fine - NOTE THIS IS a bit SLOW
 ggplot(tmp.df3, aes(time, gsr, colour = as.factor(ssid)))+
   geom_line()
   # facet_grid(~screencontent)
@@ -663,7 +669,8 @@ tmp.df3<- tmp.df3%>%
       arrange(time)%>%
      group_by(ssid, tNo)%>%
       fill(zero_stim, .direction = c('up'))
-   tmp.df3$timerezero2<- tmp.df3$time-tmp.df3$zero_stim
+   
+tmp.df3$timerezero2<- tmp.df3$time-tmp.df3$zero_stim
    # check timerezero2
    
      min(tmp.df3$timerezero2, na.rm = TRUE)
@@ -680,17 +687,20 @@ min(tmp.df3$timerezero3, na.rm = TRUE)
 unique(tmp.df3$ssid)
 
 #tmp.df3<- subset(tmp.df3, is.na(tmp.df3$ssid) == FALSE)
-
-ggplot(subset(tmp.df3, tmp.df3$Condition == 'IAPS') , aes(x = timerezero3, y= gsr, colour = as.factor(ssid)))+
-    geom_smooth()+
+tmp.df3%>%
+subset(Condition == 'IAPS' & ssid ==  353)%>%
+  ggplot(aes(x = timerezero3, y= gsr))+
+  stat_smooth()+
+    # geom_smooth()+
     # geom_()+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
     geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
 
-
-ggplot(subset(tmp.df3, tmp.df3$tNo == -4) , aes(x = timerezero2, y= gsr, colour = as.factor(ssid)))+
+tmp.df3%>%
+subset( tNo == -5)%>%
+  ggplot( aes(x = timerezero2, y= gsr, colour = as.factor(ssid)))+
   # geom_point()
       geom_line() +
     # geom_smooth(aes())+
@@ -759,6 +769,7 @@ unique(tmp.df3$trigger)
 writing for ledalab
 
 ```{r}
+
 tmp.df3<- tmp.df3%>%
   arrange(ssid, time,tNo)
 # gsr baseline wil be the 1 second before tial start
@@ -915,7 +926,7 @@ tmp.df3$pupil<- if_else(tmp.df3$pupil> 7.2, tmp.df3$pupil, NULL)
 tmp.df3$pupil<- if_else(tmp.df3$pupil< 45, tmp.df3$pupil, NULL)
 
 tmp.df3<- tmp.df3 %>%
-  group_by(ssid, trialUnq) %>%
+  group_by(ssid, trialUnq,tNo,screencontent) %>%
   mutate(extendpupil=extend_blinks(pupil, fillback=100, fillforward=100, hz=150))
 
 min(tmp.df3$extendpupil, na.rm = TRUE)
@@ -937,21 +948,55 @@ tmp.df3$extendpupil
 
 library(gazer)
 
+?smooth_interpolate_pupil
+
 tmp.df3 <- smooth_interpolate_pupil(tmp.df3, pupil="pupil", extendpupil="extendpupil",
-                                    extendblinks=TRUE, step.first= 'smooth',
+                                    extendblinks=TRUE, step.first= 'smooth/interpolate',
                                     maxgap=Inf, 
                                     filter = 'moving',
+                                    type="linear", hz=150, n = 5)
+
+tmp.df3<-tmp.df3 %>%
+  group_by(ssid, trialUnq,tNo,screencontent) %>%
+  smooth_interpolate_pupil(pupil="pupil", extendpupil="extendpupil",
+                                    extendblinks=TRUE, 
+                           step.first= 'smooth',
+                                    maxgap=10, 
+                                    filter = 'moving',
+                                    type="linear", hz=20, n = 10)
+
+
+tmp.df3<- tmp.df3 %>%
+  group_by(ssid, trialUnq,tNo,screencontent) %>%
+  smooth_interpolate_pupil(pupil="extendpupil", extendpupil="extendpupil",
+                                    extendblinks=TRUE, step.first= 'smooth/interpolate',
+                                    maxgap=100, 
+                                    filter = 'moving',
                                     type="linear", hz=150, n = 30)
-
-
 
 min(tmp.df3$pup_interp, na.rm = TRUE)
 max(tmp.df3$pup_interp, na.rm = TRUE)
 
-ggplot(subset(tmp.df3, tmp.df3$tNo == 10 & tmp.df3$ssid == 320) , aes(x = timerezero3, y= pup_interp, colour = as.factor(ssid)))+
+subset(tmp.df3, tNo == 20 & ssid == 347)%>%
+ggplot(aes(x = timerezero3, y= pup_interp))+
   geom_line()+
+   geom_line(aes(y = extendpupil), color = 'red')+
   geom_line(aes(y = pupil), colour = 'gray')
   # facet_grid(~Condition)
+
+
+subset(tmp.df3, tNo == -7 & ssid == 350)%>%
+ggplot(aes(x = timerezero3, y= pupil))+
+  geom_line()
+
+
+subset(tmp.df3, tNo == -7 & ssid == 350)%>%
+ggplot(aes(x = timerezero3, y= pup_interp))+
+  geom_line()+
+   geom_line(aes(y = extendpupil), color = 'red')
+  geom_line(aes(y = pup_interp), colour = 'gray')
+  # facet_grid(~Condition)
+```
 
 
 # create baseline pupil mean
