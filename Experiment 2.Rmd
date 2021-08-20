@@ -1314,10 +1314,13 @@ stimuli height (px): 768
 stimuli width (px): 1024
 variables to keep: trial unq
 
+203
+270
+
 ```{r}
 
 
-install.packages('gazepath')
+# install.packages('gazepath')
 library(gazepath)
 GUI()
 
@@ -1326,6 +1329,8 @@ GUI()
 
 # Import Ledalab
 Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 105 .01 2])
+
+
 ```{r}
 read_leda <- function(flnm) {
   data.table::fread(flnm) %>% 
