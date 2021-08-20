@@ -1327,53 +1327,6 @@ GUI()
 ```
 
 
-# Import Ledalab
-Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 105 .01 2])
-
-
-```{r}
-read_leda <- function(flnm) {
-  data.table::fread(flnm) %>% 
-    mutate(filename = flnm)
-}
-
-# now read them
-db_leda <-
-  list.files(pattern = "*.txt", 
-             full.names = T) %>% 
-  map_df(~read_leda(.))
-
-db_leda$trigger<- as.numeric(db_leda$Event.NID)
-unique(db_leda$trigger)
-db_leda$ssid<- as.numeric(substr(db_leda$filename, 13,15))
-colnames(tmp.df4_sum)
-colnames(db_leda)
-nrow(tmp.df4_sum)
-nrow(db_leda)
-colnames(tmp.df4_sum)
-tmp.df4_sum2<- subset(tmp.df4_sum,tmp.df4_sum$tNo != -7)
-tmp.df4_sum2<- tmp.df4_sum2%>%
-  arrange(ssid, time, tNo)%>%
-  group_by(ssid)%>%
-  mutate(order = 1:224)
-
-db_leda2<- subset(db_leda, db_leda$trigger != -7)
-db_leda2<- db_leda2%>%
-  arrange(ssid, Event.Nr)%>%
-  group_by(ssid)%>%
-  mutate(order = 1:224)
-
-tmp.df4_sum_fullt<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
-tmp.df4_sum_full_backup<- tmp.df4_sum_full
-
-tmp.df4_sum_full<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
-
-# tmp.df4_sum_full<- bind_cols(tmp.df4_sum, db_leda)
-
-tmp.df4_sum_full<- tmp.df4_sum_full%>%
-  arrange(ssid, tNo)
-```
-
 read parsed data
 ```{r}
 read_parsed <- function(flnm) {
@@ -1387,8 +1340,9 @@ db_parsed <- list.files(pattern = "*.csv",
 
 
 # return content between spaces
-# pu things in the correct order
-# library(stringr)
+# put things in the correct order
+library(stringr)
+
 db_parsed$screencontent<- str_extract(db_parsed$trialUnq, "(?<=\\s)(.*)(?=\\s)")
 unique(db_parsed$screencontent)
 db_parsed$screencontent[db_parsed$screencontent == 'rest1']<- 'fixation'
@@ -1422,6 +1376,7 @@ db_parsed<-db_parsed%>%
 
 # this might be needed for tempoal analisys
 write_csv(db_parsed, 'db_parsed.csv')
+write_csv(db_parsed, 'db_parsed_346_355.csv')
 
 db_parsed_summarised<- db_parsed%>%
   group_by(ssid, tNo,screencontent, trialUnq, screencontent_no, Value)%>%
@@ -1460,14 +1415,21 @@ db_parsed_summarised2<- db_parsed_summarised2%>%
   arrange(ssid, tNo, screencontent_no)
 # View(db_parsed_summarised2)
 write_csv(db_parsed_summarised2, 'db_parsed_summarised.csv')
+write_csv(db_parsed_summarised2, 'db_parsed_summarised_346_355.csv')
 
 db_parsed_summarised2$ssid<- as.numeric(db_parsed_summarised2$ssid)
 db_parsed_summarised2
-tmp.df4_sum_full<- left_join(tmp.df4_sum_full,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
-rm(tmp.df4_sum_fullt)
-testna<- subset(tmp.df4_sum_fullt, is.na(tmp.df4_sum_fullt$mean_fix_dur) == TRUE)
 
-tmp.df4_sum_fullt
+
+# merge parsed with eyetracking data
+# tmp.df4_sum_full<- left_join(tmp.df4_sum_full,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent")) #original
+
+tmp.df4_sum_full<- left_join(tmp.df4_sum,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
+
+# rm(tmp.df4_sum_fullt)
+# testna<- subset(tmp.df4_sum_fullt, is.na(tmp.df4_sum_fullt$mean_fix_dur) == TRUE)
+# 
+# tmp.df4_sum_fullt
 ```
 
 
@@ -1475,7 +1437,7 @@ tmp.df4_sum_fullt
 Behavioral data
 
 ```{r}
-colnames(X309_2019_Dec_11_1807_01)
+# colnames(X309_2019_Dec_11_1807_01)
 library(data.table) 
 library(purrr)
 
@@ -1485,13 +1447,16 @@ read_plus_beh <- function(flnm, select = c("condition", "stimIAPS","stimDescript
     mutate(filename = flnm)
 }
 
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/IAPSBehav/346_355")
 # now read them
 db_beh <-
   list.files(pattern = "*.csv",
              full.names = T) %>%
   map_df(~read_plus_beh(.))
 
-db328$condition<-db328$ï..condition
+# problem file
+# db328$condition<-db328$ï..condition
 
 db328 <-select(db328, c("condition", "stimIAPS","stimDescription", "ValenceMean","ArousalMean","trigger",
                                      "trialsPract.thisTrialN","trialIAPS.thisTrialN", "self_valence_4.response","self_valence_2.response","Self_intensity_2.response","Self_intensity_3.response", "self_valence_4.rt", "self_valence_2.rt", "Self_intensity_2.rt", "Self_intensity_3.rt"))
@@ -1501,11 +1466,14 @@ db328$ssid<- 328
 
 db328$filename<- db328$ssid
 
-# files <- list.files(pattern = ".csv")
-# temp <- do.call(rbind,lapply(files, read.csv), header = TRUE)
+files <- list.files(pattern = ".csv")
+files
+temp <- do.call(rbind,lapply(files, read.csv), header = TRUE)
 
 #install.packages("data.table", repos = "https://cran.rstudio.com")
 library(data.table)
+
+
 
 # Read all the files and create a FileName column to store filenames
 db_beh <- rbindlist(sapply(files, fread, simplify = FALSE),
@@ -1669,6 +1637,62 @@ write_csv(tmp.df4_sum_full, 'intero_data_full.csv')
 #   arrange(ssid, tNo, screencontent_no)
 ```
 
+
+
+
+
+# Import Ledalab
+Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 105 .01 2])
+
+
+etwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021")
+
+SC column = 2
+Event marker column 3
+sampling rate 150hz
+
+```{r}
+read_leda <- function(flnm) {
+  data.table::fread(flnm) %>% 
+    mutate(filename = flnm)
+}
+
+# now read them
+db_leda <-
+  list.files(pattern = "*.txt", 
+             full.names = T) %>% 
+  map_df(~read_leda(.))
+
+db_leda$trigger<- as.numeric(db_leda$Event.NID)
+unique(db_leda$trigger)
+db_leda$ssid<- as.numeric(substr(db_leda$filename, 13,15))
+colnames(tmp.df4_sum)
+colnames(db_leda)
+nrow(tmp.df4_sum)
+nrow(db_leda)
+colnames(tmp.df4_sum)
+tmp.df4_sum2<- subset(tmp.df4_sum,tmp.df4_sum$tNo != -7)
+tmp.df4_sum2<- tmp.df4_sum2%>%
+  arrange(ssid, time, tNo)%>%
+  group_by(ssid)%>%
+  mutate(order = 1:224)
+
+db_leda2<- subset(db_leda, db_leda$trigger != -7)
+db_leda2<- db_leda2%>%
+  arrange(ssid, Event.Nr)%>%
+  group_by(ssid)%>%
+  mutate(order = 1:224)
+
+tmp.df4_sum_fullt<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
+tmp.df4_sum_full_backup<- tmp.df4_sum_full
+
+tmp.df4_sum_full<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
+
+# tmp.df4_sum_full<- bind_cols(tmp.df4_sum, db_leda)
+
+tmp.df4_sum_full<- tmp.df4_sum_full%>%
+  arrange(ssid, tNo)
+```
 
 
 
