@@ -733,7 +733,7 @@ min(tmp.df3$gsr_ms)
 
 # gsr for leda
 colnames(tmp.df3)
-db_GSR<- select(tmp.df3, c(3,  14, 17, 50, 49 ))
+db_GSR<- select(tmp.df3, c(3,  14, 17, 50, 49,51 ))
 db_GSR$tNo<- NULL
 colnames(db_GSR)
 
@@ -748,6 +748,8 @@ unique(db_GSR$split_column)
 split_column<- unique(db_GSR$split_column)
 
 split_gsr = split(db_GSR, list(db_GSR$split_column))
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021")
 
     for (ssid in names(split_gsr)) {
       write_tsv(split_gsr[[ssid]][,c("time","gsr_ms", "trigger")], paste0("gpgsr_", paste0(ssid),".txt"), col_names = FALSE)
@@ -770,7 +772,7 @@ tmp.df3$gsr_bastrue<- if_else(tmp.df3$timerezero3 >= -3 & tmp.df3$timerezero3 < 
 tmp.df3$gsr_bas_mean<- NULL
 
 tmp.df3<- tmp.df3%>%
-  arrange(ssid, tNo,time)%>%
+  arrange(ssid, time,tNo)%>%
   group_by(ssid, tNo, gsr_bastrue)%>%
   mutate(gsr_bas_median = median(gsr_bas))
 
@@ -887,7 +889,7 @@ tmp.df3_backup <- tmp.df3
 
 # note that smothing and interpolating is order dependednt so order by ssid, trial and time
 tmp.df3<- tmp.df3 %>%
-  arrange(ssid, trialUnq,tNo, time)%>%
+  arrange(ssid, time,tNo)%>%
   group_by(ssid, trialUnq,tNo,screencontent) %>%
   mutate(extendpupil=gazer::extend_blinks(pupil, fillback=100, fillforward=100, hz=150))
 
@@ -913,7 +915,7 @@ tmp.df3$extendpupil
 ?smooth_interpolate_pupil
 
 # vert order dependent
-tmp.df3 <- smooth_interpolate_pupil(tmp.df3, pupil="pupil", extendpupil="extendpupil",
+tmp.df3 <- gazer::smooth_interpolate_pupil(tmp.df3, pupil="pupil", extendpupil="extendpupil",
                                     extendblinks=TRUE, step.first= 'smooth',
                                     maxgap=Inf, 
                                     filter = 'moving',
@@ -962,7 +964,7 @@ ggplot(aes(x = timerezero3, y= pupil))+
 subset(tmp.df3, tNo == 1)%>%
 ggplot(aes(x = timerezero3, y= pup_interp))+
   geom_line()+
-   geom_line(aes(y = extendpupil), color = 'red')+
+   # geom_line(aes(y = extendpupil), color = 'red')+
   # geom_line(aes(y = pup_interp), colour = 'gray')+
     facet_grid(~ssid)
   # facet_grid(~Condition)
@@ -1036,6 +1038,28 @@ ggplot(subset(tmp.df3, tNo == 10 & tmp.df3$ssid == 354) , aes(x = timerezero3, y
     geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
+
+
+ggplot(subset(tmp.df3, tNo == 10 & tmp.df3$ssid == 354) , aes(x = timerezero3, y= pup_basCor))+
+    # geom_smooth(se = F)+
+  geom_line()+
+    geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
+    geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)+
+  xlim(-3,3)
+
+subset(tmp.df3, tNo == 10)%>%
+  group_by(ssid, tNo)%>%
+  mutate(pupil_z = pup_interp_mad - mean(pup_interp_mad))%>%
+ggplot(aes(x = timerezero3, y= pupil_z))+
+    # geom_smooth(se = F)+
+  geom_smooth()+
+    geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
+    geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)+
+  xlim(-6,15)
 ```
 unique(tmp.df3$ssid)
 
