@@ -1049,21 +1049,25 @@ ggplot(subset(tmp.df3, tNo == 10 & tmp.df3$ssid == 354) , aes(x = timerezero3, y
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)+
   xlim(-3,3)
 
+
+# preparation
 subset(tmp.df3, tNo == 10)%>%
   group_by(ssid, tNo)%>%
-  mutate(pupil_z = pup_interp_mad - mean(pup_interp_mad))%>%
+  mutate(pupil_z = pup_interp_mad - mean(pup_interp_mad, na.rm = TRUE))%>%
+  ungroup()%>%
 ggplot(aes(x = timerezero3, y= pupil_z))+
     # geom_smooth(se = F)+
-  geom_smooth()+
+  stat_summary(fun = mean, geom = 'line')+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
     geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)+
-  xlim(-6,15)
+  xlim(-3,15)
 ```
 unique(tmp.df3$ssid)
 
 ```{r}
+# rest period
 ggplot(subset(tmp.df3, tmp.df3$Condition == 'Rest') , aes(x = timerezero3, y= pup_basCor, colour = as.factor(ssid)))+
     geom_smooth(se = T)+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
@@ -1100,7 +1104,7 @@ table(is.na(tmp.df3$hr_clean))
 library(zoo)
 
 tmp.df3<- tmp.df3%>%
-  arrange(ssid,tNo, time)
+  arrange(ssid, time,tNo)
 
 # tmp.df3$hr_interp = 
 
