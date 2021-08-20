@@ -1508,6 +1508,8 @@ View(db_beh)
 colnames(db_beh)
 
 db_beh2<- db_beh
+
+# problem
 db328$filename<- as.character(db328$filename)
 db328$ssid<- as.character(db328$ssid)
 
@@ -1516,6 +1518,7 @@ db328$ssid <- 328
 db_beh2<- bind_rows(db_beh2, db328)
 
 unique(db_beh2$ssid)
+
 # create one column for arousl and RT
 
 db_beh2$valence<- if_else(is.na(db_beh2$self_valence_4.response) == FALSE, db_beh2$self_valence_4.response,
@@ -1561,6 +1564,7 @@ ggplot(db_beh2, aes(x = arousal, y = ArousalMean))+
   geom_smooth(method = lm, se = T)
 
 colnames(db_beh2)
+
 db_beh2$triggeracq<- db_beh2$trigger
 unique(db_beh2$ssid)
 
@@ -1569,15 +1573,19 @@ db_beh3<- select(db_beh2, c(2:7, 18:23))
 # db_beh3<- subset(db_beh3, is.na(db_beh3$condition) == FALSE)
 
 colnames(db_beh3)
+
 colnames(db_beh3_301_309)
+
 db_beh3$trigger<-NULL
 db_beh3_301_309$triggeracq<- NULL
 
+
 db_beh3_301_309$condition[db_beh3_301_309$condition == "Example Stimuli"]<- "Practice"
+
 db_beh3$condition[db_beh3$condition == "Example Stimuli"]<- "Practice"
 
 
-db_beh3$triggeracq<- NULL
+# db_beh3$triggeracq<- NULL
 
 library(readr)
 db_beh300 <-  read_csv("300-309 beh/tmp.df4300_sum_full.csv")
@@ -1602,10 +1610,13 @@ str(tmp.df4_sum)
 str(db_beh_all)
 tmp.df4_sum$ssid<- as.numeric(tmp.df4_sum$ssid)
 
-db_beh3$ssid<- as.numeric(db_beh3$ssid)
+db_beh3$ssid <- as.numeric(db_beh3$ssid)
 # rm(tmp.df4_sum_full_t)
 
 tmp.df4_sum_full<- left_join(tmp.df4_sum, db_beh_all, by = c('ssid', 'tNo'))
+tmp.df4_sum_full$ssid<- as.numeric(tmp.df4_sum_full$ssid)
+
+tmp.df4_sum_full<- left_join(tmp.df4_sum_full, db_beh3, by = c('ssid', 'tNo'))
 
 tmp.df4_sum_full<- tmp.df4_sum_full%>%
   arrange(ssid, tNo, time)
