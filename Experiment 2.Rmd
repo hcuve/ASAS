@@ -1161,7 +1161,7 @@ unique(tmp.df4$trackloss)
 tmp.df4$hr_trackloss<- if_else(is.na(tmp.df4$hr_clean) == TRUE, 0, 1) # 1 means valid, 0 missing
 
 
-tmp.df4 <- tmp.df4%>%
+tmp.df4 <- tmp.df4 %>%
   group_by(ssid, tNo, trialUnq, text)%>%
   mutate(gaze_valid_prop = sum(trackloss)/n())%>%
   mutate(gaze_loss_prop = 1 - gaze_valid_prop)%>%
@@ -1182,7 +1182,7 @@ ggplot(subset(tmp.df4, tmp.df3$ssid == 354) , aes(x = tNo, y= gaze_valid_prop))+
    # geom_line(aes(y = hr), linetype = 'dotted', colour = 'blue', size = 0.4)
 
 colnames(tmp.df4)
-write_csv(tmp.df4, 'interodata_clean_gp.csv')
+write_csv(tmp.df4, 'interodata_clean_gp_346_355.csv')
 
 # tmp.df4<- read_csv('intero_tsdata_clean.csv')
 
