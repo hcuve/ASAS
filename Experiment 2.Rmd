@@ -1275,6 +1275,8 @@ colnames(tmp.df4)
   split_df = split(for_gazepath, list(for_gazepath$split_column))
   
   
+  setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/GP_IAPS_for_gazepath/346_355")
+  
   (sprintf("writing for gazepath"))
   # ssid = split(for_gazepath, list(for_gazepath$ssid))
   # for (ssid in names(split_df)) {
@@ -1285,8 +1287,37 @@ colnames(tmp.df4)
 
 
 ```
+
+
 process gazepath and ledalab
+
+gazepath settings
+
+
+left eye x coord: left_gaze_x_cor_pix
+left eye y coord: left_gaze_y_cor_pix
+
+didtance: distance (mm)
+
+right eye x coord: right_gaze__cor_pix
+right eye y coord: right_gaze_x_cor_pix
+didtance: distance (mm)
+
+trial index: trialnq
+
+
+sample rate: 150
+screen resolution height (pix): 1200
+screen resolution width (pix): 1920
+
+stimuli height (px): 768
+stimuli width (px): 1024
+variables to keep: trial unq
+
 ```{r}
+
+
+install.packages('gazepath')
 library(gazepath)
 GUI()
 
