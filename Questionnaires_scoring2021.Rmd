@@ -5,7 +5,24 @@ date: "21/08/2021"
 output: html_document
 ---
 
+gorilla codes
+
+
+STAI:: 5nzr
+AQ:7uqw
+STAIS: 8rfo
+Demog: 8zto
+BVAQ: 83b1
+BPQ: bbc4
+DASS: chif
+IQ: esh8
+IAS: jvi8
+TAS:pdlt
+demog_meantal health: v2gn
+
 AQ_50
+
+quick check that Lucys scoring are correct
 
 ```{r}
 # Traditional scoring
@@ -80,4 +97,193 @@ db_quest_checkAQ_2%>%
   
 ```
 
-this confirms that Lucys scoring is correct
+this confirms that Lucy scoring is correct
+also checked a few examples of TAS seem correct. but should note one inconsistency in the first participant (300)
+
+AQ_50
+
+```{r}
+
+# 345_356
+read_selfrep <- function(flnm) {
+    read_csv(flnm) %>%
+        mutate(filename = flnm)
+}
+
+db_AQ <- list.files(pattern = "*.csv", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+db_AQ<- subset(db_AQ, db_AQ$`Event Index`== 1)
+  
+  
+View(db_AQ)
+
+library(tidyverse)
+colnames(db_AQ)
+
+db_AQ1<- db_AQ%>%
+  select(c(16,33:132))
+  
+
+colnames(db_AQ1)
+
+db_AQ2<- db_AQ1%>%
+select(seq(1, 101, 2))
+
+# create a prefix for AQ items
+# https://it.unt.edu/sites/default/files/paste_jds_jun2013.pdf - some nice tips here
+prefix<- "AQ_"
+
+AQ_counter<- seq(1,50)
+
+aq_labels<-paste(prefix, AQ_counter, sep = "")
+# generate odd numbers to match the columns we wnt to keep
+names<- c("completion_code", aq_labels)
+
+# rename dataset
+names(db_AQ2)<- names
+
+db_AQ3<- db_AQ2 %>%
+#   mutate_at(c('TAS_4', 'TAS_5', 'TAS_10', 'TAS_18', 'TAS_19'), 
+#             funs(recode(., "1=5; 2=4; 3=3; 4=2; 5 =1")))%>%
+# #    2, 4, 5, 6, 7, 9, 12, 13, 16, 18,
+# # 19, 20, 21, 22, 23, 26, 33, 35, 39, 41, 42, 43, 45, 46
+  mutate_at(c("AQ_2", "AQ_4", "AQ_5", "AQ_6", "AQ_7", "AQ_9", "AQ_12", "AQ_13", "AQ_16", "AQ_18",
+                 "AQ_19","AQ_20", "AQ_21", "AQ_22", "AQ_23", "AQ_26", "AQ_33", "AQ_35", "AQ_39", "AQ_41",
+                 "AQ_42",
+                 "AQ_43", "AQ_45", "AQ_46"), 
+            funs(ifelse(. <= 2, 1, 0)))%>%
+            # funs(recode(., "1=1; 2=1; 3=0; 4=0")))%>%
+   mutate_at(c("AQ_1", "AQ_3", "AQ_8", "AQ_10", "AQ_11", "AQ_14", "AQ_15", "AQ_17", "AQ_24", "AQ_25",
+                 "AQ_27","AQ_28", "AQ_29", "AQ_30", "AQ_31", "AQ_32", "AQ_34", "AQ_36", "AQ_37", "AQ_38",
+                 "AQ_40",
+                 "AQ_44", "AQ_47", "AQ_48", "AQ_49", "AQ_50"), 
+             funs(ifelse(. > 2, 1, 0)))
+             # funs(recode(., "1=0; 2=0; 3=1; 4=1")))
+
+
+
+db_AQ4<- db_AQ3%>%
+  # mutate(DIF = TAS_1 + TAS_3 + TAS_6 + TAS_7 + TAS_9 + TAS_13+ TAS_14)%>%
+  # mutate(EOT = TAS_8+TAS_15+TAS_16+TAS_20+TAS_5+TAS_10+TAS_18+TAS_19)%>%
+  # mutate(DDF = TAS_2+TAS_11+TAS_12+TAS_17+TAS_4)%>%
+  mutate(SS = AQ_1+ AQ_11+ AQ_13 + AQ_15+ AQ_22 + AQ_36 + AQ_44 + AQ_45 + AQ_47 + AQ_48)%>%
+  mutate(AS = AQ_2+ AQ_4 + AQ_10+AQ_16+AQ_25+AQ_32+AQ_34+AQ_37+AQ_43+AQ_46)%>%
+  mutate(ATD = AQ_5+AQ_6+AQ_9+AQ_12+AQ_19+ AQ_23+AQ_28+AQ_29+AQ_30+AQ_49)%>%
+  mutate(COM = AQ_7+AQ_17+AQ_18+AQ_26+AQ_27+AQ_31+AQ_33+AQ_35+AQ_38+AQ_39)%>%
+  mutate(IMAG = AQ_3+AQ_8+AQ_14+AQ_20+AQ_21+ AQ_24+AQ_40+AQ_41+AQ_42+AQ_50)%>%
+  # mutate(TAS_Total = DIF + DDF + EOT)%>%
+  mutate(AQ = SS + AS +ATD + COM + IMAG)%>%
+  select(c(completion_code, AQ))
+  
+
+
+
+```
+
+TAS-28
+
+```{r}
+
+read_selfrep <- function(flnm) {
+    readxl::read_xlsx(flnm) %>%
+        mutate(filename = flnm)
+}
+
+db_TAS <- list.files(pattern = "*-pdlt.xlsx", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+db_TAS<- subset(db_TAS, db_TAS$`Event Index`== 1)
+  
+  
+View(db_TAS)
+
+library(tidyverse)
+colnames(db_TAS)
+
+db_TAS1<- db_TAS%>%
+  select(c(16,33:71))
+  
+
+colnames(db_TAS1)
+
+db_TAS2<- db_TAS1%>%
+select(c(1,seq(2, 40, 2)))
+
+
+db_TAS2
+# note the gorilal tas labels have a zero, like 01 instead of 1
+?recode
+db_TAS3<- db_TAS2 %>%
+  mutate_at(c('TAS_04', 'TAS_05', 'TAS_10', 'TAS_18', 'TAS_19'), 
+            funs(car::recode(., "1=5; 2=4; 3=3; 4=2; 5 =1")))%>%
+  mutate(DIF = TAS_01 + TAS_03 + TAS_06 + TAS_07 + TAS_09 + TAS_13+ TAS_14)%>%
+  mutate(EOT = TAS_08+TAS_15+TAS_16+TAS_20+TAS_05+TAS_10+TAS_18+TAS_19)%>%
+  mutate(DDF = TAS_02+TAS_11+TAS_12+TAS_17+TAS_04)%>%
+  mutate(TAS = DIF + DDF + EOT)
+
+db_TAS3$completion_code<- db_TAS3$`Participant Completion Code`
+
+db_TAS4<- select(db_TAS3, c(completion_code, TAS))
+  
+
+
+```
+
+DASS: chif
+
+# Function that scores DASS-21 and all subscales. DASS-21 is a 21-item scale
+# (0-3 likert) measuring the participant's levels of depression, anxiety, and 
+# stress. DASS is based on a dimensional understanding of these factors - 
+# each of the 21 items is mapped to one of the three factors.
+# Dependencies: tidyverse, 03_scoring_helpers.R
+
+subscales need to be multiplied by 2
+
+```{r}
+read_selfrep <- function(flnm) {
+    read_csv(flnm) %>%
+        mutate(filename = flnm)
+}
+
+db_DASS <- list.files(pattern = "*-chif.csv", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+db_DASS<- subset(db_DASS, db_DASS$`Event Index`== 1)
+
+
+
+
+score_DASS <- function(df) {
+  DASS_data <- as_tibble(df) %>% # Building this df to make debugging easier
+    select("Participant Private ID", DASS_01:DASS_21)
+  
+  DASS_score <- tibble(
+    "Participant Private ID" = DASS_data$`Participant Private ID`,
+    DASS_score_total =         sumvars(.df = DASS_data,
+                                       DASS_01:DASS_21),
+    
+    # Depression subscale is items 3, 5, 10, 13, 16, 17, and 21
+    DASS_subscale_depression = sumvars(.df = DASS_data,
+                                       DASS_03, DASS_05, DASS_10, DASS_13,
+                                       DASS_16, DASS_17, DASS_21),
+    
+    # Anxiety subscale is items 2, 4, 7, 9, 15, 19, and 20
+    DASS_subscale_anxiety =    sumvars(.df = DASS_data,
+                                       DASS_02, DASS_04, DASS_07, DASS_09,
+                                       DASS_15, DASS_19, DASS_20),
+    
+    # Stress subsccale is items 1, 6, 8, 11, 12, 14, and 18
+    DASS_subscale_stress =     sumvars(.df = DASS_data,
+                                       DASS_01, DASS_06, DASS_08, DASS_11,
+                                       DASS_12, DASS_14, DASS_18)
+  )
+  return(DASS_score)
+}
+
+
+
+```
