@@ -254,36 +254,101 @@ db_DASS <- list.files(pattern = "*-chif.csv",
 
 db_DASS<- subset(db_DASS, db_DASS$`Event Index`== 1)
 
-
-
-
-score_DASS <- function(df) {
-  DASS_data <- as_tibble(df) %>% # Building this df to make debugging easier
-    select("Participant Private ID", DASS_01:DASS_21)
+colnames(db_DASS)
+db_DASS1<- db_DASS%>%
+  select(c(12,13,16,33:73))
   
-  DASS_score <- tibble(
-    "Participant Private ID" = DASS_data$`Participant Private ID`,
-    DASS_score_total =         sumvars(.df = DASS_data,
-                                       DASS_01:DASS_21),
-    
+colnames(db_DASS1)
+
+
+db_DASS2<- db_DASS1%>%
+select(c(1:3,seq(4, 44, 2)))
+
+db_DASS2$DASS_08<- db_DASS2$STAI_08
+  
+db_DASS2$STAI_08<- NULL
+
+db_DASS3 <- db_DASS2 %>%
+  # mutate(DASS_score_total =         rowsum(
+  #                                      DASS_01:DASS_21))
+  #   
     # Depression subscale is items 3, 5, 10, 13, 16, 17, and 21
-    DASS_subscale_depression = sumvars(.df = DASS_data,
-                                       DASS_03, DASS_05, DASS_10, DASS_13,
-                                       DASS_16, DASS_17, DASS_21),
-    
+    mutate(DASSDepression = 2*(DASS_03+ DASS_05+ DASS_10+ DASS_13+
+                                       DASS_16+ DASS_17+ DASS_21),
     # Anxiety subscale is items 2, 4, 7, 9, 15, 19, and 20
-    DASS_subscale_anxiety =    sumvars(.df = DASS_data,
-                                       DASS_02, DASS_04, DASS_07, DASS_09,
-                                       DASS_15, DASS_19, DASS_20),
+    DASSAnxiety =    2*(DASS_02+ DASS_04+ DASS_07+ DASS_09+
+                                       DASS_15+ DASS_19+ DASS_20),
     
     # Stress subsccale is items 1, 6, 8, 11, 12, 14, and 18
-    DASS_subscale_stress =     sumvars(.df = DASS_data,
-                                       DASS_01, DASS_06, DASS_08, DASS_11,
-                                       DASS_12, DASS_14, DASS_18)
-  )
-  return(DASS_score)
-}
+    # on gorilla DAS_08 is islabeled STAI_08
+    DASSStress =     2*(DASS_01+ DASS_06+ DASS_08+ DASS_11+
+                                       DASS_12+ DASS_14+ DASS_18)
+    )%>%
+  mutate(DASSTotal = DASSDepression+DASSAnxiety+DASSStress)
+  
+colnames(db_DASS3)
+db_DASS3$completion_code<- db_DASS3$`Participant Completion Code`
+
+db_DASS4<- select(db_DASS3, c(1:2,29,25:28))
+
+```
+
+IAS: jvi8
+working well om the app
+https://xavierrg.shinyapps.io/datacleaning/
+```{r}
+library(readr)
+db_IAS <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IAS/345_346_IAS_2021-08-21.csv")
+View(db_IAS)
 
 
 
 ```
+
+
+BVAQ: 83b1
+BPQ: bbc4
+
+# Function that scores the Body Perception Questionnaire (BPQ) 
+# (Cabrera et al., 2018) and all subscales
+# Dependencies: 03_scoring_helpers.R, tidyverse
+
+
+
+score_BPQ <- function(df){
+  
+  # Create a new temporary df to store the BPQ data 
+  BPQ_data <- as_tibble(df) %>%
+    select("Participant Private ID", 
+           BAI_01:BAI_26, ANSR_01:ANSR_20, HHI_01:HHI_28) %>%
+    # Recode factors into numerics
+    mutate_at(.vars = vars(BAI_01:HHI_28), 
+              .funs = recode(Never = 1, 
+                             Mild = 2, 
+                             Moderate = 3, 
+                             Severe = 4, 
+                             Debilitating = 5))
+
+
+  print(BPQ_data)
+  
+  # Construct final scores
+  BPQ_score <- tibble(
+    "Participant Private ID" = BPQ_data$`Participant Private ID`,
+    
+    # Body awareness image
+    BAI_score = sumvars(.df = BPQ_data, 
+                        BAI_01:BAI_26) / 26,
+    
+    # Autonomic nervous system response
+    ANSR_score = sumvars(.df = BPQ_data,
+                         ANSR_01:ANSR_20) / 20,
+    
+    # Health history inventory
+    HHI_score = sumvars(.df = BPQ_data,
+                        HHI_01:HHI_28) / 28
+  )
+  
+  return(BPQ_score)
+  
+}
