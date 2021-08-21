@@ -1625,7 +1625,26 @@ tmp.df4_sum_full<- tmp.df4_sum_full%>%
 
 
 # self reports
-continue here
+- New Tas is already scored
+- score AQ, etc using https://xavierrg.shinyapps.io/datacleaning 
+
+gorilla codes
+
+
+STAI:: 5nzr
+AQ:7uqw
+STAIS: 8rfo
+Demog: 8zto
+BVAQ: 83b1
+BPQ: bbc4
+DASS: chif
+IQ: esh8
+IAS: jvi8
+TAS:pdlt
+demog_meantal health: v2gn
+
+
+consent: 8nsp
 
 ```{r}
 
@@ -1659,6 +1678,10 @@ write_csv(tmp.df4_sum_full, 'intero_data_full.csv')
 
 # Import Ledalab
 Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 105 .01 2])
+
+
+
+Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','biopac','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 6 .01 2])
 
 
 etwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021")
