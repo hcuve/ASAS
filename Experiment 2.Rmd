@@ -1621,8 +1621,13 @@ tmp.df4_sum_full<- left_join(tmp.df4_sum_full, db_beh3, by = c('ssid', 'tNo'))
 tmp.df4_sum_full<- tmp.df4_sum_full%>%
   arrange(ssid, tNo, time)
 
+```
+
 
 # self reports
+continue here
+
+```{r}
 
 db_selfrep <- read_csv("intero_selrep.csv")
 View(intero_selrep)
