@@ -296,7 +296,7 @@ db_DASS4<- select(db_DASS3, c(1:2,29,25:28))
 IAS: jvi8
 working well om the app
 https://xavierrg.shinyapps.io/datacleaning/
-```{r}
+```{r eval=FALSE, include=FALSE}
 library(readr)
 db_IAS <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IAS/345_346_IAS_2021-08-21.csv")
 View(db_IAS)
@@ -306,49 +306,190 @@ View(db_IAS)
 ```
 
 
-BVAQ: 83b1
+
 BPQ: bbc4
 
 # Function that scores the Body Perception Questionnaire (BPQ) 
 # (Cabrera et al., 2018) and all subscales
 # Dependencies: 03_scoring_helpers.R, tidyverse
+```{r}
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BPQ")
 
-
-
-score_BPQ <- function(df){
-  
-  # Create a new temporary df to store the BPQ data 
-  BPQ_data <- as_tibble(df) %>%
-    select("Participant Private ID", 
-           BAI_01:BAI_26, ANSR_01:ANSR_20, HHI_01:HHI_28) %>%
-    # Recode factors into numerics
-    mutate_at(.vars = vars(BAI_01:HHI_28), 
-              .funs = recode(Never = 1, 
-                             Mild = 2, 
-                             Moderate = 3, 
-                             Severe = 4, 
-                             Debilitating = 5))
-
-
-  print(BPQ_data)
-  
-  # Construct final scores
-  BPQ_score <- tibble(
-    "Participant Private ID" = BPQ_data$`Participant Private ID`,
-    
-    # Body awareness image
-    BAI_score = sumvars(.df = BPQ_data, 
-                        BAI_01:BAI_26) / 26,
-    
-    # Autonomic nervous system response
-    ANSR_score = sumvars(.df = BPQ_data,
-                         ANSR_01:ANSR_20) / 20,
-    
-    # Health history inventory
-    HHI_score = sumvars(.df = BPQ_data,
-                        HHI_01:HHI_28) / 28
-  )
-  
-  return(BPQ_score)
-  
+# read the files
+read_selfrep <- function(flnm) {
+    read_csv(flnm) %>%
+        mutate(filename = flnm)
 }
+
+db_BPQ <- list.files(pattern = "*-bbc4.csv", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+# eliminate empty rows
+db_BPQ<- subset(db_BPQ, db_BPQ$`Event Index`== 1)
+
+db_BPQ$completion_code<- db_BPQ$`Participant Completion Code`
+
+# store names for BPQ columns
+bpq_names<- names(db_BPQ %>%
+  
+# score_BPQ <- function(df){
+  # Create a new temporary df to store the BPQ data 
+  # BPQ_data <- as_tibble(df) %>%
+    select("Participant Private ID","completion_code", 
+           BAI_01:BAI_26, ANSR_01:ANSR_20, HHI_01:HHI_28)%>%
+  # drop anything with quantised or text
+  select(-contains("text"))%>%
+  select(-contains("quantised")))
+
+bpq_names
+
+
+# use the quantised columns as the response siunce they have a number rather than a string
+
+db_BPQ1<- db_BPQ %>%
+  
+# score_BPQ <- function(df){
+  # Create a new temporary df to store the BPQ data 
+  # BPQ_data <- as_tibble(df) %>%
+    select("Participant Private ID","completion_code", 
+           BAI_01:`BAI_26-quantised`, ANSR_01:`ANSR_20-quantised`, HHI_01:`HHI_28-quantised`)%>%
+  # drop anything with quantised or text
+  # library(dplyr) 
+  select(-contains("text")) %>%
+  # select(-contains("quantised"))%>%
+  
+  # select the quantised to use as the coded variable
+  select(c(1:2, contains("quantised")))
+  
+# score
+# assign new names replacing quantised column names with BPQ only item names
+names(db_BPQ1)<- bpq_names
+
+colnames(db_BPQ1)
+# do the actual scoring, only on the BPQ part - bpdy awareness
+db_BPQ2<- db_BPQ1%>%
+    # Recode factors into numerics
+    # mutate_at(vars(BAI_01:HHI_28), 
+    #           funs(car::recode("Never" = 1, 
+    #                          "Occasionally" = 2, 
+    #                          "Sometimes" = 3, 
+    #                          "Usually" = 4, 
+    #                          "Always" = 5)))
+  select(c(1:28))%>%
+   mutate(BPQ = rowSums(.[ 3:28]))
+    
+  #   # Autonomic nervous system response
+  #   ANSR_score = sumvars(.df = BPQ_data,
+  #                        ANSR_01:ANSR_20) / 20,
+  #   
+  #   # Health history inventory
+  #   HHI_score = sumvars(.df = BPQ_data,
+  #                       HHI_01:HHI_28) / 28
+  # )
+  # 
+
+db_BPQ2
+db_BPQ3<- select(db_BPQ2, 1,2,29)
+```
+
+BVAQ: 83b1
+https://www.psychologicabelgica.com/articles/10.5334/pb.302/print/
+sum ramnge 40-200
+
+```{r}
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BVAQ_83b1")
+read_selfrep <- function(flnm) {
+    readxl::read_xlsx(flnm) %>%
+        mutate(filename = flnm)
+}
+
+db_BVAQ <- list.files(pattern = "*-83b1.xlsx", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+
+# eliminate empty rows
+db_BVAQ<- subset(db_BVAQ, db_BVAQ$`Event Index`== 1)
+
+db_BVAQ$completion_code<- db_BVAQ$`Participant Completion Code`
+
+View(db_BVAQ)
+
+db_BVAQ1<- db_BVAQ %>%
+   select( -contains("quantised"))%>%
+   select(c("Participant Private ID","completion_code",BVAQ_01:BVAQ_40))
+
+db_BVAQ1<- db_BVAQ1%>%
+   mutate(BVAQ = rowSums(.[ 3:42]))
+  
+db_BVAQ3<- select(db_BVAQ1, c(1,2,43))
+```
+
+demographics
+8zto- age
+8nsp - vision
+v2gn = mental health
+
+```{r}
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn")
+
+read_selfrep <- function(flnm) {
+    readxl::read_xlsx(flnm) %>%
+        mutate(filename = flnm)
+}
+
+db_age <- list.files(pattern = "*-8zto.xlsx", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+db_vision <- list.files(pattern = "*-8nsp.xlsx", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+db_mhealth <- list.files(pattern = "*-v2gn.xlsx", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+colnames(db_mhealth)
+# db_mhealth<- subset(db_mhealth, -2:12,14:15,17:26)
+
+bind (db_mhealth, db_vision, db_age, by = `Participant Private ID`)
+
+colnames(db_age)
+db_age$age_response_specific
+db_age$gender_response
+db_age$`gender_response-quantised`
+# db_age$`AgeResponse-text`
+db_age1<- select(db_age, c(1,13,16,36,37,41))
+
+colnames(db_mhealth)
+
+db_mhealth$ASD
+db_mhealth$`ASD-text`
+db_mhealth$clinical_diagnosis
+db_mhealth$mental_health
+db_mhealth$`mental_health-text`
+db_mhealth$medication
+db_mhealth1<- select(db_mhealth, c(1,13,16, 33,34,37:38,40))
+
+colnames(db_vision)
+db_vision$EyesightResponse
+db_vision1<- select(db_vision, c(1,13,16, 33,34,36:37))
+
+db_demog<- left_join(db_vision1, db_mhealth1,db_age1, by = c("Participant Private ID",
+                                                   "Participant Completion Code"))%>%
+  subset(!is.na(`Participant Private ID`))
+
+db_demog$completion_code <- db_demog$`Participant Completion Code`
+
+```
+
+
+IQ
+IQ: esh8
+```{r}
+IQ: esh8
+
+
+
+```
