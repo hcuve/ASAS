@@ -320,6 +320,9 @@ read_selfrep <- function(flnm) {
     read_csv(flnm) %>%
         mutate(filename = flnm)
 }
+library(readxl)
+db_BPQ <- read_excel("data_exp_11458-v9_questionnaire-bbc4.xlsx")
+View(data_exp_11458_v9_questionnaire_bbc4)
 
 db_BPQ <- list.files(pattern = "*-bbc4.csv", 
                full.names = T) %>% 
@@ -487,9 +490,69 @@ db_demog$completion_code <- db_demog$`Participant Completion Code`
 
 IQ
 IQ: esh8
+
+345 to 356 need to be scores separatelly
+
+Lucy: https://docs.google.com/spreadsheets/d/1P9x7oHxpUTanb412czfgYqR_stPJ3fHzwYiItANpfO8/edit#gid=277478937
 ```{r}
-IQ: esh8
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IQ_esh8")
 
 
+read_selfrep <- function(flnm) {
+    readxl::read_xlsx(flnm) %>%
+        mutate(filename = flnm)
+}
 
+db_IQ <- list.files(pattern = "*-esh8.xlsx", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+colnames(db_IQ)
+
+db_IQ1<- select(db_IQ, c(1,13,16, 37,45:48))
+
+db_IQ2<- subset(db_IQ1, !is.na(Response))
+View(db_IQ2)
+
+db_IQ3 <- db_IQ2%>%
+  group_by(`Participant Private ID`, `Participant Completion Code`)%>%
+  summarise_if(is.numeric, sum, na.rm = TRUE)
+
+
+db_IQ3$Matrix_Total<- db_IQ3$Correct
+db_IQ3$completion_code<- db_IQ3$`Participant Completion Code`
+
+colnames(db_IQ3)
+db_IQ4<- select(db_IQ3,c(1,7,6))
+  
+```
+
+Merge all into one self report
+
+```{r}
+db_demog$`Participant Completion Code`<- NULL
+
+db_demog$completion_code<- db_demog$`Participant Completion Code`
+
+left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS, by = "completion_code")
+
+db_DASS4$`Participant Public ID`<-NULL
+
+db_demog$`Event Index.x`<-NULL
+db_DASS4$`Participant Private ID`<- NULL
+db_AQ4$`Participant Private ID`<- NULL
+
+db_BVAQ3$`Participant Private ID`<- NULL
+db_IQ4$`Participant Private ID`<- NULL
+db_BPQ3$`Participant Private ID`<- NULL
+
+
+db_BPQ3
+
+left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3, by = "completion_code")
+
+
+db_self_rep<- Reduce(merge, list(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS))
+
+# db_IAS$
 ```
