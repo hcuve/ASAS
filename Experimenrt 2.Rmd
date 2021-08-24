@@ -1,1 +1,3903 @@
+---
+title: "InteroceptionStudy_GPValidation"
+Author: "Helio Cuve & "
 date: "8 January 2021"
+output: html_document
+---
+
+
+# Loading rdhf5 
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.10")
+
+BiocManager::install("rhdf5")
+
+library(rhdf5)
+
+
+```
+
+# Preferences
+list necessary package install them if not already and load them
+```{r}
+# devtools::install_github("dmirman/gazer")
+
+
+list.of.packages <- c("ggplot2", "data.table", 'readr', "rhdf5", 'tidyverse', "gazer", 'lmerTest')
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+lapply(list.of.packages, require, character.only = TRUE)
+lapply(new.packages, require, character.only = TRUE)
+
+library(purrr)
+library(data.table)
+library(dplyr)
+library(tidyr)
+
+# setting a workspace
+# change approproatelly
+
+setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020")
+hdf5FilesPath<- "D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020"
+
+
+# 2021 data
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021")
+hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
+```
+
+
+# gp extractor function
+takes gp files and returns a clean files with messages parsed and deletes unnecessary stuff
+
+note that starting from 322 we have gsr-v and hr-v, and pulse
+
+```{r, gp extractor}
+
+# hdf5FilesPath<- "D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking"
+
+hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
+
+gp.extractor = function(hdf5FilesPath) {
+  
+  setwd(hdf5FilesPath)
+  #getwd()
+  hdfFilesList = list.files(hdf5FilesPath, pattern = "\\.hdf5$")
+  
+  if (length(hdfFilesList) == 0){
+    
+    return(message('No HDF5 files found in the directory provided.'))
+  }
+   f = 30
+  for (f in 1:length(hdfFilesList)) {
+    
+    message(sprintf("Extracting file %i / %i - %s", f, length(hdfFilesList), hdfFilesList[f]))
+    
+    #note that some r-studio bug sometimes causes this to fail when runnin from notebook, 
+    # in that case run it directly on command line
+    tmp.events =h5read(hdfFilesList[f], '/data_collection/events/experiment/MessageEvent')
+  
+    tmp.eyetr  = h5read(hdfFilesList[f], '/data_collection/events/eyetracker/BinocularEyeSampleEvent')
+    
+    # Get subject id from Events
+    ssid = sapply(strsplit(grep('SubjJID', tmp.events$text, value = TRUE), split = ": "), "[", 2)
+    date = sapply(strsplit(grep('DATE', tmp.events$text, value = TRUE), split = ": "), "[", 2)
+    session = sapply(strsplit(grep('Session:', tmp.events$text, value = TRUE), split = ":"), "[", 2)
+    cali<- subset(tmp.events, grepl('Cali', tmp.events$text) == TRUE)
+    
+    # Create DF for trials data
+    tmp.df = data.frame(matrix(ncol = ncol(tmp.eyetr)))
+    names(tmp.df) = names(tmp.eyetr)
+    colnames(tmp.df)
+    
+    # Prepare Events, keep only start/end messages
+    phrases = c('tStart', 'tEnd')
+    tmp.events_backup<- tmp.events
+    # tmp.events<-  tmp.events_backup
+    tmp.events = subset(tmp.events, grepl(paste(phrases, collapse = "|"), tmp.events$text))
+    
+    # Create start/end references
+    tmp.events$tStart   = NA
+    tmp.events$tEnd     = NA
+    
+    # Trial number extraction 
+    tmp.events$tNo      = NA
+    tmp.df$tNo          = NA
+    tmp.df$Condition    = NA
+    
+    # Space for subject id
+    tmp.df$ssid         = NA
+    tmp.df$text<-NA
+    
+    for (l in 1:nrow(tmp.events)) {
+ 
+      message(sprintf("Grabing start messages %s", tmp.events$text[l]))
+      
+      if ((grepl('tStart', tmp.events$text[l])) == TRUE) {
+        tmp.events$tStart[l] = tmp.events$time[l]
+        
+        if ((grepl('tEnd', tmp.events$text[l+1])) == TRUE){
+          tmp.events$tEnd[l] = tmp.events$time[l+1]
+        }
+        
+        else {
+          message('trial start/end structure not valid')
+        }
+      }
+      
+    }
+    message(sprintf("done grabbing messages"))
+    # readline(prompt="Press [enter] to continue")
+    
+    tmp.events$tNo<- as.numeric(as.character(gsub(".*_","",tmp.events$text)))
+
+     message(sprintf("making screencontent"))
+     
+     tmp.eventsbackup<- tmp.events
+    tmp.events$screencontent<- if_else(grepl('fixation', tmp.events$text), 'fixation',
+                                       if_else(grepl('Valence', tmp.events$text), 'ValenceResp',
+                                               if_else(grepl('rest', tmp.events$text), 'rest1', 
+                                                       if_else(grepl('IntResp', tmp.events$text), 'IntResp','stim'))))
+    
+    # unique(tmp.events$screencontent)
+    
+    # atorw condition
+    
+    tmp.events$Condition<- if_else(grepl('IAPS', tmp.events$text), 'IAPS',
+                                   if_else(grepl('Example', tmp.events$text), 'Practice',
+                                           if_else(grepl('rest', tmp.events$text), 'Rest', NULL)))
+    tmp.events$stim<- if_else(tmp.events$Condition == 'IAPS', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text),
+                              if_else(tmp.events$Condition == 'Practice', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text), 'REST'))
+    
+    # substitute periods
+    tmp.events$stim<- gsub('\\.', '.jpg', tmp.events$stim)
+    
+    tmp.events$tNo<- if_else(tmp.events$Condition == 'Practice', (tmp.events$tNo)-6,
+                             if_else(tmp.events$Condition == 'Rest',-7, tmp.events$tNo))
+    
+    # create trial number < 0 are practice trials
+    tmp.events$tNo<- if_else(tmp.events$tNo> -1, tmp.events$tNo+1, tmp.events$tNo) # avoid zeros
+    
+    tmp.events1 = subset(tmp.events, grepl('tStart',tmp.events$text))
+    # tmp.events1$tNo1<- NULL
+    # tmp.events1$tNo2<- NULL
+    
+    tmp.events1<- subset(tmp.events1, is.na(tmp.events1$tNo) == FALSE)
+  
+
+    # colnames(tmp.df)
+    # colnames(tmp.df)
+    # colnames(tmp.events1)
+    # colnames(tmp.eyetr)
+    
+    tmp.df$screencontent<- NA
+    tmp.df$stim<- NA
+    tmp.events1$tEnd<- if_else(tmp.events1$tNo == -7, tmp.events1$tStart+120, tmp.events1$tEnd)
+    
+    message(sprintf("subsetting eyetracking data"))
+    
+    for(e in 1:nrow(tmp.events1)) {
+      
+      # Subset the EyeTracking data based on start/end
+      tmp.raw.trial = subset(tmp.eyetr, tmp.eyetr$time >= tmp.events1$tStart[e] & tmp.eyetr$time <= tmp.events1$tEnd[e])
+      
+      tmp.raw.trial$tNo = tmp.events1$tNo[e]
+      
+      tmp.raw.trial$Condition = tmp.events1$Condition[e]
+      tmp.raw.trial$screencontent = tmp.events1$screencontent[e]
+      tmp.raw.trial$stim = tmp.events1$stim[e]
+      # tmp.raw.trial$stim = tmp.events1$[e]
+      tmp.raw.trial$ssid = ssid
+      tmp.raw.trial$text = tmp.events1$text[e]
+      
+      message(sprintf("binding tmp.df"))
+      
+      tmp.df= rbind(tmp.raw.trial, tmp.df)
+    }
+     message(sprintf("done binding"))
+    
+    # Arrange the dataframe byu time
+    tmp.df<- tmp.df%>%
+      arrange(time)
+    
+    # Save file for the task with subject name
+    name = sprintf("ss%s_GPdata",ssid)
+    message(sprintf("saving data"))
+    write_csv(tmp.df, paste(name,".csv"))
+
+    # write calibration file
+    name2 = sprintf("ss%s_GPdata_cali", ssid)
+    write_csv(cali, paste(name2,".csv"))
+    
+    
+  }
+  
+  
+  message("Processing Completed.")
+  tmp.df
+}
+
+# run function
+tmp_full<- gp.extractor(hdf5FilesPath)
+
+```
+
+
+Problem files
+```{r}
+# 355  - did not finish IAPS
+# adjust below manually 
+
+
+hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
+
+gp.extractor = function(hdf5FilesPath) {
+  
+  setwd(hdf5FilesPath)
+  #getwd()
+  hdfFilesList = list.files(hdf5FilesPath, pattern = "\\.hdf5$")
+  
+  if (length(hdfFilesList) == 0){
+    hdfFilesList
+    
+    return(message('No HDF5 files found in the directory provided.'))
+  }
+   f = 10
+  for (f in 1:length(hdfFilesList)) {
+    
+    message(sprintf("Extracting file %i / %i - %s", f, length(hdfFilesList), hdfFilesList[f]))
+    
+    #note that some r-studio bug sometimes causes this to fail when runnin from notebook, 
+    # in that case run it directly on command line
+    tmp.events =h5read(hdfFilesList[f], '/data_collection/events/experiment/MessageEvent')
+  
+    tmp.eyetr  = h5read(hdfFilesList[f], '/data_collection/events/eyetracker/BinocularEyeSampleEvent')
+    
+    # Get subject id from Events
+    ssid = sapply(strsplit(grep('SubjJID', tmp.events$text, value = TRUE), split = ": "), "[", 2)
+    date = sapply(strsplit(grep('DATE', tmp.events$text, value = TRUE), split = ": "), "[", 2)
+    session = sapply(strsplit(grep('Session:', tmp.events$text, value = TRUE), split = ":"), "[", 2)
+    cali<- subset(tmp.events, grepl('Cali', tmp.events$text) == TRUE)
+    
+    # Create DF for trials data
+    tmp.df = data.frame(matrix(ncol = ncol(tmp.eyetr)))
+    names(tmp.df) = names(tmp.eyetr)
+    colnames(tmp.df)
+    
+    # Prepare Events, keep only start/end messages
+    phrases = c('tStart', 'tEnd')
+    tmp.events_backup<- tmp.events
+    # tmp.events<-  tmp.events_backup
+    tmp.events = subset(tmp.events, grepl(paste(phrases, collapse = "|"), tmp.events$text))
+    
+    # Create start/end references
+    tmp.events$tStart   = NA
+    tmp.events$tEnd     = NA
+    
+    # Trial number extraction 
+    tmp.events$tNo      = NA
+    tmp.df$tNo          = NA
+    tmp.df$Condition    = NA
+    
+    # Space for subject id
+    tmp.df$ssid         = NA
+    tmp.df$text<-NA
+    
+    for (l in 1:nrow(tmp.events)) {
+ 
+      message(sprintf("Grabing start messages %s", tmp.events$text[l]))
+      
+      if ((grepl('tStart', tmp.events$text[l])) == TRUE) {
+        tmp.events$tStart[l] = tmp.events$time[l]
+        
+        if ((grepl('tEnd', tmp.events$text[l+1])) == TRUE){
+          tmp.events$tEnd[l] = tmp.events$time[l+1]
+        }
+        
+        else {
+          message('trial start/end structure not valid')
+        }
+      }
+      
+    }
+    message(sprintf("done grabbing messages"))
+    # readline(prompt="Press [enter] to continue")
+    
+    tmp.events$tNo<- as.numeric(as.character(gsub(".*_","",tmp.events$text)))
+
+     message(sprintf("making screencontent"))
+     
+     tmp.eventsbackup<- tmp.events
+    tmp.events$screencontent<- if_else(grepl('fixation', tmp.events$text), 'fixation',
+                                       if_else(grepl('Valence', tmp.events$text), 'ValenceResp',
+                                               if_else(grepl('rest', tmp.events$text), 'rest1', 
+                                                       if_else(grepl('IntResp', tmp.events$text), 'IntResp','stim'))))
+    
+    # unique(tmp.events$screencontent)
+    
+    
+    tmp.events$Condition<- if_else(grepl('IAPS', tmp.events$text), 'IAPS',
+                                   if_else(grepl('Example', tmp.events$text), 'Practice',
+                                           if_else(grepl('rest', tmp.events$text), 'Rest', NULL)))
+    tmp.events$stim<- if_else(tmp.events$Condition == 'IAPS', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text),
+                              if_else(tmp.events$Condition == 'Practice', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text), 'REST'))
+    
+    # substitute periods
+    tmp.events$stim<- gsub('\\.', '.jpg', tmp.events$stim)
+    
+    tmp.events$tNo<- if_else(tmp.events$Condition == 'Practice', (tmp.events$tNo)-6,
+                             if_else(tmp.events$Condition == 'Rest',-7, tmp.events$tNo))
+    
+    # create trial number < 0 are practice trials
+    tmp.events$tNo<- if_else(tmp.events$tNo> -1, tmp.events$tNo+1, tmp.events$tNo) # avoid zeros
+    
+    tmp.events1 = subset(tmp.events, grepl('tStart',tmp.events$text))
+    # tmp.events1$tNo1<- NULL
+    # tmp.events1$tNo2<- NULL
+    
+    tmp.events1<- subset(tmp.events1, is.na(tmp.events1$tNo) == FALSE)
+  
+
+    # colnames(tmp.df)
+    # colnames(tmp.df)
+    # colnames(tmp.events1)
+    # colnames(tmp.eyetr)
+    
+    tmp.df$screencontent<- NA
+    tmp.df$stim<- NA
+    tmp.events1$tEnd<- if_else(tmp.events1$tNo == -7, tmp.events1$tStart+120, tmp.events1$tEnd)
+    
+    message(sprintf("subsetting eyetracking data"))
+    
+    for(e in 1:nrow(tmp.events1)) {
+      
+      # Subset the EyeTracking data based on start/end
+      tmp.raw.trial = subset(tmp.eyetr, tmp.eyetr$time >= tmp.events1$tStart[e] & tmp.eyetr$time <= tmp.events1$tEnd[e])
+      
+      tmp.raw.trial$tNo = tmp.events1$tNo[e]
+      
+      tmp.raw.trial$Condition = tmp.events1$Condition[e]
+      tmp.raw.trial$screencontent = tmp.events1$screencontent[e]
+      tmp.raw.trial$stim = tmp.events1$stim[e]
+      # tmp.raw.trial$stim = tmp.events1$[e]
+      tmp.raw.trial$ssid = ssid
+      tmp.raw.trial$text = tmp.events1$text[e]
+      
+      message(sprintf("binding tmp.df"))
+      
+      tmp.df= rbind(tmp.raw.trial, tmp.df)
+    }
+     message(sprintf("done binding"))
+    
+    # Arrange the dataframe byu time
+    tmp.df<- tmp.df%>%
+      arrange(time)
+    
+    # Save file for the task with subject name
+    name = sprintf("ss%s_GPdata",ssid)
+    message(sprintf("saving data"))
+    write_csv(tmp.df, paste(name,".csv"))
+
+    # write calibration file
+    name2 = sprintf("ss%s_GPdata_cali", ssid)
+    write_csv(cali, paste(name2,".csv"))
+    
+    
+  }
+  
+  
+  message("Processing Completed.")
+  tmp.df
+}
+
+unique(tmp.df$tNo)
+
+```
+
+
+Now cleaning gaze data and prepare data for ledalab and artifact
+
+```{r, cleaning}
+# function to read all the csvs into one dataframe
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/Step1_GpExtractor_Output/346-355")
+
+# rm(tmp_full)
+read_plus <- function(flnm) {
+  data.table::fread(flnm, select = c("session_id","event_id", "time", "left_gaze_x", "left_gaze_y","right_gaze_x", "right_gaze_y","left_pupil_measure1",
+                                     "right_pupil_measure1","gsr", "gsrv", 'hr', "hrv", "hrp", "status", "tNo",  "Condition", "screencontent", "stim", "ssid", "text")) %>% 
+    mutate(filename = flnm)
+}
+
+
+# read all clean data 
+tmp.df2 <-
+  list.files(pattern = "*.csv", 
+             full.names = T) %>% 
+  map_df(~read_plus(.))
+
+unique(tmp.df2$ssid)
+
+table(is.na(tmp.df2$ssid))
+# tmp.df2$ssid<- substr(tmp.df2$filename, 5,7)
+head(tmp.df2)
+# check we have all participants
+# unique(tmp.df2$ssid)
+tmp.df2<- subset(tmp.df2, !is.na(ssid))
+
+```
+
+
+
+#####################################################################################
+# gp preprocessing funtion, checks for losses, averages gaze, pupil and pixelate
+#####################################################################################
+
+```{r, gppreprocessing}
+gp_preprocessing = function(tmp.df2) {
+  
+  message(sprintf("step1 lft gaze validity"))
+  
+  # transform invalid gaze into NA based on validity codes
+  
+  tmp.df2$left_gaze_x_cor<- if_else(tmp.df2$status != '20', tmp.df2$left_gaze_x, NULL)
+  tmp.df2$left_gaze_x_cor<- if_else(tmp.df2$status != '22', tmp.df2$left_gaze_x_cor, NULL)
+  tmp.df2$left_gaze_y_cor<- if_else(tmp.df2$status != '20', tmp.df2$left_gaze_y, NULL)
+  tmp.df2$left_gaze_y_cor<- if_else(tmp.df2$status != '22', tmp.df2$left_gaze_y_cor, NULL)
+  
+  message(sprintf("step2 right gaze validity"))
+  
+  tmp.df2$right_gaze_x_cor<- if_else(tmp.df2$status != '2', tmp.df2$right_gaze_x, NULL)
+  #
+  tmp.df2$right_gaze_x_cor<- if_else(tmp.df2$status != '22', tmp.df2$right_gaze_x_cor, NULL)
+  tmp.df2$right_gaze_y_cor<- if_else(tmp.df2$status != '22', tmp.df2$right_gaze_y, NULL)
+  tmp.df2$right_gaze_y_cor<- if_else(tmp.df2$status != '22', tmp.df2$right_gaze_y_cor, NULL)
+
+  # pupil validity
+  
+  message(sprintf("step3 pupil validity"))
+  tmp.df2$left_pupil_measure1<- if_else(tmp.df2$status != '20', tmp.df2$left_pupil_measure1, NULL)
+  tmp.df2$left_pupil_measure1<- if_else(tmp.df2$status != '22', tmp.df2$left_pupil_measure1, NULL)
+  
+  tmp.df2$right_pupil_measure1<- if_else(tmp.df2$status != '2', tmp.df2$right_pupil_measure1, NULL)
+  tmp.df2$right_pupil_measure1<- if_else(tmp.df2$status != '22', tmp.df2$right_pupil_measure1, NULL)
+  table(is.na(tmp.df2$right_pupil_measure1))
+  
+  # check gazepoint out of bounds nd repixelate (1920/2 = 960 by 1200/2 = 600. add half to normalised coordinates from psychopy)
+  
+  message(sprintf("step 4 cutting off screen in points and repixelate"))
+  
+  tmp.df2$left_gaze_x_cor<- if_else(tmp.df2$left_gaze_x_cor >= -960 & tmp.df2$left_gaze_x_cor <= 960, tmp.df2$left_gaze_x_cor, NULL)
+  tmp.df2$right_gaze_x_cor<- if_else(tmp.df2$right_gaze_x_cor >= -960 & tmp.df2$right_gaze_x_cor <= 960, tmp.df2$right_gaze_x_cor, NULL)
+  
+  tmp.df2$left_gaze_y_cor<- if_else(tmp.df2$left_gaze_y_cor >= -600 & tmp.df2$left_gaze_y_cor <= 600, tmp.df2$left_gaze_y_cor, NULL)
+  tmp.df2$right_gaze_y_cor<- if_else(tmp.df2$right_gaze_y_cor >= -600 & tmp.df2$right_gaze_y_cor <= 600, tmp.df2$right_gaze_y_cor, NULL)
+  
+  tmp.df2$left_gaze_x_cor_pix<- tmp.df2$left_gaze_x_cor+960
+  tmp.df2$right_gaze_x_cor_pix<- tmp.df2$right_gaze_x_cor+960
+  
+  tmp.df2$left_gaze_y_cor_pix<- tmp.df2$left_gaze_y_cor+600
+  tmp.df2$right_gaze_y_cor_pix<- tmp.df2$right_gaze_y_cor+600
+  
+  # is left or right an NA
+  
+  tmp.df2$left_na<- is.na(tmp.df2$left_gaze_x_cor) 
+  tmp.df2$right_na<- is.na(tmp.df2$right_gaze_x_cor)
+  tmp.df2$both_na<- if_else(tmp.df2$left_na == TRUE & tmp.df2$right_na == TRUE, TRUE, FALSE)
+  
+  message(sprintf("step5 gaze x  means"))
+  
+  tmp.df2$gaze_x_cor<-if_else(tmp.df2$left_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$right_gaze_x_cor,
+                              if_else(tmp.df2$right_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$left_gaze_x_cor,
+                                      ((tmp.df2$left_gaze_x_cor + tmp.df2$right_gaze_x_cor)/2)))
+  message(sprintf("step6 gaze y means"))
+  
+  tmp.df2$gaze_y_cor<-if_else(tmp.df2$left_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$right_gaze_y_cor,
+                              if_else(tmp.df2$right_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$left_gaze_y_cor,
+                                      ((tmp.df2$left_gaze_y_cor + tmp.df2$right_gaze_y_cor)/2)))
+  
+  message(sprintf("step6 repixel gaze means"))
+  
+  tmp.df2$gaze_x_cor_pix<- tmp.df2$gaze_x_cor + 960
+  min(tmp.df2$gaze_x_cor_pix, na.rm = TRUE)
+  
+  tmp.df2$gaze_y_cor_pix<- tmp.df2$gaze_y_cor+600
+  min(tmp.df2$gaze_y_cor_pix, na.rm = TRUE)
+  
+  # clean_pupil
+  
+  message(sprintf("cleaning pupil"))
+  
+  max(tmp.df2$left_pupil_measure1)
+  
+  tmp.df2$pupil<- if_else(tmp.df2$left_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$right_pupil_measure1,
+                          if_else(tmp.df2$right_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$left_pupil_measure1,
+                                  ((tmp.df2$left_pupil_measure1 + tmp.df2$right_pupil_measure1)/2)))
+  
+  # tmp.df2$trackloss<- if_else(tmp.df2$status > 0, TRUE, FALSE)
+  tmp.df2$trialUnq<- paste(tmp.df2$tNo, paste(tmp.df2$screencontent, paste(tmp.df2$stim)))
+  tmp.df2$distance = 630
+  
+  # min(tmp.df2$pupil, na.rm = TRUE)
+  # max(tmp.df2$pupil, na.rm = TRUE)
+  # colnames(tmp.df2)
+  tmp.df2<- tmp.df2%>%
+    arrange(time)
+}
+
+tmp.df2<- gp_preprocessing(tmp.df2)
+ colnames(tmp.df2) 
+ 
+min(tmp.df2$pupil, na.rm = TRUE)
+max(tmp.df2$gaze_y_cor_pix, na.rm = TRUE)
+ 
+  
+```
+
+
+
+Compute proportions outside the sccreen
+repixe
+
+# check gazepoint out of bounds nd repixelate (1920/2 = 960 by 1200/2 = 600. add half to normalised coordinates from psychopy)
+  
+  
+  x -960 by 960
+  y -600 by 600
+
+```{r}
+colnames(X_tmp_df4_full$trackloss)
+
+
+range(tmp.df2$gaze_x_cor, na.rm = TRUE)
+
+
+tmp.df2
+range(tmp.df2$left_gaze_y, na.rm = TRUE)
+
+range(tmp.df2$left_gaze_y, na.rm = TRUE)
+range(tmp.df2$left_gaze_x, na.rm = TRUE)
+tmp.df2$x_outside<- ifelse(tmp.df2$left_gaze_x < -960, TRUE,
+                           ifelse(tmp.df2$left_gaze_x > 960, TRUE, FALSE))
+
+
+
+tmp.df2$y_outside<- ifelse(tmp.df2$right_gaze_y < -600, TRUE,
+                           ifelse(tmp.df2$right_gaze_y > 600, TRUE, FALSE))
+
+
+table(tmp.df2$y_outside)
+137/(185406+137)
+0.0007383733*100
+
+range(tmp.df, na.rm = TRUE)
+
+
+
+```
+# rezeroing times by trial, by participants
+
+```{r}
+tmp.df3<- tmp.df2
+
+# create start at every screen content
+tmp.df3<- tmp.df3%>% 
+  arrange(ssid, time, tNo)%>%
+  group_by(ssid)%>%
+  mutate(firststart = duplicated(trialUnq))
+
+head(tmp.df3)
+
+# make zero-times
+tmp.df3$zero<- if_else(tmp.df3$firststart == FALSE, tmp.df3$time, NULL)
+
+# fill in the zeros
+tmp.df3<- tmp.df3%>%
+  group_by(ssid, Condition, tNo)%>%
+  # group_by(text)%>%
+  fill(zero)
+
+unique(tmp.df3$zero)
+
+# rezero
+tmp.df3<-tmp.df3%>%
+  arrange(ssid, time, tNo)%>%
+  group_by(ssid, tNo)%>%
+  mutate(timerezero = time - zero)
+
+min(tmp.df3$timerezero, na.rm = TRUE)
+max(tmp.df3$timerezero, na.rm = TRUE)
+natest<-subset(tmp.df3, is.na(tmp.df3$ssid) == TRUE)
+
+# let's check to see if it looks fine
+ggplot(subset(tmp.df3, tmp.df3$tNo == -1), aes(timerezero, gsr, colour = as.factor(ssid)))+
+  geom_line()
+
+# create a new time rezero where before stim start, time is negative
+
+tmp.df3<- tmp.df3%>%
+  # arrange(time)%>%
+  group_by(ssid, Condition, screencontent)%>%
+  mutate(firststartSTIM = duplicated(tNo))
+
+#this will create a time in the stim start which we can use to do the a second rezeroing
+tmp.df3$zero_stim<- if_else(tmp.df3$firststartSTIM == FALSE & tmp.df3$screencontent == 'stim', tmp.df3$time, NULL)
+   
+    # fill down
+tmp.df3<- tmp.df3%>%
+      arrange(time)%>%
+      group_by(tNo, ssid)%>%
+      fill(zero_stim, .direction = c('updown'))
+
+   tmp.df3$timerezero2<- tmp.df3$time-tmp.df3$zero_stim
+   
+   # check timerezero2
+     range(tmp.df3$timerezero2, na.rm = TRUE)
+
+# time 3 including rest
+  # simply includes rest as is
+
+tmp.df3$timerezero3<- if_else(tmp.df3$Condition == 'Rest', tmp.df3$timerezero, tmp.df3$timerezero2)
+min(tmp.df3$timerezero3, na.rm = TRUE)
+
+
+# quick check that everything is fine
+
+ggplot(subset(tmp.df3, tmp.df3$tNo == 27 ) , aes(x = timerezero3, y= gsr, colour = as.factor(ssid)))+
+    geom_smooth()+
+    # geom_()+
+    geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
+    geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
+
+
+ggplot(subset(tmp.df3, tmp.df3$tNo == -4) , aes(x = timerezero2, y= gsr, colour = as.factor(ssid)))+
+  # geom_point()
+      geom_line() +
+    # geom_smooth(aes())+
+    geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
+    geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
+
+
+ggplot(subset(tmp.df3, tmp.df3$tNo == -7) , aes(x = timerezero3, y= gsr, colour = as.factor(ssid)))+
+  # geom_point()
+      geom_line() +
+    # geom_smooth(aes())+
+    geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
+    geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
+    geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
+
+```
+
+
+triggers
+
+```{r}
+unique(tmp.df3$tNo)
+
+natest<- subset(tmp.df3, is.na(tmp.df3$tNo) == TRUE)
+tmp.df3<- subset(tmp.df3, is.na(tmp.df3$tNo) == FALSE)
+
+tmp.df3$intercept_time<- if_else(tmp.df3$firststart == FALSE, tmp.df3$time, 
+                          if_else(tmp.df3$firststartSTIM == FALSE, tmp.df3$time,
+                                  NULL))
+
+# takes a bit with a group - so don't run
+# ggplot(tmp.df3, aes(time, gsr))+
+#   geom_line()+
+#   geom_vline(aes(xintercept = intercept_time))
+
+unique(tmp.df3$tNo)
+
+tmp.df3$trigger<- as.double(tmp.df3$tNo)
+
+tmp.df3$trigger<- if_else(tmp.df3$firststart == FALSE, tmp.df3$trigger, 
+                          if_else(tmp.df3$firststartSTIM == FALSE, tmp.df3$trigger, 0))
+unique(tmp.df3$trigger)
+
+tmp.df3$trigger <- if_else(tmp.df3$screencontent == 'fixation' &tmp.df3$firststart == FALSE, 100,
+                          if_else(tmp.df3$screencontent == 'ValenceResp' & tmp.df3$firststart == FALSE, 101,
+                             if_else(tmp.df3$screencontent == 'IntResp' & tmp.df3$firststart == FALSE, 102, tmp.df3$trigger))) 
+
+unique(tmp.df3$trigger)
+
+tmp.df3$trigger<- if_else(tmp.df3$firststart == TRUE, 0, tmp.df3$trigger)
+
+unique(tmp.df3$trigger)
+
+
+```
+
+
+Calibration analysis
+
+```{r}
+
+# fucntion to read all calibration files into one big dataframe
+read_cali <- function(flnm) {
+  data.table::fread(flnm) %>%
+    mutate(filename = flnm)
+}
+
+# now read them
+db_cali <-
+  list.files(pattern = "*.csv",
+             full.names = T) %>%
+  map_df(~read_cali(.))
+
+# view the dataset
+View(db_cali)
+unique(db_cali$filename)
+
+# select needed columns
+db_cali$ssid <- substring(db_cali$filename, 5,7)
+db_cali$valid_points <- sub(".*_", "", db_cali$text)
+db_cali$valid_points <- if_else(grepl('valid', db_cali$text), db_cali$valid_points, NULL)
+unique(db_cali$valid_points)
+
+db_cali$avg_error <- sub(".*_", "", db_cali$text)
+db_cali$avg_error <- if_else(grepl('AvgError', db_cali$text), db_cali$avg_error, NULL)
+db_cali$cali_no <- substring(db_cali$text, 23, 24)
+db_cali$cali_no <- if_else(grepl('valid', db_cali$text), db_cali$cali_no, NULL)
+db_cali$cali_no<- as.numeric(sub("_", "",db_cali$cali_no))
+
+
+install.packages("useful")
+
+library(useful)
+db_cali<- db_cali%>%
+  fill(cali_no)%>%
+  fill(valid_points)%>%
+  fill(avg_error, .direction = 'up')
+
+
+
+#find the duplicate rows (some trigger messages were sent twice)
+db_cali<- db_cali %>%
+  arrange(ssid)%>%
+  group_by(ssid)%>%
+  mutate(isduplicate = duplicated(avg_error))
+
+db_cali1 <- subset(db_cali, isduplicate == FALSE)
+
+db_cali1 <- select(db_cali1, c(ssid, cali_no, valid_points, avg_error))
+
+
+# create a order for the calibration
+db_cali1$x = row.names(db_cali1)
+db_cali1$cali_order <- ave(db_cali1$x,                 # Create numbering variable
+                       db_cali1$ssid,
+                       FUN = seq_along)
+```
+
+
+# FUNCTION TO CONVERT PIXELS TO DEGREES OF VISUAL ANGLE
+
+```{r}
+
+
+pixtoAng<- function(hw,d,r,stimsize){
+  #hw - height/width of the monitor(cm) - depending on the axis
+  #d - distance of the participant from the monitor (cm)
+  #r - vertical/horizontal resolution of the screen (px)
+  #stimsize - size of the stimulus on the screen (px)
+  deg_per_px = rad2deg(atan2(0.5*hw, d))/(0.5*r)
+  visAng <- stimsize * deg_per_px
+  return (visAng)
+}
+#pixtoAng - hw - height/width of the screen in cm - use height for vertical acc/prec, and width for horizontal; d - distance of the participants to the screen (we used an average distance from the logbook); r = height/width of the screen in pixels; stimsize - basically, what you wish to convert from pixels to degrees of visual angle
+
+```
+
+
+
+
+```{r}
+library(ggplot2)
+
+db_cali1$avg_error1<- as.numeric(as.character(db_cali1$avg_error))
+
+
+db_cali1 %>%
+  subset(ssid!= 610)%>%
+ggplot(aes(x = cali_order, avg_error1))+
+  geom_line(aes(group = ssid))
+
+db_cali1 %>%
+  subset(ssid!= 610)%>%
+ggplot(aes(x = cali_order, cali_no, color = ssid))+
+  geom_line(aes(group = ssid))
+
+db_cali1<- db_cali1%>%
+  group_by(ssid)%>%
+  mutate(cali_no_resc =  cali_no - lag(cali_no))%>%
+  mutate(cali_no_resc = if_else(!is.na(cali_no_resc), cali_no_resc, cali_no))
+
+db_cali1 %>%
+  subset(ssid!= 610)%>%
+ggplot(aes(x = cali_order, cali_no_resc, colour = ssid))+
+  geom_line(aes(group = ssid))
+
+
+#how many calibrations does it take until accepting
+library(lmerTest)
+
+cali_models<- list()
+db_cali1$ssid<- as.character(db_cali1$ssid)
+
+db_cali1$cali_order <- as.numeric(as.character(db_cali1$cali_order))
+db_cali1$cali_order_z<- scale(db_cali1$cali_order, center = TRUE, scale = TRUE)
+
+cali_models$cali_toaccept<- glmer(cali_no_resc ~ (1| ssid),
+                                  family = "poisson", data = db_cali1)
+
+summary(cali_models$cali_toaccept)
+
+summary(glm(cali_no_resc ~ cali_order_z, data = db_cali1))
+
+summary(cali_models$cali_toaccept)
+
+
+db_cali2<- subset(db_cali1, ssid < 500)
+mean(subset(db_cali2, cali_order == 1)$cali_no_resc, na.rm = TRUE)
+sd(subset(db_cali2, cali_order == 1)$cali_no_resc, na.rm = TRUE)
+
+
+# AVG cali
+mean(db_cali1$cali_no_resc, na.rm = TRUE)
+
+sd(db_cali1$cali_no_resc)
+
+(mean(db_cali1$avg_error1, na.rm = TRUE)) #43.40358
+(median(db_cali1$avg_error1, na.rm = TRUE)) #40.13
+
+install.packages("rCAT")
+library(rCAT)
+
+# height and widrh of the sreen in pixes and cm
+# H = 32.5 cm (108 Pixels) W = (52)  1920Pix by 1200, distance 63 - 65
+
+pixtoAng(52, 65, 1920, 43.40358) # 0.9849095
+pixtoAng(52, 65, 1920, 40.13) # 0.9849095
+
+db_cali1$avg_error1_visang<- pixtoAng(52, 65, 1920, db_cali1$avg_error1)
+
+mean(db_cali1$avg_error1_visang)
+sd(db_cali1$avg_error1_visang)
+range(db_cali1$avg_error1_visang)
+
+
+db_cali2_id<- db_cali2%>%
+  group_by(ssid)%>%
+  summarise_at(c("avg_error"), mean, na.rm = TRUE)
+
+
+db_cali2$Participant<- db_cali2$ssid
+
+db_cali2_id$avg_error<- NULL
+db_cali2$Participant<- NULL
+
+db_cali2<- left_join(db_cali2, db_cali2_id)
+
+db_cali2$Participant<- as.character(db_cali2$Participant)
+db_cali2%>%
+  ggplot(aes(cali_order, avg_error1))+
+  geom_line(aes(group = Participant, colour = Participant))+
+  stat_summary(aes(geom = "line"))+
+  geom_smooth()
+
+```
+
+
+Trackloss
+
+data = (tmp.df4_sum)
+
+
+
+```{r}
+# get average loss
+mean(tmp.df4_sum$gaze_loss_prop)*100
+sd(tmp.df4_sum$gaze_loss_prop)*100
+range(accuracy_dataset$gaze_loss_prop)*100
+
+range(accuracy_dataset)*100
+range(db_cali1$cali_no_resc)
+
+tmp.df4_sum %>%
+  subset(ssid < 500)%>%
+  group_by(screencontent)%>%
+  summarise_at(c('gaze_loss_prop'), mean, na.rm = TRUE)
+
+# store only neurotypicals
+  
+tmp.df4_sum_below500 <- tmp.df4_sum %>%
+  subset(ssid < 500)
+
+
+#plot loss overtime
+tmp.df4_sum_below500%>%
+  ggplot(aes(tNo, gaze_loss_prop))+
+  stat_summary(geom = 'pointrange')+
+  geom_vline(xintercept = 26)
+
+#merge calibration information
+db_cali2_summ<- db_cali2 %>%
+  group_by(ssid)%>%
+  mutate(avg_error_agg = mean(avg_error1, na.rm = TRUE), cali_no_resc_agg = mean(cali_no_resc, na.rm = TRUE))
+
+# Save an object to a file
+saveRDS(db_cali2_summ, file = "db_cali2_summ.rds")
+# Restore the object
+accuracy_dataset_below6s<- readRDS(file = "accuracy_dataset_below6s.rds")
+
+View(db_cali2_summ)
+
+
+
+tmp.df4_sum_below500$cali_order<- if_else(tmp.df4_sum_below500$tNo < 0,1, if_else(tmp.df4_sum_below500$tNo > 0 & tmp.df4_sum_below500$tNo< 26, 2, 3))
+
+unique(tmp.df4_sum_below500$cali_order)
+
+
+#merge
+
+tmp.df4_sum_below500$cali_order<- as.character(tmp.df4_sum_below500$cali_order)
+tmp.df4_sum_below500 <- left_join(tmp.df4_sum_below500, db_cali2_summ)
+
+
+max(tmp.df4_sum_below500$ssid)
+View(tmp.df4_sum_below500)
+
+
+# just create one trackloss per trial for all screens
+tmp.df4_sum_below500 %>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.r = TRUE)%>%
+  ggplot(aes(avg_error_agg, gaze_loss_prop))+
+  geom_point()+
+  geom_smooth(method = 'lm')
+  facet_grid(~cali_order)
+  
+  
+ unique(tmp.df4_sum_below500$cali_order) 
+  
+# mixed models
+  
+calibration_lmerdata <-  tmp.df4_sum_below500 %>%
+  group_by(ssid, tNo )%>%
+  summarise_at(c('avg_error_agg','gaze_loss_prop', 'cali_no_resc_agg'), mean, na.rm = TRUE)
+
+nrow(calibration_lmerdata)
+
+loss_lmermodels<- list()
+
+calibration_lmerdata$ot1<- poly(calibration_lmerdata$tNo, degree = 1, raw = FALSE)
+calibration_lmerdata$ot2<- poly(calibration_lmerdata$tNo, degree = 2, raw = FALSE)[,2]
+
+View(calibration_lmerdata)
+calibration_lmerdata%>%
+ggplot(aes(tNo, ot1))+
+  geom_line()+
+  geom_line(aes(y = ot2))
+
+cor.test(calibration_lmerdata$ot1,calibration_lmerdata$ot2 )
+
+
+calibration_lmerdata1<- subset(calibration_lmerdata, ssid> 303 & tNo > 0 & tNo < 26)
+
+calibration_lmerdata1$ot1<- poly(calibration_lmerdata1$tNo, degree = 1, raw = FALSE)
+calibration_lmerdata1$ot2<- poly(calibration_lmerdata1$tNo, degree = 2, raw = FALSE)[,2]
+
+
+#
+loss_lmermodels$poly1<- glmer(gaze_loss_prop ~ ot1 + ot2 + (1 + ot1 + ot2 | ssid),
+                             family = "binomial",
+                             data = calibration_lmerdata1)
+
+summary(loss_lmermodels$poly1)
+
+loss_lmermodels$poly2<- glmer(gaze_loss_prop ~ tNo+ (1  | ssid),
+                             family = "binomial",
+                             data = calibration_lmerdata1)
+
+summary(loss_lmermodels$poly2)
+
+calibration_lmerdata$gaze_loss_prop
+
+
+(calibration_lmerdata1)%>%
+  ggplot(aes(tNo, gaze_loss_prop))+
+  #geom_smooth(aes(color = ssid), se = F)
+  #stat_summary(geom = 'pointrange')
+ # geom_vline(xintercept = 26)+
+  geom_line(aes(y = predict(loss_lmermodels$poly1), colour = ssid))
+
+# second part
+
+calibration_lmerdata2<- subset(calibration_lmerdata, ssid> 303 & tNo > 25)
+
+calibration_lmerdata2$ot1<- poly(calibration_lmerdata2$tNo, degree = 1, raw = FALSE)
+calibration_lmerdata2$ot2<- poly(calibration_lmerdata2$tNo, degree = 2, raw = FALSE)[,2]
+
+
+
+# lmer models on loss
+
+calibration_lmerdata2$avg_error_agg_z<- scale(calibration_lmerdata2$avg_error_agg, center = TRUE, scale = TRUE)
+
+loss_lmermodels$poly2.1<- glmer(gaze_loss_prop ~ (ot1 + ot2)+ avg_error_agg_z+ (1 + ot1 + ot2 | ssid),
+                             family = "binomial",
+                             data = calibration_lmerdata2)
+
+summary(loss_lmermodels$poly2.1)
+
+loss_lmermodels$poly2.2<- glmer(gaze_loss_prop ~ tNo+ (1  | ssid),
+                             family = "binomial",
+                             data = calibration_lmerdata2)
+
+summary(loss_lmermodels$poly2.2)
+
+calibration_lmerdata$gaze_loss_prop
+
+
+(calibration_lmerdata2)%>%
+  ggplot(aes(tNo, gaze_loss_prop))+
+  geom_smooth(aes(color = ssid), se = F)
+  #stat_summary(geom = 'pointrange')
+ # geom_vline(xintercept = 26)+
+  geom_line(aes(y = predict(loss_lmermodels$poly2.1), colour = ssid))
+
+#combine both
+calibration_lmerdata3$part <- subset(calibration_lmerdata, ssid> 303 & tNo > 0)
+
+calibration_lmerdata3$ot1<- poly(calibration_lmerdata3$tNo2, degree = 1, raw = FALSE)
+calibration_lmerdata3$ot2<- poly(calibration_lmerdata3$tNo2, degree = 2, raw = FALSE)[,2]
+
+
+#fir full model excluding pratice
+
+calibration_lmerdata3
+calibration_lmerdata3$part<- if_else(calibration_lmerdata3$tNo< 25, -.05, .05)
+
+calibration_lmerdata3$ot1_z<- scale(calibration_lmerdata3$ot1, center = TRUE)
+
+calibration_lmerdata3$ot2_z<- scale(calibration_lmerdata3$ot2, center = TRUE)
+
+loss_lmermodels$poly3.1 <- glmer(gaze_loss_prop ~ (ot1_z + ot2_z) * part +(1 + ot1_z + ot2_z | ssid),
+                             family = 'quasi_binomial',
+                             data = calibration_lmerdata3)
+
+loss_lmermodels$poly3.1 <- lmer(log1p(gaze_loss_prop+.5) ~ (ot1_z + ot2_z) * part +   (0 + ot1_z + ot2_z  | ssid)+(1 | ssid),
+                             REML = FALSE,
+                             data = calibration_lmerdata3)
+
+
+loss_lmermodels$poly3.1 <- lmer(log1p(gaze_loss_prop+.5) ~ (ot1 + ot2) * part +   (0 + ot1 + ot2  | ssid)+(1 | ssid),
+                             REML = FALSE,
+                             data = calibration_lmerdata3)
+
+summary(loss_lmermodels$poly3.1)
+
+anova(loss_lmermodels$poly3.1)
+library(sjstats)
+library(sjPlot)
+
+tab_model(loss_lmermodels$poly3.1)
+
+relgrad <- with(loss_lmermodels$poly3.1@optinfo$derivs,solve(Hessian,gradient))
+ max(abs(relgrad))
+ #[1] 1.152891e-05
+
+
+emmeans::emmeans(loss_lmermodels$poly3.1, pairwise~ part | ot2_z )
+
+
+loss_lmermodels$poly3.1_rand1 <- lmer(log1p(gaze_loss_prop+.5) ~(1 | ssid),
+                             REML = FALSE,
+                             data = calibration_lmerdata3)
+
+summary(loss_lmermodels$poly3.1_rand1)
+
+loss_lmermodels$poly3.1_rand2 <- lmer(log1p(gaze_loss_prop+.5) ~( | ssid),
+                             REML = FALSE,
+                             data = calibration_lmerdata3)
+
+s
+
+
+# check ID
+
+library(psych)
+library(sjstats)
+library(psycho)
+psycho::analyze(loss_lmermodels$poly3.1)
+psych
+library(MuMIn)
+r.squaredGLMM(loss_lmermodels$poly3.1)
+r.squaredGLMM(loss_lmermodels$poly3.2)
+#what if we incorporate calibration values
+
+
+calibration_lmerdata3$avg_error_agg_z <- scale(calibration_lmerdata3$avg_error_agg, center = TRUE, scale = TRUE)
+
+
+3$avg_error_agg_z <- scale(calibration_lmerdata3$avg_error_agg, center = TRUE, scale = TRUE)
+
+unique(calibration_lmerdata3$ssid)
+loss_lmermodels$poly3.2 <- lmer(log1p(gaze_loss_prop+.5) ~ (ot1_z + ot2_z) * part + avg_error_agg_z +   (0 + ot1_z + ot2_z  | ssid)+(1 | ssid),
+                             REML = FALSE,
+                             data = calibration_lmerdata3)
+
+summary(loss_lmermodels$poly3.2)
+
+anova(loss_lmermodels$poly3.2, loss_lmermodels$poly3.1)
+
+
+
+
+
+
+calibration_lmerdata3$tNo2<- if_else(as.double(calibration_lmerdata3$tNo)< 26, as.double(calibration_lmerdata3$tNo), calibration_lmerdata3$tNo-25)
+
+(calibration_lmerdata3)%>%
+  ggplot(aes(tNo2, gaze_loss_prop))+
+  #geom_smooth(aes(color = ssid), se = F)
+  #stat_summary(geom = 'pointrange')
+ # geom_vline(xintercept = 26)+
+  geom_line(aes(y = predict(loss_lmermodels$poly3.1), colour = ssid))+
+    facet_grid(~part)
+
+
+(calibration_lmerdata3)%>%
+  ggplot(aes(tNo2, gaze_loss_prop))+
+  geom_line(aes(group = ssid,color = ssid))+
+ # geom_smooth(aes(color = ssid), se = F)+
+    facet_grid(~part)
+
+
+
+
+# Save an object to a file
+saveRDS(calibration_lmerdata3, file = "calibration_lmerdata3.rds")
+# Restore the object
+readRDS(file = "my_data.rds")
+  
+
+# is calibraton related to loss acc etc
+calibration_lmerdata3$avg_error_agg_z<- as.factor(as.character(calibration_lmerdata3$part))
+ %>%
+  group_by(ssid, part)%>%
+  summarise_at(c(avg_error1_visang))
+
+calibration_lmerdata3$avg_error_agg_z+5
+
+
+
+tmp.df4_sum_below500_1.2<- tmp.df4_sum_below500 %>%
+   subset(cali_order!= 1)%>%
+  group_by(ssid, cali_order )%>%
+  summarise_at(c('avg_error1','gaze_loss_prop', 'cali_no_resc_agg'), mean, na.rm = TRUE)
+ 
+ nrow(tmp.df4_sum_below500_1.2)
+ 
+ 
+ #avg error
+cor.test(subset(tmp.df4_sum_below500_1.2, cali_order == 2)$avg_error1, subset(tmp.df4_sum_below500_1.2, cali_order == 2)$gaze_loss_prop) 
+
+cor.test(subset(tmp.df4_sum_below500_1.2, cali_order == 3)$avg_error1, subset(tmp.df4_sum_below500_1.2, cali_order == 3)$gaze_loss_prop) 
+
+
+cor.test(subset(tmp.df4_sum_below500_1.2, cali_order == 2)$cali_no_resc_agg, subset(tmp.df4_sum_below500_1.2, cali_order == 2)$gaze_loss_prop) 
+
+cor.test(subset(tmp.df4_sum_below500_1.2, cali_order == 3)$cali_no_resc_agg, subset(tmp.df4_sum_below500_1.2, cali_order == 3)$gaze_loss_prop)
+
+tmp.df4_sum_below500_1.2%>%
+ggplot(aes(cali_no_resc_agg, gaze_loss_prop))+
+  geom_point()+
+geom_smooth(method = 'lm', se = F)+
+  facet_grid(~cali_order)
+
+
+
+ 
+   ggplot(aes(avg_error1, gaze_loss_prop))+
+   geom_point()+
+   facet_grid(~ cali_order)+
+   geom_smooth(method = 'lm', se = F)
+   
+   
+
+
+```
+
+
+Accuracy
+
+
+let's workout a few concepts
+, speed velocity and aceleration
+
+Velocity = 
+
+Velocity is a physical vector quantity; both magnitude and direction are needed to define it. The scalar absolute value (magnitude) of velocity is called speed, being a coherent derived unit whose quantity is measured in the SI (metric system) as metres per second (m/s) or as the SI base unit of (m???s???1). velocity = delta space/ delta time
+
+
+Speed =  speed  = distance/ time
+
+acceleration is the rate of change of the velocity of an object with respect to time. Accelerations are vector quantities (in that they have magnitude and direction).[1][2] acceleration = delta velocity/ delta time
+
+
+For example, EyeLink (SR Research Ltd., Ontario, Canada) uses a velocity threshold of 35 deg/s and an acceleration threshold of 8000 deg/s 2 as default values, although these thresholds can be altered manually
+
+
+
+Let's compute accuracy
+
+
+ACCURACY FINAL CALCULATION
+STEP 1: Calculate ABSOLUTE horizontal and vertical distance for EACH SAMPLE
+STEP 2: Detect sample outliers using the median + 3 * MAD (rely only on the positive side!)
+STEP 3: Remove outliers (horizontal outliers should be removed ONLY when calculating horizontal accuracy and the same for vertical outliers)
+STEP 4: Mean horizontal and vertical distance (accuracy) for each participant, condition, trials
+STEP 5: Calculate overall accuracy using Pitagorean theorem
+STEP 6: Remove outliers in the same way as the previous (see step 2)
+STEP 7: Mean accuracy per participant, condition and trial
+
+
+```{r}
+
+accuracy_dataset$y_coord<- 600
+accuracy_dataset$x_coord
+
+unique(accuracy_dataset$screencontent)
+unique(accuracy_dataset$distance)
+#Calculate accuracy again
+library(rCAT)
+# remember to ignore the last few seconds later
+
+accuracy_dataset$distance
+accuracy_dataset$y_coord
+accuracy_dataset$x_coord
+
+
+setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Validation")
+
+accuracy_dataset <- readRDS("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Validation/accuracy_datasetjan16.rds")
+
+# rm(accuracy_datasetjan16)
+
+accuracy_dataset_below6s<- subset(accuracy_dataset, timerezero< 6)
+
+max(accuracy_dataset_below6s$timerezero)
+# STEP 1: Calculate ABSOLUTE horizontal and vertical distance for EACH SAMPLE
+library(tidyverse)
+
+accuracy_dataset_below6s <- accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, time) %>%
+  group_by(ssid, tNo) %>%
+  mutate(v_accuracy_dif = abs(y_coord - gaze_y_cor_pix)) %>%
+  # mutate(v_accuracy = mean(v_accuracy_dif, na.rm = TRUE)) %>%
+  mutate(h_accuracy_dif = abs(x_coord - gaze_x_cor_pix )) %>%
+  # STEP 2: Detect sample outliers using the median + 3 * MAD (rely only on the positive side!)
+  mutate(v_accuracy_dif_median = median(v_accuracy_dif, na.rm = TRUE),
+                                        h_accuracy_dif_median = median(h_accuracy_dif, na.rm = TRUE),
+                                        v_accuracy_dif_mad = mad(v_accuracy_dif, na.rm = TRUE),
+                                        h_accuracy_dif_mad = mad(h_accuracy_dif, na.rm = TRUE))%>%
+  mutate(v_accuracy_dif_outlier = if_else(v_accuracy_dif > (v_accuracy_dif_median + (3*v_accuracy_dif_mad)), TRUE, FALSE))%>%
+  mutate(h_accuracy_dif_outlier = if_else(h_accuracy_dif > (h_accuracy_dif_median + (3*h_accuracy_dif_mad)), TRUE, FALSE))%>%
+  mutate(both_acc_dif_outlier = if_else(v_accuracy_dif_outlier == TRUE & h_accuracy_dif_outlier == TRUE, TRUE, FALSE))%>%
+  # create new difference columns where we don't have outliers
+  mutate(v_accuracy_dif_nooutl = if_else(v_accuracy_dif_outlier == FALSE, v_accuracy_dif, NULL))%>%
+  mutate(h_accuracy_dif_nooutl = if_else(h_accuracy_dif_outlier == FALSE, h_accuracy_dif, NULL))
+
+
+
+```
+
+
+```{r}
+
+# STEP 4: Mean horizontal and vertical distance (accuracy) for each participant, condition, trials
+library(rCAT)
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  group_by(ssid, tNo) %>%
+  mutate(v_accuracy = mean(v_accuracy_dif_nooutl, na.rm = TRUE)) %>%
+  mutate(h_accuracy = mean(h_accuracy_dif_nooutl, na.rm = TRUE)) %>%
+  mutate(avg_accuracy = (v_accuracy + h_accuracy)/2) %>%
+  mutate(v_accuracy_visang = pixtoAng(hw = 32, d = 65, r = 1200, stimsize = v_accuracy)) %>%
+  mutate(h_accuracy_visang = pixtoAng(hw = 52, d = 65, r = 1920, stimsize = h_accuracy))
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  group_by(ssid, tNo) %>%
+  mutate(avg_accuracy_visang = (v_accuracy_visang + h_accuracy_visang)/2)
+
+
+accuracy_dataset_below6s %>%
+  group_by(ssid,tNo)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(v_accuracy_visang))+
+  geom_histogram(bins = 300)+
+  geom_vline(xintercept = 1.4, color = 'red')
+
+
+```
+
+
+```{r}
+
+# STEP 5: Calculate overall accuracy using Pitagorean theorem
+accuracy_dataset_below6s<- accuracy_dataset_below6s%>%
+    arrange(ssid, tNo, time) %>%
+  group_by(ssid, tNo) %>%
+    mutate(accuracy_dif_pt = sqrt((x_coord - gaze_x_cor_pix)^2+ (x_coord - gaze_x_cor_pix)^2)) %>%
+   mutate(accuracy_dif_pt_median = median(accuracy_dif_pt, na.rm = TRUE),accuracy_dif_pt_mad = mad(accuracy_dif_pt, na.rm = TRUE))%>%
+  # check outliers
+   mutate(accuracy_dif_pt_outlier = if_else(accuracy_dif_pt > (accuracy_dif_pt_median + (3*accuracy_dif_pt_mad)), TRUE, FALSE))%>%
+   mutate(accuracy_dif_pt_nooutl = if_else(accuracy_dif_pt_outlier == FALSE, accuracy_dif_pt, NULL))
+
+# mean accuracy
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  group_by(ssid, tNo) %>%
+  mutate(accuracy_pt = mean(accuracy_dif_pt_nooutl, na.rm = TRUE)) %>%
+  mutate(avg_accuracy_visang_pt = pixtoAng(hw = 52, d = 65, r = 1920, stimsize = accuracy_pt))
+  
+  
+# report
+mean(accuracy_dataset_below6s$avg_accuracy_visang_pt, na.rm = TRUE) #0.770
+sd(accuracy_dataset_below6s$avg_accuracy_visang_pt, na.rm = TRUE) #0.70
+median(accuracy_dataset_below6s$avg_accuracy_visang_pt, na.rm = TRUE) # 0.6382099
+
+# mean(accuracy_dataset_below6s$avg_accuracy_visang, na.rm = TRUE)#.93
+range(accuracy_dataset_below6s$avg_accuracy_visang_pt, na.rm = TRUE) # 0.2335924 13.5357490
+)
+# vertical
+mean(accuracy_dataset_below6s$v_accuracy_visang, na.rm = TRUE) # 1.327067
+median(accuracy_dataset_below6s$v_accuracy_visang, na.rm = TRUE) #1.17
+sd(accuracy_dataset_below6s$v_accuracy_visang, na.rm = TRUE) # 0.725
+
+range(accuracy_dataset_below6s$v_accuracy_visang, na.rm = TRUE) # 0.276907 9.500563
+
+
+
+# horizontal
+
+
+mean(accuracy_dataset_below6s$h_accuracy_visang, na.rm = TRUE) #0.5448298
+median(accuracy_dataset_below6s$h_accuracy_visang, na.rm = TRUE) #.451
+sd(accuracy_dataset_below6s$h_accuracy_visang, na.rm = TRUE) # 0.4966967
+
+range(accuracy_dataset_below6s$accuracy_visang, na.rm = TRUE) #0.3019886 6.3431213
+
+
+
+acc_plots<- list()
+
+acc_plots$accuracy<- accuracy_dataset_below6s %>%
+  group_by(ssid,tNo)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(avg_accuracy_visang_pt))+
+  geom_histogram(bins = 300)+
+  geom_vline(xintercept = 1, color = 'red', linetype = "dashed", size =1.5)+p$graphstyle+
+  xlab("Accuracy (deg)")+
+  ylab("Density")
+
+acc_plots$accuracy<- acc_plots$accuracy+
+  scale_x_continuous(limits = c(0,10), breaks = c(0, 5, 10))
+
+acc_plots$accuracy
+saveRDS(accuracy_dataset_below6s, file = "accuracy_dataset_below6sJan16.rds")
+
+```
+
+
+fixation detection
+
+fixations
+
+# to detect fixations and saccades we should
+compute velocity and degre of displacement by participant and trial
+compute peak velcoicties as well
+compute the median and sd by trial and parocipant
+
+saccades will have occured if at least 3 consecutive samples break 6* sd of the median belocity
+
+
+```{r}
+
+# unique(fixationscreen_only1$screencontent)
+
+# we need to compute velocity so that we can exclude samples that are likelly saccades
+# exclude samples where people clearly where not looking at the center
+# compute accuracy and precision
+
+View(accuracy_dataset)
+
+
+#Original calculation with the squaring 
+
+accuracy_dataset_below6s
+
+# velocity
+unique(accuracy_dataset_below6s$screencontent)
+accuracy_dataset_below6s$distance
+
+# max(accuracy_dataset_below6s$timerezero )
+
+accuracy_dataset_below6s <-
+  
+  accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, timerezero)%>%
+  group_by(ssid, tNo)%>%
+  mutate(intdist_pix =  sqrt((gaze_x_cor_pix - lag(gaze_x_cor_pix))^2 +(gaze_y_cor_pix - lag(gaze_y_cor_pix))^2)) %>%
+  mutate(inttimediff =  (timerezero)-  lag(timerezero))%>% #If time is calculated this way, it will create a mismatch between inter-sample times and inter-sample distance
+  mutate(intdist_visang =  pixtoAng(hw =52, d= 65, r=1920, stimsize= intdist_pix)) %>%
+  mutate(int_velocity = intdist_visang/inttimediff)%>%
+  mutate(median_velocity = median(int_velocity, na.rm = TRUE,
+                                  mad_velocity = mad(int_velocity, na.rm = TRUE)))%>%
+  mutate(threshold_velocity = median_velocity+ (6*mad_velocity))%>%
+  mutate(peak_velocity = max(int_velocity, na.rm = TRUE))%>%
+  mutate(avg_velocity = mean(int_velocity, na.rm = TRUE))
+  
+
+  
+
+accuracy_dataset_below6s %>%
+  group_by(ssid, trialUnq)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(threshold_velocity))+
+  geom_histogram(bins = 300)
+
+accuracy_dataset_below6s
+
+
+accuracy_dataset_below6s %>%
+  group_by(ssid, trialUnq)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(peak_velocity, threshold_velocity))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)
+
+
+```
+
+
+```{r}
+
+# accuracy_dataset<- accuracy_dataset %>%
+#   group_by(ssid, trialUnq)%>%
+#   mutate(median_velocity = median(int_velocity, na.rm = TRUE))%>% # I think his needs to be positive(absolute other wise the median will be screwed)
+#   mutate(mad_velocity = mad(int_velocity, na.rm = TRUE))%>% 
+#   mutate(threshold_velocity = median_velocity + (6* mad_velocity))
+
+  
+# mutate(threshold_velocity = median_velocity + (6* mad_velocity)) %>%
+
+
+# create a boolean vector for fixationdetcation
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, timerezero)%>%
+  group_by(ssid, tNo)%>%
+  mutate(detection = if_else(abs(int_velocity)> threshold_velocity, "s", "f"))
+
+accuracy_dataset_below6s$detection
+
+
+
+# test<-
+# accuracy_dataset_below6s %>%
+#   subset(ssid == 309 &tNo == 2)%>%
+#   mutate(timesaccade = if_else(detection == "s", timerezero, NULL))
+
+accuracy_dataset_below6s %>%
+  subset(ssid == 309 &tNo == 2)%>%
+  mutate(timesaccade = if_else(detection == "s", timerezero, NULL))%>%
+  ggplot(aes(x = timerezero, y = abs(int_velocity)))+
+  geom_line()+
+  geom_line(aes(y =gaze_y_cor_pix ), color = "red")+
+  geom_line(aes(y =gaze_x_cor_pix ), color = "green")+
+  geom_line(aes(y = threshold_velocity) , linetype = "dashed", size = 1, color = "gray")+
+    ylim(0, 1000)+
+  geom_vline(aes(xintercept = timesaccade), alpha  = .3)
+             
+  geom_hline(yintercept = -35, linetype = "dashed", size = 1, color = "gray")
+unique(accuracy_dataset_below6s$threshold_velocity)
+
+
+```
+
+
+```{r}
+# now find a pattern "s - f - s" and if e two saccades slit by only a few fixatiojs (up to 3) then remove the the fixations as they are likelly saccades"
+# pattern 1 "s-f-s"
+table(test2$detection)
+accuracy_dataset_below6s$new<-NULL
+accuracy_dataset_below6s$new = ifelse(accuracy_dataset_below6s$detection == "f" & 
+                            lag(accuracy_dataset_below6s$detection, n = 1) == "s" & 
+                                lead(accuracy_dataset_below6s$detection, n = 1) == "s", TRUE, FALSE)
+
+r = c("s", "f", "s")
+library(zoo)
+test<- which(rollapply(accuracy_dataset_below6s$detection,length(r),identical,r))+0:(length(r)-1)
+View(test)
+test
+# 
+# test
+test2<- accuracy_dataset_below6s[12:20,]
+
+View(test2)
+
+# pattern 2 "s-f-f-s"
+accuracy_dataset_below6s$new1<-NULL
+
+accuracy_dataset_below6s <- accuracy_dataset_below6s %>% 
+ mutate(new1 = ifelse(detection == "f" & 
+                       lead(detection, n = 1) == "f" &
+                            lag(detection, n = 1) == "s" & 
+                                lead(detection, n = 2) == "s", TRUE, FALSE))
+
+r1 = c("s", "f", "f", "s")
+test3<- which(rollapply(accuracy_dataset_below6s$detection,length(r1),identical,r1))+0:(length(r1)-1)
+
+test3
+
+test4<- accuracy_dataset_below6s[304514 :304530,]
+View(test4)
+
+# accuracy_dataset_below6s$new1[accuracy_dataset_below6s$new1 == TRUE
+
+# if_else(accuracy_dataset_below6s$new1 == TRUE, row.names(accuracy_dataset_below6s))
+ 
+
+
+View(test2)
+# 
+test3<- subset(accuracy_dataset_below6s[290310:290328,])
+
+# # pattern 3 "s-f-f-"f" s"
+
+accuracy_dataset_below6s$new2<-NULL
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>% 
+ mutate(new2 = ifelse(detection == "f" & 
+                        lead(detection, n = 1) == "f" &
+                        lead(detection, n = 2) == "f" &
+                        lead(detection, n = 3) == "s" &
+                            lag(detection, n = 1) == "s", TRUE, FALSE))
+
+
+
+# r1 = c("s", "f", "f", "s")
+
+# r2 = c("s", "f", "f", "f", "s")
+# 
+# test1.1 <- which(rollapply(accuracy_dataset_below6s$detection,length(r1),identical,r1))+0:(length(r1)-1)
+
+        
+accuracy_dataset_below6s[which(accuracy_dataset_below6s$new1 == TRUE)+1, 'new1'] <- TRUE
+
+accuracy_dataset_below6s[which(accuracy_dataset_below6s$new2 == TRUE)+1, 'new2'] <- TRUE
+accuracy_dataset_below6s[which(accuracy_dataset_below6s$new2 == TRUE)+1, 'new2'] <- TRUE
+
+
+# accuracy_dataset_below6s$neW2<- NULL
+
+#mark fixations that need to be changed to saccades
+accuracy_dataset_below6s$fixation_tosacade<- (rowSums(accuracy_dataset_below6s[,startsWith(names(accuracy_dataset_below6s),"new")]=="TRUE") >= 1)
+
+table(accuracy_dataset_below6s$fixation_tosacade)
+
+# unique(subset(accuracy_dataset_below6s, fixation_tosacade == TRUE )$new)
+
+
+# replace spurious fixations when a sacade is taling pplace
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s%>%
+  mutate(detection1 = if_else(fixation_tosacade == TRUE, "s", detection))
+
+# accuracy_dataset_below6s$sac_time <- if_else(accuracy_dataset_below6s$detection1 == "s", accuracy_dataset_below6s$timerezero, NULL)
+# accuracy_dataset_below6s$sac_time <- NULL
+
+# delete spurious saccades
+
+# create start of a saccade
+
+accuracy_dataset_below6s$start_sacc<- NULL
+accuracy_dataset_below6s$end_sacc<- NULL
+
+# accuracy_dataset_below6s$start_sacc <- if_else(is.na(accuracy_dataset_below6s$sac_time) == FALSE & is.na(lag(accuracy_dataset_below6s$sac_time, n = 1) == TRUE),accuracy_dataset_below6s$sac_time, NULL)
+
+# accuracy_dataset_below6s$end_sacc <- if_else(is.na(accuracy_dataset_below6s$sac_time) == FALSE & is.na(lead(accuracy_dataset_below6s$sac_time, n = 1) == TRUE),accuracy_dataset_below6s$sac_time, NULL)
+# 
+# max(accuracy_dataset_below6s$sac_time, na.rm = TRUE)
+
+
+# #get rid os start of old spurios saccades
+# accuracy_dataset_below6s$start_sacc <- if_else(accuracy_dataset_below6s$sacc_dur > 0, accuracy_dataset_below6s$start_sacc, NULL)
+# accuracy_dataset_below6s$end_sacc <- if_else(accuracy_dataset_below6s$sacc_dur > 0, accuracy_dataset_below6s$end_sacc, NULL)
+
+
+# accuracy_dataset_below6s <- accuracy_dataset_below6s%>%
+#   arrange(ssid, tNo, timerezero)%>%
+#   group_by(ssid, tNo)%>%
+#   fill(end_sacc, .direction = "up")%>%
+#   fill(start_sacc, .direction = "updown")%>%
+#   mutate(sacc_dur = end_sacc - start_sacc)%>%
+#   mutate(detection_withw_spursacc = if_else(sacc_dur == 0, "f", detection1))
+#     
+accuracy_dataset_below6s $detection_withw_spursacc<- NULL
+
+accuracy_dataset_below6s %>%
+subset(ssid == 309 & tNo == 2)%>%
+  ggplot(aes(timerezero, abs(int_velocity)))+
+  geom_line()+
+  geom_point(aes(y = gaze_y_cor_pix))+
+  geom_point(aes(y = gaze_x_cor_pix))+
+  geom_line(aes(y = threshold_velocity), size = 1.5)
+  # geom_vline(aes(xintercept = start_sacc), color = 'green')
+  geom_vline(aes(xintercept = end_sacc), color = 'red')
+
+  # annotate("rect", xmin = start_sacc, xmax = end_sacc)
+
+
+
+# delete single sacades
+rle(accuracy_dataset_below6s$detection1)
+
+accuracy_dataset_below6s$saccade_less3 <- rle(accuracy_dataset_below6s$detection1)
+
+accuracy_dataset_below6s <- accuracy_dataset_below6s %>%
+  group_by(ssid, tNo, detection1, event_order) %>%
+  mutate(keepF = if_else(detection1 == 'f' & n() >= 12, TRUE, FALSE)) %>%
+  mutate(keepS = if_else(detection1 == 's' & n() >= 3, TRUE, FALSE)) %>%
+
+# create a conter based on saca start
+
+
+saveRDS(accuracy_dataset_below6s, file = "accuracy_dataset_below6sjan16.rds")
+
+testsacc<- accuracy_dataset_below6s%>%
+subset(ssid == 309 & tNo == 2)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+  
+  # geom_vline(aes(xintercept = start_sacc), color = "red", size = 2, alpha = .03) +
+  # geom_vline(aes(xintercept = end_sacc), color = "green", linetype = "dotted", alpha = .03) +
+  ylim(0,1000)
+  
+
+mean(accuracy_dataset_below6s$end_sacc - accuracy_dataset_below6s$start_sacc, na.rm = TRUE)
+min(accuracy_dataset_below6s$end_sacc - accuracy_dataset_below6s$start_sacc, na.rm = TRUE)
+max(accuracy_dataset_below6s$end_sacc - accuracy_dataset_below6s$start_sacc, na.rm = TRUE)
+ 
+ 
+accuracy_dataset_below6s %>%
+  subset(ssid == 309 & tNo == 2)%>%
+  ggplot(aes(timerezero, abs(int_velocity)))+
+  geom_line()+
+  geom_line(aes(y = intdist_visang_vert))+
+  geom_point(aes(y = gaze_y_cor_pix))+
+  # geom_point(aes(y = gaze_x_cor_pix))+
+  # geom_line(aes(y = threshold_velocity), size = 1.5)+
+  # geom_vline(aes(xintercept = sac_time), alpha = .03)+
+  
+  geom_vline(aes(xintercept = start_sacc), color = "green", size = 2, alpha = .3)+
+  geom_vline(aes(xintercept = end_sacc), color = "red", size = 2, linetype = "dotted", alpha = .3) 
+  ylim(0,100)+
+  xlim(.6,2)
+
+
+max(accuracy_dataset_below6s$timerezero3)
+
+min(accuracy_dataset_below6s$timerezero)
+```
+
+
+Timecourse models for accuracy
+
+
+
+
+ 
+```{r} 
+
+unique(accuracy_dataset_below6s$screencontent)
+unique(accuracy_dataset_below6s$tNo)
+unique(accuracy_dataset_below6s$ssid)
+
+fixationscreen_only2<- accuracy_dataset_below6s%>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+
+
+fixationscreen_only2$ssid<- as.numeric(as.character(fixationscreen_only2$ssid))
+
+# fixationscreen_only2$ssid< 500
+# fixationscreen_only2_lmer <- fixationscreen_only2  %>%
+#   subset(tNo>0 & as.numeric(ssid, na.rm = TRUE) < 500)
+
+fixationscreen_only2_lmer<- fixationscreen_only2
+fixationscreen_only2_lmer$tNo2<- if_else(as.double(fixationscreen_only2_lmer$tNo)< 25, as.double(fixationscreen_only2_lmer$tNo), fixationscreen_only2_lmer$tNo - 24)
+
+
+
+unique(fixationscreen_only2_lmer$tNo2)
+
+#polynomial
+fixationscreen_only2_lmer$ot1<- poly(fixationscreen_only2_lmer$tNo2, degree = 1, raw =FALSE)[,1]
+fixationscreen_only2_lmer$ot2<- poly(fixationscreen_only2_lmer$tNo2, degree = 2, raw =FALSE)[,2]
+fixationscreen_only2_lmer$ot1_z<- scale(fixationscreen_only2_lmer$ot1, center = TRUE, scale = TRUE)[,1]
+fixationscreen_only2_lmer$ot2_z<- scale(fixationscreen_only2_lmer$ot2, center = TRUE, scale = TRUE)[,1]
+
+
+fixationscreen_only2_lmer%>%
+  ggplot(aes(tNo2, ot1_z))+
+  geom_line()+
+  geom_line(aes(y = ot2_z))
+
+
+
+fixationscreen_only2_lmer$block<- if_else(fixationscreen_only2_lmer$tNo< 25, -.5, +.5) 
+
+fixationscreen_only2_lmer$subject<- as.factor(as.character(fixationscreen_only2_lmer$ssid))                                          
+# models
+
+accurcay_models$acc_1<- lmer(avg_accuracy_visang_pt ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ (1 | subject), REML = FALSE,
+                             data = fixationscreen_only2_lmer)
+
+summary(accurcay_models$acc_1)
+
+anova(accurcay_models$acc_1)
+
+
+
+```
+Fixed effects:
+               Estimate  Std. Error          df t value Pr(>|t|)   
+ot1_z          0.044002    0.013721 2064.033249   3.207  0.00136 **
+ot2_z         -0.001381    0.013899 2064.058090  -0.099  0.92087   
+block          0.068205    0.027205 2064.999334   2.507  0.01225 * 
+ot1_z:block    0.034924    0.027445 2064.297130   1.273  0.20333   
+ot2_z:block    0.036084    0.027793 2064.388596   1.298  0.19432   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Correlation of Fixed Effects:
+            ot1_z  ot2_z  block  ot1_z:
+ot2_z        0.054                     
+block       -0.078 -0.090              
+ot1_z:block -0.123 -0.162  0.029       
+ot2_z:block -0.162 -0.194  0.028  0.054
+
+```{r}
+
+
+unique(fixationscreen_only2_lmer$ssid)
+
+plot(accurcay_models$acc_1)
+qqnorm(resid(accurcay_models$acc_1)) 
+qqline(resid(accurcay_models$acc_1))
+
+
+
+fixationscreen_only2_lmer$subject<- as.factor(as.character(fixationscreen_only2_lmer$ssid))
+
+accurcay_models$acc_1_notstand <- lmer(accuracy_visang ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ (1 | subject), REML = FALSE,
+                             data = fixationscreen_only2_lmer)
+
+summary(accurcay_models$acc_1_notstand)
+# uniq
+
+(fixationscreen_only2_lmer) %>%
+  ggplot(aes(tNo2, accuracy_visang))+
+  # geom_smooth(aes(color = ssid), se = F)
+ # geom_vline(xintercept = 26)+
+  geom_line(aes(y = predict(accurcay_models$acc_1, fixationscreen_only2_lmer), colour = subject))+
+  facet_grid(~block)
+  
+
+```
+  
+```{r}  
+  
+# horizontal
+accurcay_models$acc_1_h <- lmer(h_accuracy_visang ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ 
+                                (1 | ssid), REML = FALSE,
+                             data = fixationscreen_only2_lmer)
+
+plot(accurcay_models$acc_1_h)
+qqnorm(resid(accurcay_models$acc_1_h))
+qqline(resid(accurcay_models$acc_1_h))
+
+
+summary(accurcay_models$acc_1_h)
+
+
+```
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: h_accuracy_visang ~ (ot1_z + ot2_z) * block + (0 + ot1_z + ot2_z) +      (1 | ssid)
+   Data: fixationscreen_only2_lmer
+
+     AIC      BIC   logLik deviance df.resid 
+  2686.4   2726.0  -1336.2   2672.4     2100 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.2019 -0.2687 -0.0533  0.1650 19.9560 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ ssid     (Intercept) 0.3487   0.5905  
+ Residual             0.1899   0.4357  
+Number of obs: 2107, groups:  ssid, 43
+
+Fixed effects:
+                Estimate   Std. Error           df t value Pr(>|t|)   
+ot1_z          0.0311142    0.0097019 2064.0332461   3.207  0.00136 **
+ot2_z         -0.0009764    0.0098278 2064.0580865  -0.099  0.92087   
+block          0.0482285    0.0192370 2064.9993309   2.507  0.01225 * 
+ot1_z:block    0.0246953    0.0194067 2064.2971262   1.273  0.20333   
+ot2_z:block    0.0255152    0.0196523 2064.3885924   1.298  0.19432   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Correlation of Fixed Effects:
+            ot1_z  ot2_z  block  ot1_z:
+ot2_z        0.054                     
+block       -0.078 -0.090              
+ot1_z:block -0.123 -0.162  0.029       
+ot2_z:block -0.162 -0.194  0.028  0.054
+
+# vertical
+```{r}
+accurcay_models$acc_1_v <- lmer(v_accuracy_visang ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ 
+                                (1 | ssid), REML = FALSE,
+                             data = fixationscreen_only2_lmer)
+
+plot(accurcay_models$acc_1_v)
+qqnorm(resid(accurcay_models$acc_1_v))
+qqline(resid(accurcay_models$acc_1_v))
+
+emmeans::emmeans(accurcay_models$acc_1_v, pairwise ~ block|ot1_z )
+
+
+summary(accurcay_models$acc_1_v)
+
+(fixationscreen_only2_lmer) %>%
+  ggplot(aes(tNo2, v_accuracy_visang))+
+  # geom_smooth(aes(color = ssid), se = F)
+ # geom_vline(xintercept = 26)+
+  geom_line(aes(y = predict(accurcay_models$acc_1_v, fixationscreen_only2_lmer), colour = subject))+
+  facet_grid(~block)
+
+
+
+```
+
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: v_accuracy_visang ~ (ot1_z + ot2_z) * block + (0 + ot1_z + ot2_z) +      (1 | ssid)
+   Data: fixationscreen_only2_lmer
+
+     AIC      BIC   logLik deviance df.resid 
+  2795.3   2834.9  -1390.6   2781.3     2100 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-4.1827 -0.4861 -0.0329  0.4371 16.6153 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ ssid     (Intercept) 2.0756   1.4407  
+ Residual             0.1929   0.4392  
+Number of obs: 2107, groups:  ssid, 43
+
+Fixed effects:
+               Estimate  Std. Error          df t value Pr(>|t|)   
+ot1_z          0.001718    0.009779 2064.007298   0.176  0.86056   
+ot2_z          0.002415    0.009906 2064.011559   0.244  0.80743   
+block          0.062299    0.019392 2064.177075   3.213  0.00134 **
+ot1_z:block    0.054673    0.019561 2064.052790   2.795  0.00524 **
+ot2_z:block    0.013280    0.019809 2064.068659   0.670  0.50267   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Correlation of Fixed Effects:
+            ot1_z  ot2_z  block  ot1_z:
+ot2_z        0.054                     
+block       -0.078 -0.090              
+ot1_z:block -0.123 -0.162  0.029       
+ot2_z:block -0.162 -0.194  0.028  0.054
+
+
+
+
+$emmeans
+ot1_z = -0.00209:
+ block  emmean      SE   df lower.CL upper.CL
+  -0.5 -0.0311 0.00971 2069  -0.0501  -0.0121
+   0.5  0.0311 0.00971 2069   0.0121   0.0502
+
+Degrees-of-freedom method: kenward-roger 
+Confidence level used: 0.95 
+
+$contrasts
+ot1_z = -0.00209:
+ contrast   estimate     SE   df t.ratio p.value
+ -0.5 - 0.5  -0.0622 0.0194 2069 -3.205  0.0014 
+
+Degrees-of-freedom method: kenward-roger 
+
+```{r}
+
+# 
+# 
+# mean(fixationscreen_only2_lmer$accuracy_visang, na.rm = TRUE)
+# 
+# median(fixationscreen_only2_lmer$accuracy_visang, na.rm = TRUE)
+# 
+# sd(fixationscreen_only2_lmer$accuracy_visang, na.rm = TRUE)
+# min(fixationscreen_only2_lmer$accuracy_visang, na.rm = TRUE)
+# max(fixationscreen_only2_lmer$accuracy_visang, na.rm = TRUE)
+# 
+# 
+# 
+# mean(fixationscreen_only2_lmer$v_accuracy_visang, na.rm = TRUE)
+# 
+# median(fixationscreen_only2_lmer$v_accuracy_visang, na.rm = TRUE)
+# 
+# sd(fixationscreen_only2_lmer$v_accuracy_visang, na.rm = TRUE)
+# min(fixationscreen_only2_lmer$v_accuracy_visang, na.rm = TRUE)
+# max(fixationscreen_only2_lmer$v_accuracy_visang, na.rm = TRUE)
+# 
+# 
+# mean(fixationscreen_only2_lmer$h_accuracy_visang, na.rm = TRUE)
+# 
+# median(fixationscreen_only2_lmer$h_accuracy_visang, na.rm = TRUE)
+# 
+# sd(fixationscreen_only2_lmer$h_accuracy_visang, na.rm = TRUE)
+# min(fixationscreen_only2_lmer$h_accuracy_visang, na.rm = TRUE)
+# max(fixationscreen_only2_lmer$h_accuracy_visang, na.rm = TRUE)
+
+
+
+# Save an object to a file
+saveRDS(fixationscreen_only2_lmer, file = "fixationscreen_only2_lmer.rds")
+# Restore the object
+readRDS(file = "my_data.rds")
+
+
+fixationscreen_only2_lmer
+
+
+ tmp.df4_sum_below500 %>%
+   subset(cali_order!= 1)%>%
+  group_by(ssid, cali_order )%>%
+  summarise_at(c('avg_error1','gaze_loss_prop', 'cali_no_resc_agg'), mean, na.rm = TRUE)%>%
+   ggplot(aes(avg_error1, gaze_loss_prop))+
+   geom_point()+
+   facet_grid(~ cali_order)+
+   geom_smooth(method = 'lm', se = F)
+ 
+ 
+ 
+ tmp.df4_sum_full_stim_gp_leda_beh_self_biopac %>%
+   group_by(ssid, screencontent)%>%
+   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+   ggplot(aes(Global.Mean, BIO_Global.Mean))+
+   geom_point()+
+   geom_smooth(method = 'lm', se = F)+ facet_grid(~screencontent)
+
+```
+
+
+
+Precision
+fixationscreen_only3
+model_time_prec
+
+
+
+start by finishing fixation
+
+
+```{r eval=FALSE, include=FALSE}
+
+table(accuracy_dataset_below6s$detection_withw_spursacc)
+saveRDS(accuracy_dataset_below6s, file = "accuracy_dataset_below6sjan16.rds")
+
+# not yet
+accuracy_dataset_below6s <- accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, timerezero)%>%
+  mutate(gaze_x_cor_pix_forpreci = if_else(detection1 == "f", gaze_x_cor_pix, NULL))%>%
+  mutate(gaze_y_cor_pix_forpreci = if_else(detection1 == "f", gaze_y_cor_pix, NULL))
+  # mutate(test = if_else(detection1 == "s", timerezero, NULL))
+  # mutate(test2 = if_else(detection_withw_spursacc == "s", timerezero, NULL))
+
+# we need to create a counter for the events so that each fix sacc or loss has a duration
+
+# accuracy_dataset_below6s$test <- duplicated(accuracy_dataset_below6s$detection1)
+# accuracy_dataset_below6s$test2 <- accuracy_dataset_below6s$detection1
+
+library(data.table)
+
+accuracy_dataset_below6s<-
+accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, timerezero)%>%
+  group_by(ssid, tNo)%>%
+  mutate(event_order = rleid(detection1))%>%
+  ungroup()%>%
+  group_by(ssid, tNo, detection1, event_order)%>%
+  mutate(duplicated_event = !duplicated(event_order))%>%
+  ungroup()%>%
+  group_by(ssid, tNo)%>%
+  
+  mutate(duplicated_event2 = duplicated(event_order))
+View(accuracy_dataset_below6s)
+  
+# mutate(start = if_else(duplicated_event == TRUE, timerezero, NULL))%>%
+#   # fill(start, .direction = "down") %>%
+#   mutate(end = if_else(duplicated_event2 == TRUE & lead(duplicated_event2, n=1) == FALSE, timerezero, 
+#                if_else(duplicated_event2 == FALSE & lead(duplicated_event2, n=1) == FALSE, start + 0.005, NULL)))%>%
+#   ungroup() %>%
+#   group_by(ssid, tNo, detection1, event_order) %>%
+#   # mutate(end = if_else(duplicated_event == TRUE, timerezero, NULL))%>%
+#   fill(start, .direction = "down")%>%
+#   fill(end, .direction = "up")%>%
+#   mutate(duration = end - start)
+
+# arrangind the ds in order
+accuracy_dataset_below6s <- accuracy_dataset_below6s %>%
+   arrange(ssid, tNo, timerezero)
+
+accuracy_dataset_below6s$start<- if_else(accuracy_dataset_below6s$duplicated_event == TRUE, accuracy_dataset_below6s$timerezero, NULL)
+unique(accuracy_dataset_below6s$start)
+table(is.na(accuracy_dataset_below6s$start))
+
+# create end
+accuracy_dataset_below6s$end <- 
+  if_else(accuracy_dataset_below6s$duplicated_event2 == TRUE & rownames(accuracy_dataset_below6s) == nrow(accuracy_dataset_below6s), accuracy_dataset_below6s$timerezero, 
+  if_else(accuracy_dataset_below6s$duplicated_event2 == FALSE & rownames(accuracy_dataset_below6s) == nrow(accuracy_dataset_below6s), accuracy_dataset_below6s$start + 0.005,
+  if_else(accuracy_dataset_below6s$duplicated_event2 == TRUE & lead(accuracy_dataset_below6s$duplicated_event2, n = 1) == FALSE, accuracy_dataset_below6s$timerezero,
+  if_else(accuracy_dataset_below6s$duplicated_event2 == FALSE & lead(accuracy_dataset_below6s$duplicated_event2, n=1) == FALSE, accuracy_dataset_below6s$start + 0.005, NULL))))
+
+table(is.na(accuracy_dataset_below6s$end))
+          
+          
+  # if_else(accuracy_dataset_below6s$duplicated_event2 == TRUE & rownames(accuracy_dataset_below6s) == nrow(accuracy_dataset_below6s), accuracy_dataset_below6s$timerezero, 
+  # if_else(accuracy_dataset_below6s$duplicated_event2 == FALSE & rownames(accuracy_dataset_below6s) == nrow(accuracy_dataset_below6s), accuracy_dataset_below6s$start + 0.005, NULL))))
+
+# TEST <- rownames(accuracy_dataset_below6s) == nrow(accuracy_dataset_below6s)
+# table(TEST)
+# 
+# part344 <- subset(accuracy_dataset_below6s, ssid == 344 & tNo == 50 & event_order == 48)
+# 
+# part344$test <- if_else(rownames(part344) == nrow(part344), TRUE, FALSE)
+# 
+# part344$test2 <- if_else(part344$duplicated_event2 == TRUE & rownames(part344) == nrow(part344), part344$timerezero, 
+#                   if_else(part344$duplicated_event2 == FALSE & rownames(part344) == nrow(part344), part344$start + 0.005, NULL))
+
+
+table(part344$test)
+View(part344)
+
+accuracy_dataset_below6s <- accuracy_dataset_below6s %>%
+  arrange(ssid,tNo,timerezero) %>%
+  group_by(ssid, tNo, detection1, event_order) %>%
+  fill(start, .direction = "down")%>%
+  fill(end, .direction = "up")%>%
+  mutate(duration = end - start)
+
+unique(accuracy_dataset_below6s$duplicated_event2)
+
+table(is.na(accuracy_dataset_below6s$duration))
+table(is.na(accuracy_dataset_below6s$start))
+table(is.na(accuracy_dataset_below6s$end))
+
+View(accuracy_dataset_below6s)
+
+max(accuracy_dataset_below6s$duration)
+min(accuracy_dataset_below6s$duration)
+
+# natest<- subset(accuracy_dataset_below6s, is.na(duration) == TRUE)
+# accuracy_dataset_below6s %>%
+#   arrange(ssid, tNo, timerezero)%>%
+#   # group_by(ssid, tNo) %>%
+#   group_by(ssid, tNo, detection1)%>%
+#   fill(end, .direction = "up")
+
+
+  # mutate(end = if_else(lag(duplicated_event, n = 1) == TRUE, timerezero, NULL))
+  
+# accuracy_dataset_below6s%>%
+#   ggplot(aes(duration))+
+#   geom_histogram(bins = 300)+
+#   xlim(0,.01)+
+#   facet_grid(~detection1)+
+#   geom_vline(xintercept = .005, size = 1, linetype = "dashed", alpha = .5)
+
+# now lets cmpute the average duration of events
+saveRDS(accuracy_dataset_below6s, "accuracy_dataset_below6sjan16withevents.rds")
+
+accuracy_dataset_below6s %>%
+  group_by(ssid, tNo, detection1)%>%
+  summarise_at(c('duration'), mean, na.rm = TRUE)%>%
+  ggplot(aes(duration))+
+  geom_density(aes(fill = detection1), alpha = .5)
+  facet_grid(~detection1)
+  
+  table(accuracy_dataset_below6s$detection1 == "f")
+  
+  table(is.na(accuracy_dataset_below6s$gaze_x_cor_pix), is.na(accuracy_dataset_below6s$gaze_y_cor_pix))
+  unique(accuracy_dataset_below6s$detection1)
+  
+  # table(is.na(accuracy_dataset_below6s$detection1))
+  
+# eliminate implausbe fixations (< 80ms = 0.08) and saccades( < 12ms = .012)
+  
+  
+  saveRDS(  accuracy_dataset_below6s, "  accuracy_dataset_below6sjan16withevents.rds")
+  
+  
+accuracy_dataset_below6s<-  readRDS(file = "  accuracy_dataset_below6sjan16withevents.rds")
+
+   accuracy_dataset_below6s$detection2<- if_else(is.na(accuracy_dataset_below6s$detection1) == TRUE,
+                                                 "loss",  accuracy_dataset_below6s$detection1)  
+ 
+   table( accuracy_dataset_below6s$detection2)
+ 
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  group_by(ssid, tNo, detection2, event_order)%>%
+    mutate(fix_validity = if_else(detection2 == "f" & duration > .08, TRUE, FALSE))%>%
+    mutate(sacc_validity = if_else(detection2 == "s", duration > .012, TRUE,
+                                        FALSE))%>%
+    mutate(new_dur = if_else(fix_validity == TRUE & detection2 == "f", duration,
+                             if_else(sacc_validity == TRUE & detection2 == "s", duration,
+                                    if_else(detection2 == "loss", duration,  NULL))))
+
+
+# nee detectin ignoring small fix or saccades
+accuracy_dataset_below6s$detection3<- if_else(accuracy_dataset_below6s$fix_validity == TRUE & accuracy_dataset_below6s$detection2 == "f", accuracy_dataset_below6s$detection2,
+                                              if_else(accuracy_dataset_below6s$sacc_validity == TRUE & 
+                                                        accuracy_dataset_below6s$detection2 == "s", accuracy_dataset_below6s$detection2, "loss"))
+
+
+# this shousld result in less fixation and less saccades
+
+table(accuracy_dataset_below6s$detection1)
+table(accuracy_dataset_below6s$detection2)
+
+table(accuracy_dataset_below6s$detection3)
+
+# new event 3 that matches the new detection since the old fixations that were deleted will cause the order not to match
+
+
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, timerezero)%>%
+  group_by(ssid, tNo,)%>%
+  mutate(event_order_new = rleid(detection3))
+
+unique(accuracy_dataset_below6s$event_order_new)
+
+```
+
+  # ungroup()%>%
+  # group_by(ssid, tNo, detection1, event_order)%>%
+  # mutate(duplicated_event = !duplicated(event_order))%>%
+  # ungroup()%>%
+  # group_by(ssid, tNo)%>%
+
+
+
+
+
+```{r}
+
+
+# compute amplitute of sacadesaccade_less3
+accuracy_dataset_below6s$start
+
+
+# create a new event order for this new detection
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  arrange(ssid, tNo,timerezero)%>%
+  group_by(ssid, tNo,detection3, event_order_new)%>%
+  mutate(sacc_posstart_x = if_else(detection3 == "s" & start == timerezero, gaze_x_cor_pix, NULL))%>%
+ mutate(sacc_posend_x = if_else(detection3 == "s" & end == timerezero, gaze_x_cor_pix, NULL))%>%
+    mutate(sacc_posstart_y = if_else(detection3 == "s" & start == timerezero, gaze_y_cor_pix, NULL))%>%
+ mutate(sacc_posend_y = if_else(detection3 == "s" & end == timerezero, gaze_y_cor_pix, NULL))
+
+
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+   arrange(ssid, tNo,timerezero)%>%
+  group_by(ssid, tNo,detection3, event_order)%>%
+ fill(sacc_posstart_x, .direction = "down")%>%
+  fill(sacc_posend_x, .direction = "up")%>%
+   fill(sacc_posstart_y, .direction = "down")%>%
+  fill(sacc_posend_y, .direction = "up")
+
+accuracy_dataset_below6s %>%
+  subset(detection3 == "s")%>%
+  arrange(ssid, tNo, timerezero)
+  
+
+  
+  saveRDS(accuracy_dataset_below6s, "accuracy_dataset_below6sjan16witheventdur.rds")
+  
+  
+  
+# compute saccade amplitude displacement in pitagoean
+accuracy_dataset_below6s<- accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, timerezero)%>%
+  group_by(ssid, tNo, detection3, event_order_new)%>%
+  mutate(sac_amp = sqrt((sacc_posstart_x - sacc_posend_x)^2 +(sacc_posstart_y - sacc_posend_y)^2))%>%
+  mutate(sac_amp_visang = pixtoAng(hw = 52, d = 65, r = 1920, sac_amp))%>%
+  mutate(sac_peak = mean(int_velocity))
+
+
+
+#backup
+  saveRDS(accuracy_dataset_below6s, "accuracy_dataset_below6sjan16witheventdur.rds")
+  
+accuracy_dataset_below6s %>%
+  subset(detection3 == "s")%>%
+   group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(sac_amp_visang, sac_peak))+
+  geom_point()+
+  geom_smooth(aes(group = ssid),method =  'lm', se = F)
+  facet_grid(~detection3)
+  
+  
+  accuracy_dataset_below6s %>%
+  subset(detection3 == "s")%>%
+   group_by(tNo)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(sac_amp_visang, new_dur))+
+  geom_point()+
+  geom_smooth(,method =  'lm', se = F)
+  facet_grid(~detection3)
+  
+
+  
+accuracy_dataset_below6s$Event<- if_else(accuracy_dataset_below6s$detection2 == "f", "Fixation",
+                                         if_else(accuracy_dataset_below6s$detection2 == "s", "Saccade", "Loss"))
+
+acc_plots$parsing<- accuracy_dataset_below6s%>%  
+group_by(ssid, tNo,detection2, Event)%>%
+    summarise_at(c('new_dur'), max, na.rm = TRUE)%>%
+  ggplot(aes(new_dur, fill = Event))+
+  geom_histogram(aes(y=..density..),bins = 300, alpha=0.5, 
+                position="identity")+
+  geom_density(alpha = .2)+
+  # geom_vline(xintercept = .1, linetype = "dashed")+
+  p$graphstyle+
+  xlab("Duration (s)")+
+  ylab("Density")+
+  scale_color_brewer(palette = "Dark2")+
+  
+  # summarise_at(c('Duration (s)')*1000, min, na.rm = TRUE)+
+    theme(legend.position = c(0.6, 0.6))
+  
+  
+ library(patchwork)
+
+accuracy_dataset_below6s
+
+
+acc_plots$loss<-  accuracy_dataset_below6s%>%  
+group_by(ssid, tNo,detection2, Event)%>%
+    summarise_at(c('gaze_loss_prop'), max, na.rm = TRUE)%>%
+  ggplot(aes(gaze_loss_prop))+
+  geom_histogram(aes(y=..density..),bins = 300, 
+                position="identity")+
+  # geom_density(alpha = .2)+
+  # geom_vline(xintercept = .1, linetype = "dashed")+
+  p$graphstyle+
+  xlab("Loss")+
+  ylab("Density")+
+  scale_color_brewer(palette = "Dark2")
+
+acc_plots$loss
+
+acc_plots$loss<- acc_plots$loss+
+  scale_x_continuous(limits=c(0,1), breaks = c(0,.5,1))
+
+
+scale_y_continuous(limits=c(0,40), breaks = c(0,20,40))
+
+acc_plots$loss
+  
+  # summarise_at(c('Duration (s)')*1000, min, na.rm = TRUE)+
+    theme(legend.position = c(0.6, 0.6))
+
+    library(patchwork)
+    
+acc_patch<- (acc_plots$accuracy | acc_plots$precision+theme(axis.title.y = element_blank())) /(acc_plots$loss|acc_plots$parsing+theme(axis.title.y = element_blank()))
+
+acc_patch<- acc_patch+plot_annotation(tag_levels = 'A')
+acc_patch
+
+ggsave("acc_patch.tiff", acc_patch, device = "tiff", dpi = 800, height = 7, width = 10)  
+# 
+  
+  
+  
+
+```
+
+
+
+
+
+saveRDS(accuracy_dataset_below6s, "accuracy_dataset_below6s.Rds")
+
+
+
+```{r}
+
+
+View(accuracy_dataset_below6s)     
+
+
+accuracy_dataset_below6s$timerezero
+
+#store gazepoints for precision calculations
+
+accuracy_dataset_below6s$gaze_x_cor_pix_for_prec<- if_else(accuracy_dataset_below6s$detection3 == "f", accuracy_dataset_below6s$gaze_x_cor_pix, NULL)
+
+accuracy_dataset_below6s$gaze_y_cor_pix_for_prec<- if_else(accuracy_dataset_below6s$detection3 == "f", accuracy_dataset_below6s$gaze_y_cor_pix, NULL)
+
+# check how parising is happening
+ accuracy_dataset_below6s %>%
+   subset(ssid == 304 & tNo == 16 )%>%
+   ggplot(aes(timerezero, gaze_x_cor_pix_for_prec))+
+   geom_line()+
+   geom_line(aes(y = gaze_x_cor_pix), color = "green", linetype = "dotted")+
+   geom_line(aes(y = int_velocity), color = 'red', alpha = .5)+
+   geom_line(aes(y = gaze_y_cor_pix_for_prec), color = "blue")+
+    geom_line(aes(y=gaze_y_cor_pix), color = "blue", linetype = "dotted")
+   # geom_hline(aes(yintercept = threshold_velocity))+
+   geom_vline(aes(xintercept = test))
+ 
+ 
+ 
+
+
+```
+
+
+
+Now compute precision
+```{r}
+ accuracy_dataset_below6s <- accuracy_dataset_below6s %>%
+  arrange(ssid, tNo, timerezero)%>%
+  group_by(ssid, tNo) %>%
+  mutate(gaze_x_cor_pix_for_prec_lead = lead(gaze_x_cor_pix_for_prec, n = 1)) %>%
+  mutate(gaze_x_cor_pix_for_prec_dif = gaze_x_cor_pix_for_prec_lead  - gaze_x_cor_pix_for_prec)%>%
+  mutate(gaze_y_cor_pix_for_prec_lead= lead(gaze_y_cor_pix_for_prec, n = 1)) %>%
+  mutate(gaze_y_cor_pix_for_prec_dif = gaze_y_cor_pix_for_prec_lead-gaze_y_cor_pix_for_prec) %>%
+  mutate(v_precision_pix = sqrt(mean(gaze_y_cor_pix_for_prec_dif ^2, na.rm = TRUE))) %>%
+  mutate(h_precision_pix = sqrt(mean(gaze_x_cor_pix_for_prec_dif ^2, na.rm = TRUE))) %>%
+    
+  mutate(gaze_cor_pix_euclidean_int_dif = sqrt((gaze_x_cor_pix_for_prec_dif)^2 +(gaze_y_cor_pix_for_prec_dif)^2))%>%
+  mutate(precision_eucl_pix = sqrt(mean(gaze_cor_pix_euclidean_int_dif ^2, na.rm = TRUE)))%>%
+  mutate(precision_avg_pix = (v_precision_pix + h_precision_pix)/2)%>%
+    
+  mutate(sd_h_precision_pix = sd(gaze_x_cor_pix_for_prec, na.rm = TRUE)) %>%
+    mutate(sd_v_precision_pix = sd(gaze_y_cor_pix_for_prec, na.rm = TRUE)) %>%
+    mutate(sd_precision_avg_pix = (sd_v_precision_pix + sd_h_precision_pix) / 2)
+    
+
+mean(accuracy_dataset_below6s$v_precision_pix, na.rm = TRUE) 
+mean(accuracy_dataset_below6s$h_precision_pix, na.rm = TRUE) 
+
+mean(accuracy_dataset_below6s$precision_avg_pix, na.rm = TRUE) 
+mean(accuracy_dataset_below6s$precision_eucl_pix, na.rm = TRUE) 
+
+mean(accuracy_dataset_below6s$sd_h_precision_pix, na.rm = TRUE) 
+mean(accuracy_dataset_below6s$sd_v_precision_pix, na.rm = TRUE) 
+
+mean(accuracy_dataset_below6s$sd_h_precision_pix, na.rm = TRUE)
+
+accuracy_dataset_below6s%>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm =TRUE)%>%
+  ggplot(aes(precision_eucl_pix))+
+  geom_histogram()+
+  geom_vline(xintercept = 40)
+
+
+accuracy_dataset_below6s%>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm =TRUE)%>%
+  ggplot(aes(precision_avg_pix))+
+  geom_histogram()+
+  geom_vline(xintercept = 40)
+
+
+
+accuracy_dataset_below6s%>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm =TRUE)%>%
+  ggplot(aes(sd_precision_avg_pix))+
+  geom_histogram()+
+  geom_vline(xintercept = 40)
+
+
+
+# conversions to degres
+
+accuracy_dataset_below6s$precision_visang<- NULL
+ accuracy_dataset_below6s <-  accuracy_dataset_below6s %>%
+   arrange(ssid, tNo, timerezero)%>%
+  group_by(ssid, tNo) %>%
+   mutate(v_precision_visang = pixtoAng(hw = 32.5, d = 65 , r = 1200, v_precision_pix))%>%
+   mutate(h_precision_visang = pixtoAng(hw = 52, d = 65 , r = 1920, h_precision_pix))%>% 
+    mutate(avg_precision_visang = pixtoAng(hw = 52, d = 65 , r = 1920,precision_avg_pix ))%>%
+    mutate(eucl_precision_visang = pixtoAng(hw = 52, d = 65 , r = 1920, precision_eucl_pix))%>%
+    mutate(sd_v_precision_visang = pixtoAng(hw = 32.5, d = 65 , r = 1200, sd_v_precision_pix))%>%
+     mutate(sd_h_precision_visang = pixtoAng(hw = 52, d = 65 , r = 1920, sd_h_precision_pix))%>%
+     mutate(sd_avg_precision_visang = pixtoAng(hw = 32.5, d = 65 , r = 1200, sd_precision_avg_pix))
+   
+   
+saveRDS(accuracy_dataset_below6s, file = "accuracy_dataset_below6sjan16eventdurprecis.rds")  
+
+#expeted ranges
+accuracy_dataset_below6s%>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm =TRUE)%>%
+  ggplot(aes(eucl_precision_visang))+
+  geom_histogram()+
+  geom_vline(xintercept = .5)
+
+acc_plots$precision<- accuracy_dataset_below6s %>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm =TRUE)%>%
+  ggplot(aes(avg_precision_visang))+
+  geom_histogram(aes(y=..density..), 
+                position="identity")+
+  # geom_histogram()+
+  geom_vline(xintercept = .5, linetype = "dashed", color = "red", size = 1.5)+
+  p$graphstyle+
+  xlab("Precision (deg)")+
+  ylab("Density")
+  
+
+acc_plots$precision
+
+accuracy_dataset_below6s%>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm =TRUE)%>%
+  ggplot(aes(sd_avg_precision_visang))+
+  geom_histogram()+
+  geom_vline(xintercept = .5)
+
+
+accuracy_dataset_below6s %>%
+    subset(detection3 == "f")%>%
+  group_by(ssid, tNo)%>%
+  mutate(losstest = n())
+  summarise_if(is.numeric, mean, na.rm =TRUE)%>%
+
+  ggplot(aes(gaze_loss_prop, new_dur))+
+  geom_point()
+
+# mutate(sd_eucl_precision_pix = sqrt())
+  
+# sd( (accuracy_dataset_below6s$new_dur  accuracy_dataset_below6s$duration)      
+  
+    
+  
+  mutate(precision_pix = (h_precision_pix + v_precision_pix)/2) %>%
+  mutate(v_precision_visang = pixtoAng(hw = 27.8, d = 62.45, r = 1080, stimsize = v_precision_pix)) %>%
+  mutate(h_precision_visang = pixtoAng(hw = 51, d = 62.45, r = 1920, stimsize = h_precision_pix)) %>%
+  mutate(precision_visang = (h_precision_visang + v_precision_visang)/2)
+
+
+
+```
+
+
+Precision analyses
+
+```{r}
+
+fixationscreen_only3<-
+  
+  View(accuracy_dataset_below6s)
+
+
+test<- subset(accuracy_dataset_below6s, detection3 == "f")
+
+fixationscreen_only3<- accuracy_dataset_below6s%>%
+  subset(detection3 == "f")%>%
+  group_by(ssid, tNo)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+View(fixationscreen_only3)
+
+unique(fixationscreen_only3$ssid)
+fixationscreen_only3$ssid<- as.numeric(as.character(fixationscreen_only3$ssid))
+
+
+fixationscreen_only3_lmer<- fixationscreen_only3
+unique(fixationscreen_only3_lmer$ssid)
+
+fixationscreen_only3_lmer$tNo2<- if_else(as.double(fixationscreen_only3_lmer$tNo)< 25, as.double(fixationscreen_only3_lmer$tNo), fixationscreen_only3_lmer$tNo - 24)
+
+
+
+unique(fixationscreen_only3_lmer$tNo2)
+
+#polynomial
+fixationscreen_only3_lmer$ot1<- poly(fixationscreen_only3_lmer$tNo2, degree = 1, raw =FALSE)[,1]
+
+# fixationscreen_only3_lmer$ot1[1,]
+fixationscreen_only3_lmer$ot2<- poly(fixationscreen_only3_lmer$tNo2, degree = 2, raw =FALSE)[,2]
+
+fixationscreen_only3_lmer$ot1_z<- scale(fixationscreen_only3_lmer$ot1, center = TRUE, scale = TRUE)[,1]
+fixationscreen_only3_lmer$ot2_z<- scale(fixationscreen_only3_lmer$ot2, center = TRUE, scale = TRUE)[,1]
+
+fixationscreen_only3_lmer%>%
+  ggplot(aes(tNo, ot1_z))+
+  geom_point()+
+  geom_point(aes(y = ot2_z))
+
+# fixationscreen_only3_lmer$spli_trial<- as.factor(fixationscreen_only3_lmer$spli_trial)
+fixationscreen_only3_lmer$block<- if_else(fixationscreen_only3_lmer$tNo <25, -.5, +.5) 
+                                            
+             
+fixationscreen_only3_lmer$subject<- as.factor(as.character(fixationscreen_only3_lmer$ssid))
+fixationscreen_only3                               
+
+precision_models<- list()
+library(lmerTest)
+
+mean(fixationscreen_only3_lmer$avg_precision_visang, na.rm = TRUE) # 0.2719884
+median(fixationscreen_only3_lmer$avg_precision_visang, na.rm = TRUE)# 0.2440743
+sd(fixationscreen_only3_lmer$avg_precision_visang, na.rm = TRUE) #0.1080971
+range(fixationscreen_only3_lmer$avg_precision_visang, na.rm = TRUE) #0.1065232 0.7233320
+
+
+# vertical
+
+mean(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE) # 0.3044482
+median(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE)# 0.2632572
+sd(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE) # 0.1335215
+range(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE) #0.1120570 0.9538436
+
+
+# horizontal
+
+mean(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE) # 0.2484294
+median(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE)#  0.2296711
+sd(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE) # 0.09180471
+range(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE) #0.09097805 0.60289107
+
+fixationscreen_only3_lmer$ssid<- as.factor(as.character(fixationscreen_only3_lmer$ssid))
+
+precision_models$prec_1 <- lmer(avg_precision_visang ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ (1 | ssid), REML = FALSE,
+                             data = fixationscreen_only3_lmer)
+
+
+summary(precision_models$prec_1)
+
+
+# fit data
+(fixationscreen_only3_lmer) %>%
+  ggplot(aes(tNo2, precision_visang))+
+  # geom_smooth(aes(color = ssid), se = F)
+ # geom_vline(xintercept = 26)+
+  geom_line(aes(y = predict(precision_models$prec_1, fixationscreen_only3_lmer), colour = subject))+
+  facet_grid(~block)
+
+```
+
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method [lmerModLmerTest]
+Formula: avg_precision_visang ~ (ot1_z + ot2_z) * block + (0 + ot1_z +      ot2_z) + (1 | ssid)
+   Data: fixationscreen_only3_lmer
+
+     AIC      BIC   logLik deviance df.resid 
+ -6321.0  -6281.4   3167.5  -6335.0     2097 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.9049 -0.5446 -0.0864  0.4553  5.7883 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ ssid     (Intercept) 0.082648 0.28749 
+ Residual             0.002479 0.04979 
+Number of obs: 2104, groups:  ssid, 43
+
+Fixed effects:
+                Estimate   Std. Error           df t value Pr(>|t|)   
+ot1_z          0.0007986    0.0011108 2061.0024024   0.719  0.47227   
+ot2_z          0.0009260    0.0011245 2061.0040815   0.823  0.41033   
+block          0.0065649    0.0022007 2061.0587841   2.983  0.00289 **
+ot1_z:block    0.0014579    0.0022219 2061.0173472   0.656  0.51179   
+ot2_z:block    0.0023842    0.0022486 2061.0224616   1.060  0.28914 
+
+
+# real data
+
+(fixationscreen_only3_lmer) %>%
+  ggplot(aes(tNo2, precision_visang))+
+  # geom_line(aes(colour = subject))+
+  geom_smooth(aes(color = subject), se = F)+
+ # geom_vline(xintercept = 26)+
+  #geom_line(aes(y = predict(precision_models$prec_1, fixationscreen_only3_lmer), colour = subject))+
+  facet_grid(~spli_trial)
+
+
+emmeans::emmeans(accurcay_models$prec_1, pairwise ~  block | ot2_z)
+```{r}
+
+ 
+#vertical precision
+
+mean(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE)
+median(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE)
+sd(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE)
+min(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE)
+max(fixationscreen_only3_lmer$v_precision_visang, na.rm = TRUE)
+ 
+
+
+#horizontal precision
+
+mean(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE)
+median(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE)
+sd(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE)
+min(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE)
+max(fixationscreen_only3_lmer$h_precision_visang, na.rm = TRUE)
+  
+
+# vertical precision
+
+precision_models$v_prec_1 <- lmer(v_precision_visang ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ (1 | ssid), REML = FALSE,
+                             data = fixationscreen_only3_lmer)
+
+plot(precision_models$v_prec_1)
+qqnorm(resid(precision_models$v_prec_1))
+
+summary(precision_models$v_prec_1)
+
+
+```
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method [lmerModLmerTest]
+Formula: v_precision_visang ~ (ot1_z + ot2_z) * block + (0 + ot1_z + ot2_z) +      (1 | ssid)
+   Data: fixationscreen_only3_lmer
+
+     AIC      BIC   logLik deviance df.resid 
+ -5217.6  -5178.1   2615.8  -5231.6     2097 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.8675 -0.4922 -0.0646  0.3834  6.5967 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ ssid     (Intercept) 0.105332 0.32455 
+ Residual             0.004213 0.06491 
+Number of obs: 2104, groups:  ssid, 43
+
+Fixed effects:
+                Estimate   Std. Error           df t value Pr(>|t|)   
+ot1_z          0.0007272    0.0014480 2061.0035161   0.502  0.61558   
+ot2_z          0.0009723    0.0014659 2061.0057547   0.663  0.50722   
+block          0.0076593    0.0028688 2061.0786467   2.670  0.00765 **
+ot1_z:block    0.0020506    0.0028965 2061.0234389   0.708  0.47906   
+ot2_z:block    0.0031637    0.0029314 2061.0302560   1.079  0.28059   
+---
+```{r}
+# horizontal precision
+
+precision_models$h_prec_1 <- lmer(h_precision_visang ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ (1 | ssid), REML = FALSE,
+                             data = fixationscreen_only3_lmer)
+
+plot(precision_models$h_prec_1)
+qqnorm(resid(precision_models$h_prec_1))
+
+summary(precision_models$h_prec_1)
+
+
+
+
+
+
+# fit data
+(fixationscreen_only3_lmer) %>%
+  ggplot(aes(tNo2, h_precision_visang))+
+  # geom_smooth(aes(color = ssid), se = F)
+ # geom_vline(xintercept = 26)+
+  geom_line(aes(y = predict(precision_models$h_prec_1, fixationscreen_only3_lmer), colour = subject))+
+  facet_grid(~spli_trial)
+
+
+# real data
+
+(fixationscreen_only3_lmer) %>%
+  ggplot(aes(tNo2, h_precision_visang))+
+  # geom_line(aes(colour = subject))+
+  geom_smooth(aes(color = subject), se = F)+
+ # geom_vline(xintercept = 26)+
+  #geom_line(aes(y = predict(precision_models$prec_1, fixationscreen_only3_lmer), colour = subject))+
+  facet_grid(~spli_trial)
+
+saveRDS(fixationscreen_only3_lmer, "fixationscreen_only3_lmer_precision.rds")
+
+saveRDS(accuracy_dataset_below6s, "accuracy_dataset_below6sjan16eventdurprecis.rds")
+```
+
+
+Heart rate variability
+
+ALL WE NEED IS bounce
+
+
+hr variability metrics to use
+mean RMSSD
+
+rr interval
+
+
+```{r}
+
+
+unique(accuracy_dataset_below6s$ssid)
+library(readr)
+
+
+read_plus_hrv <- function(flnm) {
+  data.table::fread(flnm, select = c("ssid", "time", 'hr', "hrv", "hrp", "status", "tNo",  "Condition", "screencontent", "stim")) %>% 
+    mutate(filename = flnm)
+}
+
+# now read them
+library(purrr)
+library(data.table)
+library(dplyr)
+
+# read all clean data for repixeling
+
+
+Restperiod <-
+  list.files(pattern = "*.csv", 
+             full.names = T) %>% 
+  map_df(~read_plus_hrv(.))
+
+
+# keep only rest period
+
+
+Restperiod1 <- subset(Restperiod, tNo == -7)
+
+Restperiod1 %>%
+  subset(ssid == 609)%>%
+  ggplot(aes(time, hrp))+
+  geom_line()
+
+Restperiod1 <- select(Restperiod1, c(ssid, time, hrp))
+Restperiod2<- select()
+# df_dat <- split(Restperiod1, Restperiod1$ssid)
+
+# Split dataframe by city
+split_df <- split(Restperiod1[,3], list(Restperiod1$ssid))
+Restperiod1$time
+
+# Write out separate CSV for each city
+for (ssid in names(split_df)) {
+  # if (ssid == split_df[[ssid]]) {
+  # }
+    write_csv(split_df[[ssid]], paste0(ssid, "rest_hp.txt"), row.names = FALSE, col.names = FALSE, quote = FALSE)
+  }
+
+
+split_df[["344"]][,3]
+
+lapply(names(SPLIT.DATA), function(nm) 
+   write.csv(SPLIT.DATA[[nm]], paste0(nm, ".csv"), row.names = FALSE, quote = FALSE))
+
+
+
+
+
+View(Restperiod1)
+  
+
+
+
+# unique(tmp.df4_full$ssid)
+# tmp.df4_full<-  read_csv("_tmp.df4_full.csv")
+
+hr<- subset(tmp.df4_full, is.na(hrp) == FALSE)
+
+
+
+
+
+# rm(tmp.df4_full)
+View(Restperiod)
+
+# exclude 341 hr from biopac
+
+
+
+```
+
+Plotting Preferences
+
+
+```{r}
+
+p<- list()
+
+sf = 1
+
+p$graphstyle <-  theme(#base plot theme
+  
+  # axis
+  axis.line.y = element_line(colour = "gray40", size = 0.5, lineend=0),
+  axis.line.x = element_line(colour = 'gray40', size = 0.5, lineend=0),
+  axis.ticks.x = element_line(colour = 'gray40', size = 0.5, lineend=0),
+  strip.text.x = element_text(size = 11*(sf+1.5),  colour = "black"),
+  strip.text.y = element_text(size = 11*(sf+1.5),  colour = "black"),
+  
+  #axis text
+   
+  axis.text.x = element_text(size = 16*(sf+.5), family = "sans", colour = "black", hjust =1.2), #angle = 45
+  axis.text.y = element_text(size = 16*(sf+.5), family = "sans", colour = "black"),
+  
+  
+  # titles
+    plot.title = element_text(size = 16*(sf+1.5), hjust = .5),
+  
+  axis.title.y=element_text(size = 16*(sf+1), margin=margin(0,5,0,0)),
+  axis.title.x=element_text(size = 16*(sf+1), margin=margin(0,5,0,0)),
+  
+  #ticks
+    #axis.ticks = element_blank(),
+  
+  # panel
+  panel.border = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+  panel.background = element_rect(fill="transparent"),
+  
+  
+  # legend
+  legend.position = "none",
+  # legend.direction =,
+  text=element_text(size = 16, family = "sans"),
+ 
+
+  # strip shades (reco rectagles)
+  strip.background = element_blank())
+
+
+```
+
+```{r}
+
+# 605 and 606 look the same
+
+
+# gp heart rate
+max(Restperiod1$hrp)
+gp_heartpulse <-  Restperiod1 %>%
+  subset(ssid == 339)%>%
+  ggplot(aes(time - min(time), hrp/4740))+
+  geom_line()+
+    xlim(0,120)+
+  theme_classic()+
+  ylab("Pulse (AU)")+
+  xlab("Time (s)")+
+  p$graphstyle+
+ggtitle("HP GPB")
+
+
+
+```
+
+
+# biopac heart rate
+
+
+```{r}
+# 120% .004s
+
+
+rest_ss335_bio<- read.delim("335_IAPS_Physio_v3_rest.txt", skip = 40)
+
+
+max(rest_ss335_bio$X2.73285)
+
+nrow(rest_ss335_bio)
+rest_ss335_bio$time<- seq(1,239725)
+
+rest_ss335_bio$time_ms<- rest_ss335_bio$time/2000
+
+# merge(rest_ss335_bio, as.data.frame(rest_ss335))
+
+
+rest_ss335_bio%>%
+  ggplot(aes(time_ms,X0.116638.1))+
+  geom_line()+
+    xlim(0,120)+
+  theme_classic()
+
+
+
+ss335_ecg_bioplot<- rest_ss335_bio%>%
+  ggplot(aes(time_ms,X0.116638.1))+
+  geom_line()+
+    xlim(0,120)+
+  theme_classic()+
+  ylab("ECG (uv)")+
+  xlab("Time (s)")+
+  p$graphstyle+
+  ggtitle("ECG MP160")
+
+
+ss335_ecg_bioplot
+gp_heartpulse
+
+pulseechpatch<- gp_heartpulse+ss335_ecg_bioplot +plot_annotation(tag_levels = 'A')
+pulseechpatch
+
+ggsave("pulseechpatc.tiff", device = "tiff", dpi = 800, width = 12, height = 5)
+```
+
+
+Import parsed hrv from gazepoint
+
+
+```{r}
+
+library(readxl)
+GP_HRVanalysys <- read_excel("GP_HRVanalysys.xlsx")
+View(GP_HRVanalysys)
+
+
+# Import the IBIS and artifact freefreeny
+
+read_plus_ibi <- function(flnm) {
+  data.table::fread(flnm) %>% 
+    mutate(filename = flnm)
+}
+
+# now read
+cleanIBI_gp <-
+  list.files(pattern = "*.txt", 
+             full.names = T) %>% 
+  map_df(~read_plus_ibi(.))
+
+cleanIBI_gp<- cleanIBI_gp%>%
+  rename(IBI_clean = V1)
+
+cleanIBI_gp$ssid<- substr(cleanIBI_gp$filename, 13,15)
+
+# pointcare plots
+cleanIBI_gp%>%
+  # subset(ssid == 335)%>%
+  group_by(ssid)%>%
+  mutate(IBI_clean_z = scale(IBI_clean,center = TRUE)[,1])%>%
+  ggplot(aes(IBI_clean_z, lead(IBI_clean_z)+IBI_clean_z))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)
+  facet_grid(~ssid)
+  
+  
+  # distribution of IBI lenghts
+  unique(cleanIBI_gp$ssid)
+unique(Restperiod1$ssid)
+
+time<- subset(Restperiod1, is.na(ssid) == FALSE & ssid != 341)
+
+nrow(time)
+nrow(cleanIBI_gp)
+
+cleanIBI_gp$time<- Restperiod1$time 
+
+cleanIBI_gp %>%
+  # subset(ssid == 335)%>%
+  group_by(ssid)%>%
+
+  # mutate(IBI_clean_z = scale(IBI_clean,center = TRUE)[,1])%>%
+  ggplot(aes(IBI_clean))+
+  geom_histogram()
+
+  
+cleanIBI_gp %>%
+  # subset(ssid == 335)%>%
+  group_by(ssid)%>%
+    mutate(time == 1:n())%>%
+  subset(ssid == 335)%>%
+  # mutate(IBI_clean_z = scale(IBI_clean,center = TRUE)[,1])%>%
+  ggplot(aes(time, IBI_clean))+
+  geom_point()
+
+
+
+
+```
+# data from biopac
+
+```{r}
+
+GP_HRVanalysys$MEANHR
+mean(GP_HRVanalysys$RMMSSD, na.rm = TRUE)
+
+
+# import biopac
+BIO_HRVanalysys <- read_excel("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Validation/BIO_HRVanalysys.xlsx")
+
+View(BIO_HRVanalysys)
+View(BIO_HRVanalysys)
+BIO_HRVanalysys$ssid
+GP_HRVanalysys$ssid
+
+
+GP_HRVanalysys$ssid<- as.character(GP_HRVanalysys$ssid)
+BIO_HRVanalysys$ssid<- as.character(BIO_HRVanalysys$ssid)
+
+combined_bio_GP_HRV<- left_join(GP_HRVanalysys, BIO_HRVanalysys, by = "ssid")
+
+View(combined_bio_GP_HRV)
+# GP_HRVanalysys$
+  
+# r to R
+combined_bio_GP_HRV%>%
+  subset(ssid!= 608)%>%
+ggplot(aes(MEANRR.x, MEANRR.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+combined_bio_GP_HRV_no601 <- subset(combined_bio_GP_HRV, ssid != 601)
+
+cor.test(subset(combined_bio_GP_HRV, ssid!= 605)$MEANRR.x, subset(combined_bio_GP_HRV, ssid!= 605)$MEANRR.y, method = "kendal") # 0.9789474 T = 188, p-value < 0.00000000000000022
+
+cor.test(subset(combined_bio_GP_HRV, ssid!= 605 & ssid!= 608)$MEANRR.x, subset(combined_bio_GP_HRV, ssid!= 605 & ssid!= 608)$MEANRR.y, method = "kendal")
+
+# T = 169, p-value = 0.000000000000003775
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.9766082 
+
+cor.test(subset(combined_bio_GP_HRV)$MEANRR.x, subset(combined_bio_GP_HRV)$MEANRR.y, method = "kendal")
+
+# T = 199, p-value = 0.000000000002767
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.8952381 
+
+
+
+
+```
+
+# rMSSD
+```{r}
+combined_bio_GP_HRV %>%
+  subset(ssid!= 608 & ssid!= 605)%>%
+ggplot(aes(SDNN.x, SDNN.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+cor.test(subset(combined_bio_GP_HRV, ssid!= 605 & ssid!= 608)$SDNN.x, subset(combined_bio_GP_HRV, ssid!= 605 & ssid!= 608)$SDNN.y, method = "kendal")
+
+# 
+# 	Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV, ssid != 605 & ssid != 608)$SDNN.x and subset(combined_bio_GP_HRV, ssid != 605 & ssid != 608)$SDNN.y
+# T = 148, p-value = 0.000001521
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.7309942 
+
+
+cor.test(subset(combined_bio_GP_HRV)$SDNN.x, subset(combined_bio_GP_HRV)$SDNN.y, method = "kendal")
+
+# data:  subset(combined_bio_GP_HRV)$SDNN.x and subset(combined_bio_GP_HRV)$SDNN.y
+# T = 169, p-value = 0.00004489
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.6095238
+
+```
+
+PNN50
+
+```{r}
+combined_bio_GP_HRV %>%
+  subset(ssid!= 608)%>%
+ggplot(aes(pNN50.x, pNN50.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+cor.test(subset(combined_bio_GP_HRV, ssid!= 608)$pNN50.x, subset(combined_bio_GP_HRV, ssid!= 608)$pNN50.y, method = "kendal")
+
+
+
+
+
+```
+data:  subset(combined_bio_GP_HRV, ssid != 608)$pNN50.x and subset(combined_bio_GP_HRV, ssid != 608)$pNN50.y
+z = 3.7951, p-value = 0.0001476
+alternative hypothesis: true tau is not equal to 0
+sample estimates:
+      tau 
+0.6357085
+
+
+nn50
+
+
+```{r}
+
+combined_bio_GP_HRV %>%
+  # subset(ssid!= 608)%>%
+ggplot(aes(NN50.x, NN50.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+cor.test(subset(combined_bio_GP_HRV)$NN50.x, subset(combined_bio_GP_HRV)$NN50.y, method = "kendal")
+
+
+```
+
+
+RMSSD
+```{r}
+combined_bio_GP_HRV %>%
+  subset( ssid!= 608)%>%
+ggplot(aes(RMMSSD.x, RMMSSD.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+cor.test(subset(combined_bio_GP_HRV, ssid!= 608)$RMMSSD.x, subset(combined_bio_GP_HRV, ssid!= 608)$RMMSSD.y, method = "kendal")
+
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV, ssid != 608)$RMMSSD.x and subset(combined_bio_GP_HRV, ssid != 608)$RMMSSD.y
+# T = 153, p-value = 0.00007322
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.6105263
+
+
+cor.test(subset(combined_bio_GP_HRV)$RMMSSD.x, subset(combined_bio_GP_HRV)$RMMSSD.y, method = "kendal")
+
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV)$RMMSSD.x and subset(combined_bio_GP_HRV)$RMMSSD.y
+# T = 173, p-value = 0.00001127
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#      tau 
+# 0.647619 
+
+
+
+```
+
+
+
+```{r}
+# r to R
+combined_bio_GP_HRV%>%
+ggplot(aes(MEANHR.x, MEANHR.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+```
+FRequency measures
+Of the frequency-domain methods, data related to the amount of low frequency (LF) heartbeats is often used (0.04 to 0.15 Hz) as a measure of sympathetic nervous system activity. Measurements of high-frequency (HF; 0.15 Hz to 0.4 Hz) and very-low-frequency (VLF) are also used
+
+```{r}
+# low frequency
+combined_bio_GP_HRV%>%
+  subset(ssid!= 601)%>%
+ggplot(aes(lfperce.x, lfperce.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+  # xlim(0,200)
+
+
+
+cor.test(subset(combined_bio_GP_HRV, ssid != 601)$lfperce.x, subset(combined_bio_GP_HRV, ssid != 601)$lfperce.y, method = "kendal")
+
+
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV, ssid != 601)$lfperce.x and subset(combined_bio_GP_HRV, ssid != 601)$lfperce.y
+# T = 163, p-value = 0.000001342
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.7157895
+
+
+
+cor.test(subset(combined_bio_GP_HRV)$lfperce.x, subset(combined_bio_GP_HRV)$lfperce.y, method = "kendal")
+
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV)$lfperce.x and subset(combined_bio_GP_HRV)$lfperce.y
+# T = 171, p-value = 0.00002292
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.6285714 
+
+```
+
+# vlf
+
+```{r}
+combined_bio_GP_HRV %>%
+    subset(ssid!= 601)%>%
+ggplot(aes(vlfperc.x, vlfperc.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+cor.test(subset(combined_bio_GP_HRV, ssid != 601)$vlfperc.x, subset(combined_bio_GP_HRV, ssid != 601)$vlfperc.y, method = "kendal")
+
+cor.test(subset(combined_bio_GP_HRV, ssid != 601)$vlfpower.x, subset(combined_bio_GP_HRV, ssid != 601)$vlfpower.y, method = "kendal")
+cor.test(subset(combined_bio_GP_HRV, ssid != 601)$lfnu.x, subset(combined_bio_GP_HRV, ssid != 601)$lfnu.y, method = "kendal")
+
+cor.test(subset(combined_bio_GP_HRV, ssid != 601)$pNN50.x, subset(combined_bio_GP_HRV, ssid != 601)$pNN50.y, method = "kendal")
+
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV, ssid != 601)$vlfperc.x and subset(combined_bio_GP_HRV, ssid != 601)$vlfperc.y
+# T = 163, p-value = 0.000001342
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.7157895 
+
+cor.test(subset(combined_bio_GP_HRV)$vlfperc.x, subset(combined_bio_GP_HRV)$vlfperc.y, method = "kendal")
+
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV)$vlfperc.x and subset(combined_bio_GP_HRV)$vlfperc.y
+# T = 174, p-value = 0.000007786
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.6571429 
+
+
+# hf
+combined_bio_GP_HRV%>%
+  # subset(ssid!= 601)%>%
+ggplot(aes(hfperent.x, hfperent.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+
+cor.test(subset(combined_bio_GP_HRV, ssid != 601)$hfperent.x, subset(combined_bio_GP_HRV, ssid!= 601)$hfperent.y, method = "kendal")
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV, ssid != 601)$hfperent.x and subset(combined_bio_GP_HRV, ssid != 601)$hfperent.y
+# T = 159, p-value = 0.000007745
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.6736842 
+
+
+cor.test(subset(combined_bio_GP_HRV)$hfperent.x, subset(combined_bio_GP_HRV)$hfperent.y, method = "kendal")
+
+# Kendall's rank correlation tau
+# 
+# data:  subset(combined_bio_GP_HRV)$hfperent.x and subset(combined_bio_GP_HRV)$hfperent.y
+# T = 171, p-value = 0.00002292
+# alternative hypothesis: true tau is not equal to 0
+# sample estimates:
+#       tau 
+# 0.6285714
+
+
+combined_bio_GP_HRV$group <- if_else(combined_bio_GP_HRV$ssid< 400, "NT", "CLIN")
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, RMMSSD.x))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, RMMSSD.x))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, RMMSSD.y))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+####
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, MEANRR.x))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, MEANRR.y))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+
+# frequency 
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, lfperce.x))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, lfperce.y))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, hfperent.x))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+combined_bio_GP_HRV%>%
+  group_by(group)%>%
+  ggplot(aes(group, hfperent.y))+
+  geom_jitter(width = .3)+
+  geom_boxplot()
+
+
+
+combined_bio_GP_HRV%>%
+    subset(ssid!= 608)%>%
+ggplot(aes(hfpower.x, hfpower.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+
+
+
+```
+
+HF power
+
+```{r}
+
+combined_bio_GP_HRV%>%
+    subset(ssid!= 608)%>%
+ggplot(aes(hfpower.x, hfpower.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+cor.test(subset(combined_bio_GP_HRV, ssid != 608)$hfpower.x, subset(combined_bio_GP_HRV, ssid!= 608)$hfpower.y, method = "kendal")
+
+```
+Kendall's rank correlation tau
+
+data:  subset(combined_bio_GP_HRV, ssid != 601)$hfpower.x and subset(combined_bio_GP_HRV, ssid != 601)$hfpower.y
+T = 169, p-value = 0.00000005841
+alternative hypothesis: true tau is not equal to 0
+sample estimates:
+      tau 
+0.7789474 
+
+
+
+LF power
+
+
+```{r}
+combined_bio_GP_HRV%>%
+    subset(ssid!= 608 & ssid!= 342)%>%
+ggplot(aes(lfpower.x, lfpower.y, color = ssid))+
+  geom_point()+
+  geom_smooth(method = "lm", se = F)
+
+
+cor.test(subset(combined_bio_GP_HRV)$hfpower.x, subset(combined_bio_GP_HRV)$hfpower.y, method = "kendal")
+
+cor.test(subset(combined_bio_GP_HRV, ssid !=608& ssid!= 342)$hfpower.x, subset(combined_bio_GP_HRV, ssid !=608& ssid!= 342)$hfpower.y, method = "kendal")
+
+```
+
+# correlations
+
+```{r}
+
+cor.test(GP_HRVanalysys$MEANRR.x,BIO_HRVanalysys$MEANRR.x)
+
+```
+
+
+
+```{r}
+# IBI data to compare from biopac
+
+read_plus_ibi_bio <- function(flnm) {
+  data.table::fread(flnm) %>% 
+    mutate(filename = flnm)
+}
+
+# now read
+cleanIBI_bio <-
+  list.files(pattern = "*.txt", 
+             full.names = T) %>% 
+  map_df(~read_plus_ibi_bio(.))
+
+cleanIBI_bio<- cleanIBI_bio%>%
+  rename(IBI_clean = V1)
+
+cleanIBI_bio$ssid<- substr(cleanIBI_bio$filename, 13,15)
+
+
+# pointcare plots
+
+cleanIBI_gp$IBI_clean_next<- lead(cleanIBI_gp$IBI_clean)
+
+poitcare_gp<- cleanIBI_gp%>%
+  # subset(ssid == 335)%>%
+  group_by(ssid)%>%
+  # mutate(IBI_clean_z = scale(IBI_clean,center = TRUE)[,1])%>%
+  ggplot(aes(IBI_clean, IBI_clean_next,  color = ssid))+
+  geom_point(alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  # facet_grid(~ssid)+
+  xlab("RR[n] (ms)")+
+  ylab("RR[n+1] (ms)")+
+    p$graphstyle
+  # ggtitle("GP3 Gazepoint")+
+  p$graphstyle
+
+poitcare_gp
+
+poitcare_gp <- poitcare_gp +
+  scale_y_continuous(limits = c(400, 1600), breaks = c(400, 1000, 1600))+
+   scale_x_continuous(limits = c(300, 1600), breaks = c(400, 1000, 1600))
+ 
+scale_x_continuous(limits = c(500, 1300), breaks = c(500, 900, 1300))
+
+
+poitcare_gp
+
+```
+
+
+```{r}
+  
+  # cleanIBI_bio$ssid<- a  
+
+
+cleanIBI_bio$IBI_clean_next<- lead(cleanIBI_bio$IBI_clean)
+pointcare_bio<-  cleanIBI_bio %>%
+    # subset(ssid == 335)%>%
+  subset(ssid != 341)%>%
+  group_by(ssid)%>%
+  # mutate(IBI_clean_z = scale(IBI_clean,center = TRUE)[,1])%>%
+  ggplot(aes(IBI_clean, IBI_clean_next,  color = ssid))+
+  geom_point(alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  # facet_grid(~ssid)+
+  xlab("RR[n] (ms)")+
+  ylab("RR[n+1] (ms)")+
+    p$graphstyle
+  ggtitle("MP150 BIOPAC")
+
+pointcare_bio<- pointcare_bio+
+  scale_y_continuous(limits = c(500, 1300), breaks = c(500, 900, 1300))+
+ scale_x_continuous(limits = c(500, 1300), breaks = c(500, 900, 1300))
+
+pointcare<- poitcare_gp+ pointcare_bio+ plot_annotation(tag_levels = 'A')
+
+
+```
+    
+  
+  
+cleanIBI_gp$group <- if_else(cleanIBI_gp$ssid< 400, 1, 2)
+  
+  cleanIBI_gp %>%
+  # subset(ssid != 341)%>%
+  group_by(ssid, group)%>%
+  # mutate(IBI_clean_z = scale(IBI_clean,center = TRUE)[,1])%>%
+  ggplot(aes(IBI_clean, lead(IBI_clean)+IBI_clean,  color = as.factor(group)))+
+  
+  geom_smooth(method = 'lm', se = F)
+  
+  
+  facet_grid(~ssid)
+
+  
+
+```
+
+
+
+db_parsed_summarised_fix1.2$tNo2<- if_else(as.double(db_parsed_summarised_fix1.2$tNo)< 25, as.double(db_parsed_summarised_fix1.2$tNo), db_parsed_summarised_fix1.2$tNo - 24)
+
+
+
+unique(fixationscreen_only3_lmer$tNo2)
+
+#polynomial
+unique(db_parsed_summarised_fix1.2$screencontent)
+
+db_parsed_summarised_fix1.2$ot1<- poly(db_parsed_summarised_fix1.2$tNo2, degree = 1, raw =FALSE)
+
+db_parsed_summarised_fix1.2$ot2<- poly(db_parsed_summarised_fix1.2$tNo2, degree = 2, raw =FALSE)[,2]
+
+db_parsed_summarised_fix1.2$ot1_z<- scale(db_parsed_summarised_fix1.2$ot1, center = TRUE, scale = TRUE)
+db_parsed_summarised_fix1.2$ot2_z<- scale(db_parsed_summarised_fix1.2$ot2, center = TRUE, scale = TRUE)
+
+db_parsed_summarised_fix1.2$block<- if_else(db_parsed_summarised_fix1.2$tNo < 25, -.5, +.5) 
+                                            
+             
+db_parsed_summarised_fix1.2$subject<- as.factor(as.character(db_parsed_summarised_fix1.2$ssid))
+
+precision_models$prec_stim <- lmer(RMS ~ (ot1_z + ot2_z) * block+
+                              (0+ ot1_z+ot2_z)+ (1 | ssid), REML = FALSE,
+                             data = subset(db_parsed_summarised_fix1.2,as.numeric(mean_fix_dur) < 3000))
+
+summary(precision_models$prec_stim)
+
+db_parsed_summarised_fix1.2 <- subset(db_parsed_summarised_fix, ssid <500 & tNo> 0)
+
+db_parsed_summarised_fix1.2
+
+ #precision correlation with calibratin accuracy
+
+
+unique(tmp.df4_sum_below500_1.2$cali_order)
+unique(fixationscreen_only2_lmer$tNo)
+fixationscreen_only3_lmer$ssid<- as.character(fixationscreen_only3_lmer$subject)
+
+tmp.df4_sum_below500_1.2$ssid<- as.character(tmp.df4_sum_below500_1.2$ssid)
+
+fixationscreen_only3_lmer$cali_order<- as.character(if_else(fixationscreen_only3_lmer$tNo < 24, 2, 3))
+
+tmp.df4_sum_below500_1.2_select<- select(tmp.df4_sum_below500_1.2, c(ssid, cali_order, avg_error1, cali_no_resc_agg))
+
+fixationscreen_only3_lmer<- left_join(fixationscreen_only3_lmer, tmp.df4_sum_below500_1.2_select)
+
+
+
+fixationscreen_only3_lmer %>%
+  group_by(ssid, cali_order)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(avg_error1, precision_visang))+
+  geom_point()+
+geom_smooth(method = 'lm', se = F)+
+  facet_grid(~cali_order)
+
+fixationscreen_only2_lmer_1.2<- fixationscreen_only2_lmer%>%
+  group_by(ssid, cali_order)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+  
+
+
+ggplot(aes(avg_error1, precisi))+
+  geom_point()+
+geom_smooth(method = 'lm', se = F)+
+  facet_grid(~cali_order)
+
+
+cor.test(subset(fixationscreen_only2_lmer_1.2, cali_order == 2)$avg_error1, subset(fixationscreen_only2_lmer_1.2, cali_order == 2)$h_accuracy_visang)
+
+cor.test(subset(fixationscreen_only2_lmer_1.2, cali_order == 3)$avg_error1, subset(fixationscreen_only2_lmer_1.2, cali_order == 3)$h_accuracy_visang)
+
+
+# Save an object to a file
+saveRDS(fixationscreen_only3_lmer, file = "fixationscreen_only3_lmer.rds")
+# Restore the object
+readRDS(file = "my_data.rds"
+        
+        
+        
+        
+
+
+
+
+```{r}
+
+View(fixationscreen_only1$)
+
+summary(model_time_acc)
+
+
+fixationscreen_only2_lmer
+
+options(scipen = 999)
+
+accurcay_models<- list()
+
+ #accuracy correlation with calibratin accuracy
+
+
+unique(tmp.df4_sum_below500_1.2$cali_order)
+unique(fixationscreen_only2_lmer$tNo)
+fixationscreen_only2_lmer$ssid<- as.character(fixationscreen_only2_lmer$ssid)
+
+tmp.df4_sum_below500_1.2$ssid<- as.character(tmp.df4_sum_below500_1.2$ssid)
+
+fixationscreen_only2_lmer$cali_order<- as.character(if_else(fixationscreen_only2_lmer$tNo < 24, 2, 3))
+
+tmp.df4_sum_below500_1.2_select<- select(tmp.df4_sum_below500_1.2, c(ssid, cali_order, avg_error1, cali_no_resc_agg))
+
+fixationscreen_only2_lmer<- left_join(fixationscreen_only2_lmer, tmp.df4_sum_below500_1.2_select)
+
+
+
+fixationscreen_only2_lmer %>%
+  group_by(ssid, cali_order)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(avg_error1, v_accuracy_visang))+
+  geom_point()+
+geom_smooth(method = 'lm', se = F)+
+  facet_grid(~cali_order)
+
+fixationscreen_only2_lmer_1.2<- fixationscreen_only2_lmer%>%
+  group_by(ssid, cali_order)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+  
+
+
+ggplot(aes(avg_error1, precisi))+
+  geom_point()+
+geom_smooth(method = 'lm', se = F)+
+  facet_grid(~cali_order)
+
+
+cor.test(subset(fixationscreen_only2_lmer_1.2, cali_order == 2)$avg_error1, subset(fixationscreen_only2_lmer_1.2, cali_order == 2)$h_accuracy_visang)
+
+cor.test(subset(fixationscreen_only2_lmer_1.2, cali_order == 3)$avg_error1, subset(fixationscreen_only2_lmer_1.2, cali_order == 3)$h_accuracy_visang)
+
+#neither vertical or horizontal or global reach significance
+
+
+
+
+```
+
+fixationscreen_only2$spli_trial %>%
+  ggplot(aes(tNo,accuracy ))+
+  geom_point()
+  #stat_summary(geom = 'pointrange')+
+  geom_vline(xintercept = 24)
+
+#
+
+
+cor.test(subset(tmp.df4_sum_below500_1.2, cali_order == 2)$cali_no_resc_agg, subset(tmp.df4_sum_below500_1.2, cali_order == 2)$gaze_loss_prop) 
+
+
+cor.test(subset(tmp.df4_sum_below500_1.2, cali_order == 3)$cali_no_resc_agg, subset(tmp.df4_sum_below500_1.2, cali_order == 3)$gaze_loss_prop)
+
+
+
+
+Pupil analysis
+
+
+```{r}
+readRDS(file = "db_full6new_304_up_500less.rds")
+
+db_full4new_stim_pupil$ssid
+db_full4new_stim_pupil$subject
+View(db_full6new_304_up)
+
+db_full6new_304_up_500less<- subset(db_full6new_304_up, subject< 500 & tNo > 0)
+
+db_full4new_stim_pupil$BIO_Global.Mean
+
+db_full6new_304_up_500less$Bio_Mean_HR_z
+
+unique(db_full6new_304_up_500less$screencontent)
+
+
+
+
+db_full6new_304_up_500less$Bio_Mean_HR_z<- scale(db_full6new_304_up_500less$Bio_Mean_HR, center = TRUE, scale = TRUE)
+db_full6new_304_up_500less$BIO_Global.Mean_z<- scale(db_full6new_304_up_500less$BIO_Global.Mean, center = TRUE, scale = TRUE)
+db_full6new_304_up_500less$pup_basCor_z<- scale(db_full6new_304_up_500less$pup_basCor, center = TRUE, scale = TRUE)
+
+db_full6new_304_up_500less$hr_interp<- scale(db_full6new_304_up_500less$hr_interp, center = TRUE, scale = TRUE)
+
+
+
+# Pupil 
+
+
+
+```
+
+```
+```{r}
+
+summary(lmer(arousal ~  pup_basCor_z + BIO_Global.Mean_z + Bio_Mean_HR_z +ArousalMean+ (1 | stimIAPS) +(1 | ssid), REML = FALSE,
+                      data = subset(db_full6new_304_up_500less)))
+
+
+summary(lmer(pup_basCor_z ~  ArousalMean + (1 | stimIAPS)  +(1 | ssid), REML = FALSE,
+                      data = db_full6new_304_up_500less))
+
+cognitivepupil$pup_arous_brigh <- lmer(pup_basCor ~  arousal_c +  BRIGHTNESSc +(1 | stimIAPS)  +(1 | ssid), REML = FALSE,
+                      data = db_full6new_304_up_500less)
+summary(cognitivepupil$pup_arous_brigh)
+
+MuMIn::r.squaredGLMM(cognitivepupil$pup_arous_brigh)
+
+library(lmerTest)
+
+cognitivepupil$pup_arous_1 <- lmer(pup_basCor ~  arousal_c +( 1| stimIAPS)  +(1 | ssid), REML = FALSE,
+                      data = db_full6new_304_up_500less)
+
+
+library(readr)
+library(tidyverse)
+cognitivepupil$pup_arous_1bri <- lmer(pup_basCor ~  BRIGHTNESSc +( 1| stimIAPS)  +(1 | ssid), REML = FALSE,
+                      data = db_full6new_304_up_500less)
+
+MuMIn::r.squaredGLMM(cognitivepupil$pup_arous_1)
+MuMIn::r.squaredGLMM(cognitivepupil$pup_arous_1bri) # 20
+
+
+db_full6new_304_up_500less$fit_pup_arou_bright<- 
+  predict(cognitivepupil$pup_arous_brigh, type = c("response"), terms = "BRIGHTNESSc")
+?predict
+
+
+pupil_plots<- list()
+
+write_csv(db_full6new_304_up_500less, "Pupil_data_db_full6new_304_up_500less.csv")
+
+pupil_plots$brightness<-  db_full6new_304_up_500less %>%
+  #subset(!is.na(Alexithymia))%>%
+  group_by(ssid,stimIAPS) %>%
+  summarise_at(c("arousal_c", "TASc","BRIGHTNESSc", "pup_basCor", "fit_pup_arou_bright"), mean, na.rm = TRUE)%>%
+  ggplot(aes(BRIGHTNESSc, pup_basCor, color = ssid))+
+  geom_point(alpha = .3)+
+  geom_smooth(aes(group = ssid), method = 'lm', se = F)+
+  stat_smooth (geom="line", method = 'lm', alpha = .8, size = 1.5, color = "gray30")+
+    ylab('Pupilary change (z)')+
+  xlab('Brightness (z)')+
+  p$graphstyle
+    scale_color_brewer(palette = "Dark2")
+
+
+pupil_plots$brightness<- pupil_plots$brightness+
+  scale_y_continuous(limits = c(-12,4), breaks = c(-12,-4, 4))+
+  scale_x_continuous(limits = c(-2.5,2), breaks = c(-2.5,-0, 2))
+
+
+
+
+
+library(dplyr)
+
+pupil_plots$arousalpup<-  db_full6new_304_up_500less %>%
+  #subset(!is.na(Alexithymia))%>%
+  group_by(ssid,stimIAPS) %>%
+  summarise_at(c("arousal", "TASc", "pup_basCor", "fit_pup_arou_bright"), mean, na.rm = TRUE)%>%
+  ggplot(aes(pup_basCor, arousal, color = ssid))+
+  geom_point(alpha = .3)+
+  geom_smooth(aes(group = ssid), method = 'lm', se = F)+
+  stat_smooth (geom="line", method = 'lm', alpha = .8, size = 1.5, color = "gray30")+
+    ylab('Pupilary change (z)')+
+  xlab('Self reported arousal (z)')+
+  p$graphstyle
+  scale_color_brewer(palette = "Dark2")
+
+
+pupil_plots$arousalpup
+
+pupil_plots$arousalpup<- pupil_plots$arousalpup+
+  scale_y_continuous(limits = c(-10,10), breaks = c(-10,0, 10))+
+  scale_x_continuous(limits = c(-12,6), breaks = c(-12,6))
+
+pupil_plots$arousalpup
+# Save an object to a file
+saveRDS(db_full6new_304_up_500less, file = "db_full6new_304_up_500less.rds")
+# Restore the object
+
+library(patchwork)
+library(ggplot2)
+
+patchpup<- pupil_plots$arousalpup+ pupil_plots$brightness+theme(axis.title.y = element_blank())
+patchpup<- patchpup+plot_annotation(tag_levels = 'A')
+
+ggsave("patchpup.tiff", patchpup, device = 'tiff', width = 10, height = 6, dpi = 800)
+```
+
+
+
+Quick check Hr pulse
+
+
+```
+```{r}
+
+unique(one$ssid)
+
+one1<- subset(one, ssid == 336)
+
+# pp340 <- subset(tmp.df4_full, tNo = -7 & ssid == 340)
+
+one1 %>%
+  ggplot(aes(time - min(time), hrp))+
+  geom_line()+
+  xlim(0,30)
+
+
+
+hrclass<-  kmeans(one1$hrp, 2, nstart = 25)
+
+one1$hrclass<- hrclass$cluster
+
+
+one1$time2hr<- if_else(one1$hrclass == 2, one1$time - min(one1$time), NULL)
+
+stats::fil
+one1 %>%
+  ggplot(aes(time-min(time), stats::filter(hrp, 1)))+
+  geom_line()+
+  geom_vline(aes(xintercept = time2hr), alpha = .05, color = "red")+
+  xlim(50, 80)+ theme_classic()
+
+```

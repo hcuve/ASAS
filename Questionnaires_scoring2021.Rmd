@@ -518,7 +518,12 @@ colnames(db_vision)
 db_vision$EyesightResponse
 db_vision1<- select(db_vision, c(1,13,16, 33,34,36:37))
 
-db_demog<- left_join(db_vision1, db_mhealth1,db_age1, by = c("Participant Private ID",
+
+# note this is ignoring the last
+db_demog <- left_join(db_vision1, db_mhealth1,db_age1, by = c("Participant Private ID",
+                                                   "Participant Completion Code"))%>%
+  
+db_demog <- left_join(db_vision1, db_mhealth1,db_age1, by = c("Participant Private ID",
                                                    "Participant Completion Code"))%>%
   subset(!is.na(`Participant Private ID`))
 
@@ -610,9 +615,96 @@ write_csv(db_self_rep, "db_self_rep_350.csv")
 ```
 
 
+```{r}
+# STAI_T:: 5nzr
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_T_5nzr")
+
+# STAIS: 8rfo
+
+read_selfrep <- function(flnm) {
+    readxl::read_xlsx(flnm) %>%
+        mutate(filename = flnm)
+}
+
+library(readxl)
+db_STAI_S <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_S_8rfo/data_exp_11458-v9_questionnaire-8rfo_345_356.xlsx")
+
+
+library(readxl)
+db_STAI_T <- read_excel("data_exp_11458-v9_questionnaire-5nzr_345_356.xlsx")
+
+
+db_STAI_T
+
+# eliminate empty rows
+db_STAI_T<- subset(db_STAI_T, db_STAI_T$`Event Index`== 1)
+
+db_STAI_T$completion_code<- db_STAI_T$`Participant Completion Code`
+
+
+# use the quantised columns as the response siunce they have a number rather than a string
+
+colnames(db_STAI_T)
+db_STAI_T1<- db_STAI_T %>%
+    select("Participant Private ID","completion_code", 
+           STAI_01:STAI_20)%>%
+  # drop anything with quantised or text
+  select(-contains("quantised"))
+  
+
+  
+# score
+
+
+colnames(db_STAI_T1)
+# do the actual scoring, only on the BPQ part - bpdy awareness
+db_STAI_T2<- db_STAI_T1%>%
+   mutate(STAIT = rowSums(.[ 3:22]))
+    
+db_STAI_T2
+db_STAI_T3<- select(db_STAI_T2, c(1:2, 23))
+db_STAI_T3
+
+
+db_STAI_S
+
+# eliminate empty rows
+db_STAI_S <- subset(db_STAI_S, db_STAI_S$`Event Index`== 1)
+
+db_STAI_S$completion_code<- db_STAI_S$`Participant Completion Code`
+
+
+# use the quantised columns as the response siunce they have a number rather than a string
+
+colnames(db_STAI_S)
+db_STAI_S1<- db_STAI_S %>%
+    select("Participant Private ID","completion_code", 
+           STAIS_01:STAIS_20)%>%
+  # drop anything with quantised or text
+  select(-contains("quantised"))
+  
+
+  
+# score
+
+
+colnames(db_STAI_S1)
+# do the actual scoring, only on the BPQ part - bpdy awareness
+db_STAI_S2<- db_STAI_S1%>%
+   mutate(STAIS = rowSums(.[ 3:22]))
+    
+db_STAI_S2
+db_STAI_S3<- select(db_STAI_S2, c(1:2, 23))
+db_STAI_S3
+
+db_STAI<- left_join(db_STAI_S3, db_STAI_T3)
+
+```
+
+
 merge 
 ```{r}
-
 db_self_rep
 library(readr)
 db_self_rep_350_1 <- read_csv("db_self_rep_350.1.csv")
@@ -628,5 +720,34 @@ colnames(db_self_rep_345_356)
 
 db_self_rep_345_356<- db_self_rep_345_356[,c(1:22)]
 
-write_csv(db_self_rep, "db_self_rep_345_356_final.csv")
+# library(readxl)
+Interoception_Study_Logbook <- read_excel("Interoception Study Logbook.xlsx")
+View(Interoception_Study_Logbook)
+
+
+db_self_rep_345_356$completion_code
+Interoception_Study_Logbook$completion_code
+ssid<- select(Interoception_Study_Logbook, c(1:3))
+
+
+db_self_rep_345_356<- left_join(db_self_rep_345_356,ssid, by = "completion_code")
+write_csv(db_self_rep_345_356, "db_self_rep_345_356_final.csv")
+
+# - CHECK WASI M on the norms
+
+
+db_age2<- subset(db_age1, !is.na(`Participant Private ID`))
+db_age2
+
+db_self_rep_345_356<- left_join(db_self_rep_345_356,db_age2)
+
+db_self_rep_345_356
+
+colnames(db_self_rep_345_356)
+
+db_self_rep_345_356
+
+db_self_rep_345_356<- left_join(db_self_rep_345_356, db_STAI)
+
+
 ```
