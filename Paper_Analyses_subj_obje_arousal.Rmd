@@ -67,6 +67,34 @@ db_full4new_stim_screen_pupil_nopract$ssid_num <- as.numeric(as.character(db_ful
 lmer pupil
 
 ```{r}
+db_full4new$screencontent_no
+db_full4new %>%
+  subset(screencontent_no ==4)%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean,na.rm = TRUE)%>%
+  ggplot(aes(TAS, fix_count))+
+  geom_point()+
+  geom_smooth(method = lm, se = F)+
+  ggpubr::stat_cor()
+
+
+
+db_full4new %>%
+  subset(screencontent_no > 2)%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean,na.rm = TRUE)%>%
+  ggplot(aes(TAS, fix_count))+
+  geom_point()+
+  geom_smooth(method = lm, se = F)+
+  ggpubr::stat_cor()
+
+```
+
+
+```{r}
+  
+
+
 options(contrasts = c("contr.sum","contr.poly"))
 options(scipen = 999)
 

@@ -1202,6 +1202,8 @@ unique(tmp.df4$trigger)
 unique(tmp.df4$tNo)
 
 # \why?
+unique(tmp.df4$text)
+
 tmp.df4<- tmp.df4%>%
   group_by(ssid, tNo, text)%>%
   mutate(stdev_gaze_x = sd(gaze_x_cor_pix, na.rm = TRUE))%>%
@@ -2583,6 +2585,18 @@ tmp.df4_sum_full_bio_hr_self_parsed <- left_join(tmp.df4_sum_full_bio_hr_self, d
 tmp.df4_sum_full_bio_hr_self_parsed
 write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv')
 write_csv(tmp.df4, 'tmp.df4_timeseries_345_356.csv')
+
+tmp.df4_sum_full_bio_hr_self_parsed$screencontent_no
+
+tmp.df4_sum_full_bio_hr_self_parsed$TAS
+tmp.df4_sum_full_bio_hr_self_parsed %>%
+  subset(screencontent_no>2)%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric,mean, na.rm = TRUE)%>%
+  ggplot(aes(Age,sdev_gazesum))+
+  geom_point()+
+  geom_smooth(method = lm, se = F)
+  
 ```
 
 
