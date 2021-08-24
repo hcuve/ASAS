@@ -1682,6 +1682,8 @@ write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_345_356.csv')
 
 # tmp.df4_sum_full<- tmp.df4_sum_full%>%
 #   arrange(ssid, tNo, screencontent_no)
+
+colnames(tmp.df4_sum_full)
 ```
 
 
@@ -2541,10 +2543,46 @@ tmp.df4_sum_full_bio_hr <- left_join(tmp.df4_sum_full_bio, db_HR_bio_final, by =
 
 Merge self reports
 
-
+# add the self report
 ```{r}
-tmp.df4_sum_full<- left_join(tmp.df4_sum,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
 
+View(tmp.df4_sum_full_bio_hr)
+
+library(readxl)
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport")
+
+View(db_selfrep)
+db_selfrep <- read_excel("db_self_rep_345_356_final.xlsx")
+
+
+
+db_selfrep$ssid <- as.character(db_selfrep$`Participant No`)
+
+tmp.df4_sum_full_bio_hr$ssid <- as.character(tmp.df4_sum_full_bio_hr$ssid)
+
+tmp.df4_sum_full_bio_hr_self <- left_join(tmp.df4_sum_full_bio_hr, db_selfrep, by = 'ssid')
+
+write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_bio_hr_self_345_356.csv')
+
+
+```
+
+merge parsed data
+```{r}
+tmp.df4_sum_full_bio_hr_self
+db_parsed_summarised2$ssid<- as.character(db_parsed_summarised2$ssid)
+
+tmp.df4_sum_full_bio_hr_self_parsed <- left_join(tmp.df4_sum_full_bio_hr_self, db_parsed_summarised2, 
+                             by = c("ssid", "trialUnq", "tNo", "screencontent"))
+
+
+# tmp.df4_sum_full<- left_join(tmp.df4_sum,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
+
+# save the timecourse data and the aggregated data
+
+tmp.df4_sum_full_bio_hr_self_parsed
+write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv')
+write_csv(tmp.df4, 'tmp.df4_timeseries_345_356.csv')
 ```
 
 
