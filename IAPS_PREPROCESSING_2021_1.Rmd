@@ -1193,11 +1193,13 @@ unique(tmp.df4$trigger)
 
 # why
 
-tmp.df4$trigger2<- tmp.df4$trigger
+tmp.df4$trigger2 <- tmp.df4$trigger
 
 tmp.df4$trigger2<- if_else(tmp.df4$trigger>99, tmp.df4$trigger, as.double(tmp.df4$tNo))
 
 unique(tmp.df4$trigger2)
+unique(tmp.df4$trigger)
+unique(tmp.df4$tNo)
 
 # \why?
 tmp.df4<- tmp.df4%>%
@@ -1565,7 +1567,7 @@ ggplot(db_beh2, aes(x = arousal, y = ArousalMean))+
 
 colnames(db_beh2)
 
-db_beh2$triggeracq<- db_beh2$trigger
+db_beh2$triggeracq <- db_beh2$trigger
 unique(db_beh2$ssid)
 
 db_beh3<- select(db_beh2, c(2:7, 18:23))
@@ -1756,6 +1758,11 @@ tmp.df4_sum_full<- tmp.df4_sum_full%>%
   arrange(ssid, tNo)
 
 View(tmp.df4_sum_full)
+
+
+trigger<- db_leda2 %>%
+  subset(ssid == 348)%>%
+  select(order, Event.NID, trigger,Event.Nr)
 ```
 
 
@@ -1772,6 +1779,9 @@ tmp.df4_sum_full_stim<- subset(tmp.df4_sum_full,  tmp.df4_sum_full$screencontent
 # exclude trials with very low gaze validity
 tmp.df4_sum_full_stim<- subset(tmp.df4_sum_full_stim, tmp.df4_sum_full_stim$gaze_valid_prop> .85)
 colnames(tmp.df4_sum_full_stim)
+
+colnames(tmp.df4_sum_full)
+
 
 ```
 
@@ -2035,9 +2045,12 @@ write_csv(db_leda_bio, 'db_leda_bio_345_355_CDA.csv')
 
 # db_leda_bio <- read_csv("db_leda_bio.csv")
 
+colnames(db_leda_bio)
+
+db_leda_bio$BIO_Event.NID<- db_leda_bio$Event.NID
+db_leda_bio$BIO_filename <- db_leda_bio$filename
 
 
-db_leda_bio$trigger<- as.numeric(db_leda_bio$BIO_Event.NID)
 
 db_leda_bio$ssid<- as.numeric(substr(db_leda_bio$BIO_filename, 3,5))
 
@@ -2046,26 +2059,80 @@ unique(db_leda_bio$ssid)
 unique(db_leda_bio$trigger)
 
 
+# subset out rest period
+db_leda_bio<- subset(db_leda_bio, Event.Nr>1)
+
+
+db_leda_bio<- subset(db_leda_bio, CDA.nSCR!= "NaN")
+range(db_leda_bio$Event.Nr)
+
+# transform NaNs into proper NA
+db_leda_bio[db_leda_bio == "NaN"] <- NA
+
+# move counter to 1
+range(db_leda_bio$Event.Nr-1)
+range(db_leda_bio$Event.Nr)
+trigger$Event.Nr<- NULL
+
+db_leda_bio$order <- db_leda_bio$Event.Nr-1
+db_leda_bio$trigger<- NULL
+
+
+# merge trigger
+trigger$Event.NID<- NULL
+trigger$ssid<- NULL
+View(db_leda_bio)
+
+db_leda_bio$order
+db_leda_bio<- left_join(db_leda_bio, trigger)
+
+
+tmp.df4_sum_full
+
+leda_bioames <- colnames(db_leda_bio)
+
+
+newnames<- c("Event.Nr", paste0("BIO_", paste0(leda_bioames[2:21])))
+
+newnames
+db_leda_bio_backup<- db_leda_bio
+names(db_leda_bio) <- newnames
+
+db_leda_bio
+
+db_leda_bio$ssid <- db_leda_bio$BIO_ssid
+
+db_leda_bio$BIO_ssid<-NULL
+
+
+db_leda_bio
+
+
+tmp.df4_sum_full_bio<- left_join(tmp.df4_sum_full,  db_leda_bio)
+
+colnames(tmp.df4_sum_full_bio)
+
+```
+
+
+
+```{r eval=FALSE, include=FALSE}
+# stim
 db_leda_bio_stim<-subset(db_leda_bio, db_leda_bio$trigger< 100)
 unique(db_leda_bio_stim$trigger)
 
 colnames(tmp.df4_sum_full_stim_gp_leda_beh_self)
 (unique(tmp.df4_sum_full_stim_gp_leda_beh_self$trigger))
 
-#tmp.df4_sum_full_bio<- subset(tmp.df4_sum_full, tmp.df4_sum_full$ssid>303)
-# tmp.df4_sum_full_bio<- subset(tmp.df4_sum_full_bio, tmp.df4_sum_full_bio$trigger!= -7)
-
-
-#levels(as.factor(tmp.df4_sum_full_bio$ssid))
-#unique(tmp.df4_sum_full_bio$trigger)
-#levels(as.factor(db_leda_bio$ssid))
 
 db_leda_bio_stim$ssid<- as.character(db_leda_bio_stim$ssid)
 
-db_leda_bio_stim$trigger<- as.character(db_leda_bio_stim$trigger)
+# db_leda_bio_stim$trigger<- as.character(db_leda_bio_stim$trigger)
 
-#db_leda_bio$order<- db_leda_bio$Event.Nr
+db_leda_bio$order<- db_leda_bio$Event.Nr
+
 tmp.df4_sum_full_stim_gp_leda_beh_self$ssid<- as.character(tmp.df4_sum_full_stim_gp_leda_beh_self$ssid)
+
 tmp.df4_sum_full_stim_gp_leda_beh_self$trigger<- as.character(tmp.df4_sum_full_stim_gp_leda_beh_self$trigger)
 
 colnames(tmp.df4_sum_full_stim_gp_leda_beh_self)
@@ -2127,7 +2194,294 @@ ggplot(subset(tmp.df4_sum_full_biot, tmp.df4_sum_full_biot$ssid != 308 & tmp.df4
 tmp.df4_sum_full_biot1 <-subset(tmp.df4_sum_full_biot, tmp.df4_sum_full_biot$ssid != 308)
 
 cor(tmp.df4_sum_full_biot1$arousal, tmp.df4_sum_full_biot1$Global.Mean.y, use = 'complete.obs')
+
 ```
+
+
+import biopac heart rate
+```{r}
+nrow(tmp.df4_sum_full_bio)
+
+colnames(tmp.df4_sum_full_bio)
+unique(tmp.df4_sum_full_bio$ssid)
+
+# import
+read_biohr <- function(flnm) {
+  data.table::fread(flnm) %>% 
+    mutate(filename = flnm)
+}
+
+# now read them
+
+# old
+db_biohr <-
+  list.files(pattern = "*.csv", 
+             full.names = T) %>% 
+  map_df(~read_biohr(.))
+
+
+unique(db_biohr$filename)
+
+db_biohr$ssid<- substr(db_biohr$filename, 6,8)
+db_biohr$order<- db_biohr$Order
+
+db_biohr$Order<- NULL
+db_biohr$filename<- NULL
+db_biohr$trigger<- as.factor(as.character(db_biohr$trigger))
+
+unique(db_biohr$ssid)
+
+db_biohr$ssid<- as.factor(as.character(db_biohr$ssid))
+
+```
+
+
+#HR BIOPAC
+
+
+
+```{r}
+library(readxl)
+library(dplyr)
+db_HR_bio <- read_excel("310_IAPS_Physio_HR.xls")
+
+View(db_HR_bio)
+
+nrow(db_HR_bio)
+
+db_HR_bio<- db_HR_bio[6:nrow(db_HR_bio),]
+
+
+library(data.table)
+library(purrr)
+# import
+read_biohr <- function(flnm) {
+  read_excel(flnm) %>% 
+    mutate(filename = flnm)
+}
+
+# now read them
+db_HR_bionew <-
+  list.files(pattern = "*.xls", 
+             full.names = T) %>% 
+  map_df(~read_biohr(.))
+
+db_HR_bio<- db_HR_bionew
+
+unique(db_HR_bionew$filename)
+
+test<- subset(db_HR_bio, db_HR_bio$filename == "./607_IAPS_Physio_HR.xls")
+
+levels(as.factor(db_HR_bio$filename))
+db_HR_bio$ssid<- substr(db_HR_bio $filename, 3,5)
+
+db_HR_bio$filename<- NULL
+
+
+db_HR_bio$`Stim-Response Analysis`
+
+db_HR_bio$stim<- if_else(grepl('Stimulus', (db_HR_bio$`Stim-Response Analysis`)) == TRUE, db_HR_bio$`Stim-Response Analysis`, NULL)
+
+library(tidyr)
+
+db_HR_bio<- db_HR_bio%>%
+  group_by(ssid)%>%
+  fill(stim)
+
+levels(as.factor(db_HR_bio$ssid))
+
+#  remove na in the mean heart rate
+
+db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$...2))
+
+
+db_HR_bio$mhrtext<- is.character(db_HR_bio$...2)
+
+db_HR_bio<- subset(db_HR_bio, !grepl('interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
+
+levels(as.factor(db_HR_bio$ssid))
+
+# loosing participants here
+View(db_HR_bio)
+
+db_HR_bio<- subset(db_HR_bio, !grepl('Interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
+
+
+test<- subset(db_HR_bio, grepl('Interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
+levels(as.factor(db_HR_biotest$ssid))
+
+db_HR_bio<- subset(db_HR_bio, !grepl('Time', db_HR_bio$`Stim-Response Analysis`) == TRUE)
+
+#db_HR_biotest1<- subset(db_HR_biotest, !is.na(db_HR_biotest$stim))
+
+#test<- subset(db_HR_bio, db_HR_bio$ssid == 607)
+
+
+levels(as.factor(db_HR_bio$ssid))
+
+db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$`Stim-Response Analysis`))
+
+db_HR_bio$...3<- NULL
+db_HR_bio$...4<- NULL
+
+
+db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$...2))
+
+db_HR_bio<- subset(db_HR_bio, db_HR_bio$...2 != 'Mean(CH 40)')
+db_HR_bio$timestart<- db_HR_bio$`Stim-Response Analysis`
+
+db_HR_bio$Mean_HR<- db_HR_bio$...2
+
+db_HR_bio<- db_HR_bio%>%
+  arrange((as.numeric(timestart)), ssid)
+
+db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$stim))
+
+
+db_HR_bio$trigger<- substr(db_HR_bio$stim, 10,13)
+
+unique((as.numeric(db_HR_bio$trigger)-128))
+
+db_HR_bio$trigger_200<- if_else(db_HR_bio$trigger> 103, TRUE, FALSE)
+
+db_HR_bio$trigger<- if_else(db_HR_bio$trigger_200 == TRUE, as.numeric(db_HR_bio$trigger)-128, as.numeric(db_HR_bio$trigger))
+
+
+unique((as.numeric(db_HR_bio$trigger)))
+
+
+#subset(db_HR_bio, db_HR_bio$ssid!= 328)%>%
+#  group_by(timestart, ssid)%>%
+ # mutate(EventNR= 1:225)
+
+
+db_HR_bio1<- subset(db_HR_bio,db_HR_bio$trigger< 100)
+
+db_HR_bio1<- db_HR_bio1%>%
+  arrange(as.numeric(timestart), ssid)
+
+db_HR_bio1<- subset(db_HR_bio1,!is.na(db_HR_bio1$stim))
+
+#tno
+#subset(db_HR_bio1, db_HR_bio1$ssid != 328)%>%
+table(is.na(db_HR_bio1$ssid))
+db_HR_bio1<- db_HR_bio1%>%
+  arrange(as.numeric(timestart), ssid)
+
+db_HR_bio1no328<-subset(db_HR_bio1, db_HR_bio1$ssid!= 328)
+
+db_HR_bio1no328<- db_HR_bio1no328 %>%
+  group_by(as.numeric(ssid))%>%
+  mutate(tNo = -6:49)
+
+db_HR_bio328<-subset(db_HR_bio1, db_HR_bio1$ssid== 328)
+
+db_HR_bio328<- db_HR_bio328 %>%
+  group_by(as.numeric(ssid))%>%
+  mutate(tNo = -6:24)
+
+db_HR_bio2<- bind_rows(db_HR_bio1no328,db_HR_bio328)
+
+colnames(db_HR_bio2)
+
+levels(as.factor(db_HR_bio1no328$ssid))
+db_HR_bio2$ssid<-db_HR_bio2$`as.numeric(ssid)`
+
+
+#mereg old and new heart rate
+# now read them
+db_biohr$trigger
+
+db_biohr$tno<-db_biohr$trigger
+db_HR_bio2$trigger
+colnames(db_biohr)
+
+colnames(db_HR_bio2)
+
+db_biohr$Mean_HR<- db_biohr$HR_BIO
+
+db_biohr$timestart<- db_biohr$Time
+
+
+left_join(db_HR_bio2, db_biohr)
+
+
+db_HR_bio2<- select(db_HR_bio2, c(timestart,Mean_HR, tNo, ssid))
+
+db_HR_bio2$`as.numeric(ssid)`<- NULL
+
+str((db_HR_bio2))
+str(db_biohrold2)
+db_biohr$tNo<- db_biohr$tno
+db_biohrold2<- db_biohr
+
+db_biohrold2<- select(db_biohr, c(timestart,Mean_HR, tNo, ssid))
+unique(db_biohrold2$tNo)
+
+db_HR_bio2$timestart<- as.numeric(db_HR_bio2$timestart)
+db_biohrold2$timestart<- as.numeric(db_biohrold2$timestart)
+
+db_HR_bio2$Mean_HR<- as.numeric(db_HR_bio2$Mean_HR)
+db_biohrold2$Mean_HR<- as.numeric(db_biohrold2$Mean_HR)
+
+db_HR_bio2$tNo<- as.character(db_HR_bio2$tNo)
+db_biohrold2$tNo<- as.character(db_biohrold2$tNo)
+db_HR_bio2$ssid<- as.character(db_HR_bio2$ssid)
+
+db_biohrold2$ssid<- as.character(db_biohrold2$ssid)
+
+str(db_HR_bio2)
+
+
+db_biohrold2test<- subset(db_biohrold2, db_biohrold2$tNo != 100)
+db_biohrold2test<- subset(db_biohrold2test, db_biohrold2test$tNo != 101)
+db_biohrold2test<- subset(db_biohrold2test, db_biohrold2test$tNo != 102)
+db_biohrold2test<- subset(db_biohrold2test, db_biohrold2test$tNo != 103)
+db_HR_bio2$subj<- as.factor(db_HR_bio2$ssid)
+db_biohrold2test$subj<- as.factor(db_biohrold2test$ssid)
+db_biohrold2test$ssid<- NULL
+db_HR_bio2$ssid<- NULL
+
+str(db_HR_bio2)
+
+db_HR_bio2<- db_HR_bio2[,1:4]
+
+db_HR_bio2$Mean_HR<- as.numeric(db_HR_bio2$Mean_HR)
+
+db_biohrold2test$Mean_HR<- as.numeric(db_biohrold2test$Mean_HR)
+
+db_HR_bio2$timestart<- as.numeric(db_HR_bio2$timestart)
+
+db_biohrold2test$timestart<- as.numeric(db_biohrold2test$timestart)
+
+db_HR_bio_final<- bind_rows(db_HR_bio2, db_biohrold2test)
+
+db_HR_bio_final$ssid<- db_HR_bio_final$subj
+levels(as.factor(db_HR_bio_final$ssid))
+
+db_HR_bio_final$subj<- NULL
+
+write_csv(db_HR_bio_final, 'db_HR_bio_final_mar5.csv')
+
+
+
+db_HR_bio1$tNo<- -6:49
+
+db_HR_bio1$tNo<- if_else(db_HR_bio1$tNo< 0, as.numeric(db_HR_bio1$tNo), as.numeric(db_HR_bio1$tNo+1))
+
+
+db_HR_bio1$
+
+
+
+```
+
+
+
+
+
+
+
 
 
 
