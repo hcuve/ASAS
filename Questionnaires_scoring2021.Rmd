@@ -103,16 +103,18 @@ also checked a few examples of TAS seem correct. but should note one inconsisten
 AQ_50
 
 ```{r}
-
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/AQ")
 # 345_356
-read_selfrep <- function(flnm) {
-    read_csv(flnm) %>%
+read_selfrep1 <- function(flnm) {
+    read_excel(flnm) %>%
         mutate(filename = flnm)
 }
 
-db_AQ <- list.files(pattern = "*.csv", 
+db_AQ <- list.files(pattern = "*.xlsx", 
                full.names = T) %>% 
-    map_df(~read_selfrep(.))
+    map_df(~read_selfrep1(.))
+
+db_AQ <- read_excel("data_exp_11458-v9_questionnaire-7uqw-4489770.xlsx")
 
 db_AQ<- subset(db_AQ, db_AQ$`Event Index`== 1)
   
@@ -164,7 +166,7 @@ db_AQ3<- db_AQ2 %>%
 
 
 
-db_AQ4<- db_AQ3%>%
+db_AQ4<- db_AQ3 %>%
   # mutate(DIF = TAS_1 + TAS_3 + TAS_6 + TAS_7 + TAS_9 + TAS_13+ TAS_14)%>%
   # mutate(EOT = TAS_8+TAS_15+TAS_16+TAS_20+TAS_5+TAS_10+TAS_18+TAS_19)%>%
   # mutate(DDF = TAS_2+TAS_11+TAS_12+TAS_17+TAS_4)%>%
@@ -195,16 +197,20 @@ db_TAS <- list.files(pattern = "*-pdlt.xlsx",
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
+
+library(readxl)
+db_TAS <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/TAS/data_exp_11458-v9_questionnaire-pdlt-4489770.xlsx")
+
 db_TAS<- subset(db_TAS, db_TAS$`Event Index`== 1)
   
   
-View(db_TAS)
+# View(db_TAS)
 
 library(tidyverse)
 colnames(db_TAS)
 
 db_TAS1<- db_TAS%>%
-  select(c(16,33:71))
+  select(c(16,32:71))
   
 
 colnames(db_TAS1)
@@ -213,9 +219,10 @@ db_TAS2<- db_TAS1%>%
 select(c(1,seq(2, 40, 2)))
 
 
-db_TAS2
+colnames(db_TAS2)
 # note the gorilal tas labels have a zero, like 01 instead of 1
 ?recode
+
 db_TAS3<- db_TAS2 %>%
   mutate_at(c('TAS_04', 'TAS_05', 'TAS_10', 'TAS_18', 'TAS_19'), 
             funs(car::recode(., "1=5; 2=4; 3=3; 4=2; 5 =1")))%>%
@@ -252,11 +259,16 @@ db_DASS <- list.files(pattern = "*-chif.csv",
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
+library(readr)
+db_DASS <- read_xlsx("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/DASS/data_exp_11458-v9_questionnaire-chif-4489770.xlsx")
+
+("Short format/DASS/data_exp_11458-v9_questionnaire-chif-4489770.xlsx")
+
 db_DASS<- subset(db_DASS, db_DASS$`Event Index`== 1)
 
 colnames(db_DASS)
 db_DASS1<- db_DASS%>%
-  select(c(12,13,16,33:73))
+  select(c(12,13,16,32:74))
   
 colnames(db_DASS1)
 
@@ -290,6 +302,7 @@ colnames(db_DASS3)
 db_DASS3$completion_code<- db_DASS3$`Participant Completion Code`
 
 db_DASS4<- select(db_DASS3, c(1:2,29,25:28))
+db_DASS4
 
 ```
 
@@ -301,7 +314,9 @@ library(readr)
 db_IAS <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IAS/345_346_IAS_2021-08-21.csv")
 View(db_IAS)
 
-
+library(readr)
+db_IAS <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IAS/All_scores_IAS350_2021-08-23.csv")
+db_IAS
 
 ```
 
@@ -323,6 +338,11 @@ read_selfrep <- function(flnm) {
 library(readxl)
 db_BPQ <- read_excel("data_exp_11458-v9_questionnaire-bbc4.xlsx")
 View(data_exp_11458_v9_questionnaire_bbc4)
+
+
+library(readxl)
+# db_BPQ <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BPQ/data_exp_11458-v9_questionnaire-bbc4-4489770.xlsx")
+
 
 db_BPQ <- list.files(pattern = "*-bbc4.csv", 
                full.names = T) %>% 
@@ -394,6 +414,7 @@ db_BPQ2<- db_BPQ1%>%
 
 db_BPQ2
 db_BPQ3<- select(db_BPQ2, 1,2,29)
+db_BPQ3
 ```
 
 BVAQ: 83b1
@@ -411,6 +432,10 @@ db_BVAQ <- list.files(pattern = "*-83b1.xlsx",
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
+library(readxl)
+# db_BVAQ <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BVAQ_83b1/data_exp_11458-v9_questionnaire-83b1-4489770.xlsx")
+
+
 
 # eliminate empty rows
 db_BVAQ<- subset(db_BVAQ, db_BVAQ$`Event Index`== 1)
@@ -427,6 +452,8 @@ db_BVAQ1<- db_BVAQ1%>%
    mutate(BVAQ = rowSums(.[ 3:42]))
   
 db_BVAQ3<- select(db_BVAQ1, c(1,2,43))
+
+db_BVAQ3
 ```
 
 demographics
@@ -446,24 +473,36 @@ db_age <- list.files(pattern = "*-8zto.xlsx",
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
+
+# db_age <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/data_exp_11458-v9_questionnaire-8zto-4489770.xlsx")
+
+
 db_vision <- list.files(pattern = "*-8nsp.xlsx", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
+
+library(readxl)
+
+# db_vision <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/data_exp_11458-v9_questionnaire-8nsp-4489770.xlsx")
+
 db_mhealth <- list.files(pattern = "*-v2gn.xlsx", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
+library(readxl)
+# db_mhealth <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/data_exp_11458-v9_questionnaire-v2gn-4489770.xlsx")
+
 colnames(db_mhealth)
 # db_mhealth<- subset(db_mhealth, -2:12,14:15,17:26)
 
-bind (db_mhealth, db_vision, db_age, by = `Participant Private ID`)
+# bind (db_mhealth, db_vision, db_age, by = `Participant Private ID`)
 
 colnames(db_age)
 db_age$age_response_specific
 db_age$gender_response
 db_age$`gender_response-quantised`
 # db_age$`AgeResponse-text`
-db_age1<- select(db_age, c(1,13,16,36,37,41))
+db_age1<- select(db_age, c(1,13,16,35,36))
 
 colnames(db_mhealth)
 
@@ -503,13 +542,18 @@ read_selfrep <- function(flnm) {
         mutate(filename = flnm)
 }
 
+
+library(readxl)
+# db_IQ <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IQ_esh8/data_exp_60620-v2_task-esh8.xlsx")
+
+
 db_IQ <- list.files(pattern = "*-esh8.xlsx", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
 colnames(db_IQ)
 
-db_IQ1<- select(db_IQ, c(1,13,16, 37,45:48))
+db_IQ1<- select(db_IQ, c(1,13,16, 37,40:44))
 
 db_IQ2<- subset(db_IQ1, !is.na(Response))
 View(db_IQ2)
@@ -523,7 +567,7 @@ db_IQ3$Matrix_Total<- db_IQ3$Correct
 db_IQ3$completion_code<- db_IQ3$`Participant Completion Code`
 
 colnames(db_IQ3)
-db_IQ4<- select(db_IQ3,c(1,7,6))
+db_IQ4<- select(db_IQ3,c(1,9,8))
   
 ```
 
@@ -534,7 +578,7 @@ db_demog$`Participant Completion Code`<- NULL
 
 db_demog$completion_code<- db_demog$`Participant Completion Code`
 
-left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS, by = "completion_code")
+# left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS, by = "completion_code")
 
 db_DASS4$`Participant Public ID`<-NULL
 
@@ -548,11 +592,41 @@ db_BPQ3$`Participant Private ID`<- NULL
 
 
 db_BPQ3
+# 
+# left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3, by = "completion_code")
 
-left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3, by = "completion_code")
+
+db_self_rep <- Reduce(merge, list(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS))
 
 
-db_self_rep<- Reduce(merge, list(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS))
+db_self_rep <- cbind(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS)
+
+db_self_rep
+write_csv(db_self_rep, "db_self_rep_345_356.csv")
+
+write_csv(db_self_rep, "db_self_rep_350.csv")
 
 # db_IAS$
+```
+
+
+merge 
+```{r}
+
+db_self_rep
+library(readr)
+db_self_rep_350_1 <- read_csv("db_self_rep_350.1.csv")
+# View(db_self_rep_350_1)
+
+
+db_self_rep$`Event Index.x`<- NULL
+db_self_rep$`Event Index.y`<-NULL
+db_self_rep_350_1$`Event Index.y`<- NULL
+
+db_self_rep_345_356<- bind_rows(db_self_rep,db_self_rep_350_1)
+colnames(db_self_rep_345_356)
+
+db_self_rep_345_356<- db_self_rep_345_356[,c(1:22)]
+
+write_csv(db_self_rep, "db_self_rep_345_356_final.csv")
 ```
