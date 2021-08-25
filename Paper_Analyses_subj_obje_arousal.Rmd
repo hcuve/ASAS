@@ -26,13 +26,80 @@ library(readr)
 db_345_355 <- read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
 View(db_345_355)
 
+colnames(db_345_355)
 
+# db_345_355_1<- select(db_345_355, c(1:41, )
 colnames(db_full4new_stim_screen_pupil_nopract)
 
+
+
+db_345_355_stim<- subset(db_345_355, db_345_355$screencontent == "stim")
+
+db_full4new_stim_screen_pupil_nopract$ssid<- as.character(db_full4new_stim_screen_pupil_nopract$ssid)
+db_345_355_stim$ssid<- as.character(db_345_355_stim$ssid)
+db_345_355_stim$tNo<- as.character(db_345_355_stim$tNo)
+
+
+colnames(db_full4new_stim_screen_pupil_nopract)
+colnames(db_345_355_stim)
+
+install.packages("gtools")
+?gtools::smartbind()
+
+
+
+
+# binf only common columns
+
+outersect <- function(x, y) {
+  sort(c(setdiff(x, y),
+         setdiff(y, x)))
+}
+
+common_cols 
+
+oposite_columns<- outersect(colnames(db_full4new_stim_screen_pupil_nopract), colnames(db_345_355_stim$age_response_specific))
+
+common_cols
+oposite_columns
+rbind(
+  db_full4new_stim_screen_pupil_nopract[common_cols], 
+  db_345_355_stim[common_cols]
+)
+
+colnames(db_full4new_stim_screen_pupil_nopract)
+colnames(db_345_355_stim)
+
+db_full4new_stim_screen_pupil_nopract
+db_345_355_stim$gender_response
+
+db_345_355_stim<- db_345_355_stim %>% 
+  rename(Age = age_response_specific)%>%
+  rename(Gender = gender_response)
+db_345_355_stim$Age<- age_response_specific
+
+
+
+db_full4new_stim_screen_pupil_nopract<- bind_rows(db_full4new_stim_screen_pupil_nopract, db_345_355_stim)
+```
+
+
+
+```{r}
+unique(db_full4new_stim_screen_pupil_nopract$Group)
+db_full4new_stim_screen_pupil_nopract$Group<- if_else(as.numeric(db_full4new_stim_screen_pupil_nopract$ssid) < 500, "NT",                                               if_else(as.numeric(db_full4new_stim_screen_pupil_nopract$ssid) > 700,"NT", "ASD"))
+
+db_full4new_stim_screen_pupil_nopract$Group_t<- NULL
+
+unique(db_full4new_stim_screen_pupil_nopract$Group_t)                                                     
+
+# db_full4new_stim_screen_pupil_nopract$grou
+
+db_full4new_stim_screen_pupil_nopract$Gender<- substr(db_full4new_stim_screen_pupil_nopract$Gender, 1,1)
 participants_demog <- db_full4new_stim_screen_pupil_nopract %>%
   subset(Group == "NT")%>%
   group_by(ssid, Gender)%>%
-  summarise_if(is.numeric, mean, na.rm = TRUE)
+  summarise_at(c("Age","WASIM", "TAS", "AQ", "IAS", "DASSTotal"), mean, na.rm = TRUE)
 
 # gender
 table(participants_demog$Gender)

@@ -2610,20 +2610,66 @@ tmp.df4_sum_full_bio_hr_self_parsed <- left_join(tmp.df4_sum_full_bio_hr_self, d
 # save the timecourse data and the aggregated data
 
 tmp.df4_sum_full_bio_hr_self_parsed
-write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv')
-write_csv(tmp.df4, 'tmp.df4_timeseries_345_356.csv')
+
+# merge behavioural data
+db_beh3$ssid<- as.character(db_beh3$ssid)
+db_beh3$tNo <- as.character(db_beh3$tNo)
+tmp.df4_sum_full_bio_hr_self_parsed$tNo<- as.character(tmp.df4_sum_full_bio_hr_self_parsed$tNo)
+# tmp.df4_sum_full<- 
+  
+
+tmp.df4_sum_full_bio_hr_self_parsed<- left_join(tmp.df4_sum_full_bio_hr_self_parsed, db_beh3, by = c('ssid', 'tNo'))
+
+
+View(db_beh3)
+tmp.df4_sum_full<- tmp.df4_sum_full%>%
+  arrange(ssid, tNo, time)
+
+
 
 tmp.df4_sum_full_bio_hr_self_parsed$screencontent_no
 
 tmp.df4_sum_full_bio_hr_self_parsed$TAS
-tmp.df4_sum_full_bio_hr_self_parsed %>%
-  subset(screencontent_no>2)%>%
-  group_by(ssid)%>%
-  summarise_if(is.numeric,mean, na.rm = TRUE)%>%
-  ggplot(aes(Age,sdev_gazesum))+
-  geom_point()+
-  geom_smooth(method = lm, se = F)
-  
+# tmp.df4_sum_full_bio_hr_self_parsed<- tmp.df4_sum_full_bio_hr_self_parsed %>%
+#   subset(screencontent_no>2)%>%
+#   group_by(ssid)%>%
+#   summarise_if(is.numeric,mean, na.rm = TRUE)%>%
+#   ggplot(aes(Age,sdev_gazesum))+
+#   geom_point()+
+#   geom_smooth(method = lm, se = F)
+
+
+colnames(tmp.df4_sum_full_bio_hr_self_parsed)  
+
+tmp.df4_sum_full_bio_hr_self_parsed$Age<- tmp.df4_sum_full_bio_hr_self_parsed$age_response_specific
+tmp.df4_sum_full_bio_hr_self_parsed$gender<- substr(tmp.df4_sum_full_bio_hr_self_parsed$gender_response,1,1)
+
+tmp.df4_sum_full_bio_hr_self_parsed$BIO_filename<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$`Participant Completion Code`<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$`Participant Private ID`<- NULL
+
+tmp.df4_sum_full_bio_hr_self_parsed$`Participant No`<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$age_response_specific<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$Event.NID<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$`Event Index`<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$gender_response<- NULL
+
+tmp.df4_sum_full_bio_hr_self_parsed$`Person testing`<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$Event.Nr.x<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$filename.x<- NULL
+tmp.df4_sum_full_bio_hr_self_parsed$filename.y<- NULL
+
+tmp.df4_sum_full_bio_hr_self_parsed
+
+tmp.df4_sum_full_bio_hr_self_parsed<- tmp.df4_sum_full_bio_hr_self_parsed%>%
+  rename(IAS = IAS_score)%>%
+  rename(ASD_self = ASD)
+
+
+tmp.df4_sum_full_bio_hr_self_parsed1<- select(tmp.df4_sum_full_bio_hr_self_parsed,)
+
+write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv')
+write_csv(tmp.df4, 'tmp.df4_timeseries_345_356.csv')
 ```
 
 
