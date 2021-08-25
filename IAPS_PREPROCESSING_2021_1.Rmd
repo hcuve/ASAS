@@ -2032,6 +2032,8 @@ IMPORT BIOPAC
 ```{r}
 setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/IAPS/processed/345_456/CDA")
 
+
+
 colnames(tmp.df4_sum_full)
 
 # import
@@ -2062,7 +2064,7 @@ db_leda_bio$ssid<- as.numeric(substr(db_leda_bio$BIO_filename, 3,5))
 
 unique(db_leda_bio$ssid)
 
-unique(db_leda_bio$trigger)
+# unique(db_leda_bio$trigger)
 
 
 # subset out rest period
@@ -2077,11 +2079,11 @@ db_leda_bio[db_leda_bio == "NaN"] <- NA
 
 # move counter to 1
 range(db_leda_bio$Event.Nr-1)
-range(db_leda_bio$Event.Nr)
-trigger$Event.Nr<- NULL
+# range(db_leda_bio$Event.Nr)
+# trigger$Event.Nr<- NULL
 
 db_leda_bio$order <- db_leda_bio$Event.Nr-1
-db_leda_bio$trigger<- NULL
+# db_leda_bio$trigger<- NULL
 
 
 # merge trigger
@@ -2090,34 +2092,59 @@ trigger$ssid<- NULL
 View(db_leda_bio)
 
 db_leda_bio$order
-db_leda_bio<- left_join(db_leda_bio, trigger)
+# db_345_355$order
+
+trigger<- db_345_355 %>%
+  group_by(order,trigger, tNo)%>%
+  summarise_at(c('ssid'), mean, na.rm = TRUE)
+  # select(db_345_355, c(trigger, tNo, order))
+  
+
+  trigger$ssid<- NULL
+
+  db_leda_bio<- left_join(db_leda_bio, trigger)
 
 
 tmp.df4_sum_full
 
 leda_bioames <- colnames(db_leda_bio)
 
-
-newnames<- c("Event.Nr", paste0("BIO_", paste0(leda_bioames[2:21])))
+leda_bioames
+newnames<- c("Event.Nr", paste0("BIO_", paste(leda_bioames[2:16])),"BIO_Event.NID","BIO_filename"  ,"ssid","order","trigger")
 
 newnames
+
 db_leda_bio_backup<- db_leda_bio
+
+colnames(db_leda_bio_backup)
+
 names(db_leda_bio) <- newnames
 
+colnames(db_leda_bio)
+
+# db_leda_bio$ssid <- db_leda_bio$BIO_ssid
+
+# db_leda_bio$BIO_ssid<-NULL
+
+
 db_leda_bio
 
-db_leda_bio$ssid <- db_leda_bio$BIO_ssid
+db_leda_bio$ssid<- as.character(db_leda_bio$ssid)
 
-db_leda_bio$BIO_ssid<-NULL
+# db_leda_bio$order<- db_leda_bio$BIO_order
 
+unique(tmp.df4_sum_full$Event.Nr)
 
-db_leda_bio
+db_leda_bio$BIO_Event.NID<- NULL
+db_leda_bio$BIO_filename<- NULL
 
-
-tmp.df4_sum_full_bio<- left_join(tmp.df4_sum_full,  db_leda_bio)
+tmp.df4_sum_full_bio<- left_join(tmp.df4_sum_full,  db_leda_bio, by = c("ssid", "order"))
 
 colnames(tmp.df4_sum_full_bio)
 
+write_csv(db_leda_bio, "db_leda_bio_346_347_ledagsr.csv")
+
+write_csv(db_leda_bio, "db_leda_bio_346_355_ledagsr.csv")
 ```
 
 

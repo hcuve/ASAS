@@ -19,6 +19,16 @@ knitr::opts_chunk$set(echo = TRUE)
 Participants section
 
 ```{r}
+# even though it says no pratice I actually kept the pratice
+db_full4new_stim_screen_pupil_nopract$tNo
+
+library(readr)
+db_345_355 <- read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
+View(db_345_355)
+
+
+colnames(db_full4new_stim_screen_pupil_nopract)
+
 participants_demog <- db_full4new_stim_screen_pupil_nopract %>%
   subset(Group == "NT")%>%
   group_by(ssid, Gender)%>%
