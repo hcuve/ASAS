@@ -2392,10 +2392,10 @@ unique((as.numeric(db_HR_bio$trigger2)))
 #  group_by(timestart, ssid)%>%
  # mutate(EventNR= 1:225)
 
+# this will delete fixation and stuff so no
+# db_HR_bio1<- subset(db_HR_bio,db_HR_bio$trigger2< 100)
 
-db_HR_bio1<- subset(db_HR_bio,db_HR_bio$trigger2< 100)
-
-db_HR_bio1<- db_HR_bio1%>%
+db_HR_bio1<- db_HR_bio%>%
   arrange(ssid, as.numeric(timestart))
 
 db_HR_bio1<- subset(db_HR_bio1,!is.na(db_HR_bio1$stim))
@@ -2410,15 +2410,21 @@ table(is.na(db_HR_bio1$ssid))
 # use this
 
 db_HR_bio1no328<-subset(db_HR_bio1, db_HR_bio1$ssid!= 328)
-db_HR_bio1no328<- subset(db_HR_bio1no328, trigger2> 15 & trigger2<72)
 
-db_HR_bio1no328<- db_HR_bio1no328 %>%
-  arrange(ssid, trigger2)%>%
-  filter(!duplicated(trigger2))
+db_HR_bio1no328$trigger2
+db_HR_bio1no328<- subset(db_HR_bio1no328, trigger2> 15 & trigger2<106)
 
-db_HR_bio1no328<- db_HR_bio1no328 %>%
+db_HR_bio1no328$trigger<- db_HR_bio1no328$tNo
+# db_HR_bio1no328
+
+# db_HR_bio1no328<- db_HR_bio1no328 %>%
+#   arrange(ssid, trigger2)%>%
+#   filter(!duplicated(trigger2))
+
+View(trigger)
+db_HR_bio1no328<- db_HR_bio1no328$t %>%
   group_by(ssid)%>%
-  mutate(tNo = -6:(n()-7)) #56 trials
+  mutate(tNo =  -6:(n()-7)) #56 trials
 
 unique(db_HR_bio1no328$tNo)
 
