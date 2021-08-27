@@ -19,14 +19,20 @@ knitr::opts_chunk$set(echo = TRUE)
 Participants section
 
 ```{r}
+
+library(readr)
+library(tidyverse)
+db_345_355_stim$Group<- if_else(as.numeric(db_345_355_stim$ssid)<500,"NT", "ASD")
 # even though it says no pratice I actually kept the pratice
 db_full4new_stim_screen_pupil_nopract$tNo
 
-library(readr)
 db_345_355 <- read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
 View(db_345_355)
 
 colnames(db_345_355)
+db_345_355<- db_345_355 %>%
+  rename(Gender = gender)%>%
+  rename(menalHealth = mental_health)
 
 # db_345_355_1<- select(db_345_355, c(1:41, )
 colnames(db_full4new_stim_screen_pupil_nopract)
@@ -81,13 +87,46 @@ db_345_355_stim$Age<- age_response_specific
 
 
 db_full4new_stim_screen_pupil_nopract<- bind_rows(db_full4new_stim_screen_pupil_nopract, db_345_355_stim)
+
+
+db_full4new_stim_screen_pupil_nopract%>%
+  subset(Group == "NT")%>%
+  group_by(ssid)%>%
+  mutate(cor = cor(arousal, pup_basCor, use = "complete"))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ungroup()%>%
+  ggplot(aes(TAS, cor))+
+  geom_point(aes(color = ssid))+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+db_full4new_stim_screen_pupil_nopract_backup$Mean_HR
+table(is.na(db_full4new_stim_screen_pupil_nopract$Mean_HR))
+
+db_full4new_stim_screen_pupil_nopract$Mean_HR %>%
+  subset(Group == "NT")%>%
+  subset(ssid_num>304)%>%
+  subset(ssid!= "344")%>%
+  subset(ssid!= "900")%>%
+  group_by(ssid)%>%
+  mutate(BIO_CDA.AmpSum_z = scale(BIO_CDA.AmpSum, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(cor = cor(arousal, pup_basCor, use = "complete"))%>%
+  mutate(cor2 = cor(arousal, BIO_CDA.AmpSum_z, use = "complete"))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ungroup()%>%
+  ggplot(aes(TAS, Mean_HR))+
+  geom_point(aes(color = ssid))+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
 ```
 
 
 
 ```{r}
 unique(db_full4new_stim_screen_pupil_nopract$Group)
-db_full4new_stim_screen_pupil_nopract$Group<- if_else(as.numeric(db_full4new_stim_screen_pupil_nopract$ssid) < 500, "NT",                                               if_else(as.numeric(db_full4new_stim_screen_pupil_nopract$ssid) > 700,"NT", "ASD"))
+
+
 
 db_full4new_stim_screen_pupil_nopract$Group_t<- NULL
 
@@ -95,13 +134,21 @@ unique(db_full4new_stim_screen_pupil_nopract$Group_t)
 
 # db_full4new_stim_screen_pupil_nopract$grou
 
-db_full4new_stim_screen_pupil_nopract$Gender<- substr(db_full4new_stim_screen_pupil_nopract$Gender, 1,1)
-participants_demog <- db_full4new_stim_screen_pupil_nopract %>%
+# db_full4new_stim_screen_pupil_nopract$Gender<- substr(db_full4new_stim_screen_pupil_nopract$Gender, 1,1)
+
+db_full4new_stim_screen_pupil_nopract_update<- bind_rows(db_full4new_stim_screen_pupil_nopract,
+                                                         db_345_355_stim)
+
+db_full4new_stim_screen_pupil_nopract_update$Group<- if_else(as.numeric(db_full4new_stim_screen_pupil_nopract_update$ssid) < 500, "NT",                                               if_else(as.numeric(db_full4new_stim_screen_pupil_nopract_update$ssid) > 700,"NT", "ASD"))
+
+
+participants_demog <- db_full4new_stim_screen_pupil_nopract_update %>%
   subset(Group == "NT")%>%
   group_by(ssid, Gender)%>%
   summarise_at(c("Age","WASIM", "TAS", "AQ", "IAS", "DASSTotal"), mean, na.rm = TRUE)
 
-# gender
+
+unique(participants_demog$ssid)
 table(participants_demog$Gender)
 colnames(participants_demog)
 summary(participants_demog$Age)
@@ -121,16 +168,60 @@ Pupil changes and subjective arousal and valence ratings
 ```{r} 
 pupil_arousal_findings<- list()
 library(lmerTest)
+db_345_355_stim$stim
+View(db_full4new_stim_screen_pupil_nopract)
+unique(db_full4new_stim_screen_pupil_nopract$trialUnq)
+db_full4new_stim_screen_pupil_nopract$ssid
+unique(db_full4new_stim_screen_pupil_nopract$trialUnq.x)
+
+db_full4new_stim_screen_pupil_nopract_backup<- db_full4new_stim_screen_pupil_nopract
+
+db_full4new_stim_screen_pupil_nopract <- db_full4new_stim_screen_pupil_nopract_update
+
+# db_full4new_stim_screen_pupil_nopract$stimIAPS<- subs
+unique(db_full4new_stim_screen_pupil_nopract$stimIAPS)
+unique(db_full4new_stim_screen_pupil_nopract_backup$stimIAPS)
+unique(substr(db_full4new_stim_screen_pupil_nopract_backup$stimIAPS, 1,8))
+
+
+db_full4new_stim_screen_pupil_nopract$stimIAPS[db_full4new_stim_screen_pupil_nopract$stimIAPS== "2900.1.jpg"]<- "2900.jpg1.jpg"
+
+db_full4new_stim_screen_pupil_nopract$stimIAPS[db_full4new_stim_screen_pupil_nopract$stimIAPS== "2345.1.jpg"]<- "2345.jpg1.jpg"
 
 unique(db_full4new_stim_screen_pupil_nopract$stimIAPS)
-unique(substr(db_full4new_stim_screen_pupil_nopract$stimIAPS, 1,8))
+unique(db_full4new_stim_screen_pupil_nopract_backup$stimIAPS)
+
 db_full4new_stim_screen_pupil_nopract$Label<- substr(db_full4new_stim_screen_pupil_nopract$stimIAPS, 1,8)
+unique(db_full4new_stim_screen_pupil_nopract$Label)
+table(is.na(db_full4new_stim_screen_pupil_nopract$stimIAPS))
+
+table(is.na(db_full4new_stim_screen_pupil_nopract$Label))
+unique(imageJ_IAPS$Label)
+
+imageJ_IAPS_names<- colnames(imageJ_IAPS)
+imageJ_IAPS_names<- imageJ_IAPS_names[3:14]
+imageJ_IAPS_names
+db_full4new_stim_screen_pupil_nopract
+db_full4new_stim_screen_pupil_nopract_test <- dplyr::left_join(db_full4new_stim_screen_pupil_nopract, imageJ_IAPS, by = "Label")
+
+table(is.na(db_full4new_stim_screen_pupil_nopract_test$Mean.y))
+
+db_full4new_stim_screen_pupil_nopract<- db_full4new_stim_screen_pupil_nopract[,!(names(db_full4new_stim_screen_pupil_nopract) %in% imageJ_IAPS_names)]
 
 
-db_full4new_stim_screen_pupil_nopract<- left_join(db_full4new_stim_screen_pupil_nopract, imageJ_IAPS, by = "Label")
 
+db_full4new_stim_screen_pupil_nopract$Mean_gray_z<- NULL
+
+# megre IAPS data
+
+db_full4new_stim_screen_pupil_nopract <- left_join(db_full4new_stim_screen_pupil_nopract, imageJ_IAPS, by = "Label")
+
+table(is.na(db_full4new_stim_screen_pupil_nopract$Mean))
+# test<- subset(db_full4new_stim_screen_pupil_nopract, is.na(Mean))
 nrow(db_full4new_stim_screen_pupil_nopract)
 # rows = 2858
+
+unique(db_full4new_stim_screen_pupil_nopract$ssid)
 
 db_full4new_stim_screen_pupil_nopract$Mean_gray_z<- scale(db_full4new_stim_screen_pupil_nopract$Mean, center = TRUE, scale = TRUE)[,1]
 
@@ -169,17 +260,25 @@ db_full4new %>%
 
 
 ```{r}
-  
-
 
 options(contrasts = c("contr.sum","contr.poly"))
 options(scipen = 999)
 
+table(is.na(db_full4new_stim_screen_pupil_nopract$arousal))
+table(is.na(db_full4new_stim_screen_pupil_nopract$ArousalMean))
+table(is.na(db_full4new_stim_screen_pupil_nopract$Group))
+
+db_full4new_stim_screen_pupil_nopract<- db_full4new_stim_screen_pupil_nopract%>%
+  ungroup()%>%
+  mutate(arousal_c = scale(arousal, center = TRUE, scale = TRUE)[,1],
+         valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])
 
 pupil_arousal_findings$pupil_from_arousal <- lmer(pup_basCor ~ arousal_c*Mean_gray_z  +(1 +Mean_gray_z | ssid) + (0+arousal_c| ssid), REML = FALSE,
                       data = subset(db_full4new_stim_screen_pupil_nopract, 
-                                    pupil_outlier == FALSE & ssid_num< 500 & 
-                                    arousal_outler == FALSE))
+                                    # pupil_outlier == FALSE & 
+                                     Group == "NT"
+                                    # arousal_outler == FALSE
+                                    ))
 
 summary(pupil_arousal_findings$pupil_from_arousal)
 # singularity (drop arousal c slope)
@@ -204,12 +303,21 @@ db_full4new_stim_screen_pupil_nopract %>%
   geom_hline(yintercept = -.75)+
   geom_hline(yintercept = -.90)
   geom_histogram()
+
   
-  
-  
-  ggplot(aes(arousal_c, Mean_gray_z, color = ground_valence_lab))+
+  db_full4new_stim_screen_pupil_nopract %>%
+    subset(ssid < 500)%>%
+  # subset(Group == "NT")%>%
+  group_by(ssid, Group)%>%
+  mutate(cor_ar_pup = cor(arousal, pup_basCor, use = "complete"))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(TAS,cor_ar_pup, color = Group))+
   geom_point()+
-  ggpubr::stat_cor()
+    geom_smooth(method = lm, se = F)+
+    ggpubr::stat_cor()
+  geom_hline(yintercept = -.75)+
+  geom_hline(yintercept = -.90)
+
 
 
 ```
@@ -220,35 +328,68 @@ db_full4new_stim_screen_pupil_nopract %>%
 
 db_full4new_stim_screen_pupil_nopract$ssid<- as.factor(as.character(db_full4new_stim_screen_pupil_nopract$ssid))
 
+
+db_full4new_stim_screen_pupil_nopract$arousal_outler
+db_full4new_stim_screen_pupil_nopract$pupil_outlier
+
+# flag potential outliers
+
+db_full4new_stim_screen_pupil_nopract<- db_full4new_stim_screen_pupil_nopract %>%
+  group_by(stimIAPS) %>%
+  mutate(arousal_outler = if_else(arousal > (median(arousal, na.rm = TRUE) + 
+                                               (4*mad(arousal, na.rm = TRUE))), TRUE,
+         if_else(arousal < (median(arousal, na.rm = TRUE) - 
+                              (4*mad(arousal, na.rm = TRUE))), TRUE, FALSE)))%>%
+  group_by(ssid)%>%
+   mutate(pupil_outlier = if_else(pup_basCor > (median(pup_basCor, na.rm = TRUE) 
+                                                + (3*mad(pup_basCor, na.rm = TRUE))), TRUE,
+         if_else(pup_basCor < (median(pup_basCor, na.rm = TRUE) - 
+                                 (3*mad(pup_basCor, na.rm = TRUE))), TRUE, FALSE)))
+
+
+# fit pupil response froma rousal and valence
 pupil_arousal_findings$pupil_from_ar_vale <- lmer(pup_basCor ~ (valence_c* arousal_c) +
                                                     Mean_gray_z  +
                                                     (1 + Mean_gray_z | ssid)+
-                                                    (0+ valence_c* arousal_c | ssid),
+                                                    (0+ valence_c | ssid),
                                                   REML = FALSE,
-                      data = subset(db_full4new_stim_screen_pupil_nopract, 
-                                    pupil_outlier == FALSE & ssid_num< 500 & 
-                                      arousal_outler == FALSE))
-unique(db_full4new_stim_screen_pupil_nopract$tNo)
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE))
 
-unique(db_full4new_stim_screen_pupil_nopract$ssid)
+# unique(db_full4new_stim_screen_pupil_nopract$tNo)
+# 
+# unique(db_full4new_stim_screen_pupil_nopract$ssid)
+
 relgrad <- with(pupil_arousal_findings$pupil_from_ar_vale@optinfo$derivs,solve(Hessian,gradient))
 max(abs(relgrad)) #0.0002044252
 
 summary(pupil_arousal_findings$pupil_from_ar_vale)
 plot(pupil_arousal_findings$pupil_from_ar_vale)
 
-# car::vif(pupil_arousal_findings$pupil_from_ar_vale) #curoff 4
+car::vif(pupil_arousal_findings$pupil_from_ar_vale) #curoff 4
+# valence_c           arousal_c         Mean_gray_z valence_c:arousal_c 
+#            1.876902            1.801054            1.004734            1.080785
 
+plots_paper$interaction_ar_vl <- interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale , pred = arousal_c, modx = valence_c)
 
-plots_paper$interaction_ar_vl <- interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale , pred = arousal_c, modx = valence_c, plot.points = TRUE)
-
+plots_paper$interaction_ar_vl 
 interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_val_gaze , pred = valence_c , modx = arousal_c)
+
+
+
 
 # export model table
 library(MuMIn)
 library(sjmisc)
 sjPlot::tab_model(pupil_arousal_findings$pupil_from_ar_vale)
 
+
+
+```
+
+```{r eval=FALSE, include=FALSE}
 # lassomodels$firt
 
 ridgemodels<-list()
@@ -346,51 +487,13 @@ t.test(my_vector_gray)
 # t = -62.057, df = 42, p-value < 0.00000000000000022
 ```
 
-Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
-Formula: pup_basCor ~ (valence_c * arousal_c) + Mean_gray_z + (1 + Mean_gray_z |  
-    ssid) + (0 + valence_c * arousal_c | ssid)
-   Data: subset(db_full4new_stim_screen_pupil_nopract, pupil_outlier ==      FALSE & ssid_num < 500 & arousal_outler == FALSE)
-
-     AIC      BIC   logLik deviance df.resid 
-  8493.9   8579.2  -4231.9   8463.9     2170 
-
-Scaled residuals: 
-    Min      1Q  Median      3Q     Max 
--3.6141 -0.5987  0.0067  0.5952  3.6796 
-
-Random effects:
- Groups   Name                Variance Std.Dev. Corr       
- ssid     (Intercept)         0.78415  0.8855              
-          Mean_gray_z         0.13611  0.3689   0.55       
- ssid.1   valence_c           0.04233  0.2057              
-          arousal_c           0.02296  0.1515    0.89      
-          valence_c:arousal_c 0.01700  0.1604   -0.19  0.01
- Residual                     2.57999  1.6062              
-Number of obs: 2185, groups:  ssid, 43
-
-Fixed effects:
-                    Estimate Std. Error       df t value             Pr(>|t|)    
-(Intercept)         -0.66764    0.14166 44.77819  -4.713          0.000023962 ***
-valence_c            0.08546    0.06557 28.33677   1.603              0.20294    
-arousal_c            0.44137    0.06445 22.53213   6.848          0.000000619 ***
-Mean_gray_z         -0.96311    0.06622 43.35750 -14.544 < 0.0000000000000002 ***
-valence_c:arousal_c  0.15461    0.04434 24.37046   3.487              0.00187 ** 
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Correlation of Fixed Effects:
-            (Intr) vlnc_c arsl_c Mn_gr_
-valence_c   -0.042                     
-arousal_c   -0.031  0.746              
-Mean_gray_z  0.453 -0.013  0.028       
-vlnc_c:rsl_  0.147 -0.267 -0.128  0.035
 
 same analyses as above but regress brightness out of pupil
 
 ```{r}
 
 pupil_arousal_findings$pupil_from_brightness <- lmer(pup_basCor ~ 
-                                                    Mean  +
+                                                    Mean_gray_z  +
                                                     (1  | ssid),
                                                     # (0+ valence_c* arousal_c | ssid),
                                                   REML = FALSE,
@@ -402,11 +505,7 @@ pupil_arousal_findings$pupil_from_brightness <- lmer(pup_basCor ~
 pupil_arousal_findings$pupil_from_brightness_lm <- lm(pup_basCor ~ 
                                                     Mean,
                                                     
-                      data = subset(db_full4new_stim_screen_pupil_nopract, 
-                                    # pupil_outlier == FALSE & ssid_num< 500 & 
-                                      # arousal_outler == FALSE
-                                    ))
-
+                      data = db_full4new_stim_screen_pupil_nopract, na.action=na.exclude) 
 
 
 summary(pupil_arousal_findings$pupil_from_brightness)
@@ -415,9 +514,9 @@ plot(pupil_arousal_findings$pupil_from_brightness)
 
 # store residuals
 db_full4new_stim_screen_pupil_nopract$pup_resid <- resid(pupil_arousal_findings$pupil_from_brightness)
-
-db_full4new_stim_screen_pupil_nopract$pup_resid_lm <-
-resid(pupil_arousal_findings$pupil_from_brightness_lm)
+?resid
+db_full4new_stim_screen_pupil_nopract$pup_resid_lm <- resid(pupil_arousal_findings$pupil_from_brightness_lm,
+                                                            na.action=na.exclude)
 
 
 db_full4new_stim_screen_pupil_nopract%>%
@@ -435,8 +534,7 @@ db_full4new_stim_screen_pupil_nopract%>%
   geom_smooth(method = 'lm', se = F)+
   ggpubr::stat_cor()
 
-# strong correlation, in this case this is good, because it means there is a large ammount of unexplain ed variane not acconted for by the predictor
-
+# strong correlation, in this case this is good, because it means there is a large amount of unexplained variance not acconted for by the predictor
 
 
 # predict pupil residuals
@@ -466,6 +564,7 @@ plots_paper$interaction_ar_vl+p$graphstyle
 
 plots_paper$interaction_ar_vl
 ```
+
 interaction plot
 
 ```{r}
@@ -548,10 +647,12 @@ pupil_arousal_findings$arousal_from_pup <- lmer(arousal_c ~ valence_c*pup_basCor
                                                  # (1 | ssid),
                                                   (0 +valence_c+pup_basCor | ssid),
                                                 REML = FALSE,
-                      data = subset(db_full4new_stim_screen_pupil_nopract, 
-                                    pupil_outlier == FALSE & ssid_num<500 & 
-                                      arousal_outler == FALSE))
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE))
 summary(pupil_arousal_findings$arousal_from_pup)
+
 anova(pupil_arousal_findings$arousal_from_pup)
 
 # expected correlation between valence and pupil is low
@@ -590,9 +691,6 @@ interactions::interact_plot(pupil_arousal_findings$valence_from_pup, pred =pup_b
 ```
 
 
-
-
-
 Timecourse analyses
 
 # prepare timecourse data
@@ -606,8 +704,53 @@ nrow(tmp.df4_full_stim_downs_jun2021)
 nrow(tmp.df4_full_stim_downs_jun2021)
 tmp.df4_full_stim_downs_jun2021 <- readRDS("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/tmp.df4_full_stim_downs_jun2021.rds")
 
-db_full4new_stim_subset<- db_full4new_stim_screen_pupil_nopract[,c(1:4,6:7,12:13,16,21:27, 31:56,80:81,84:96,98:114,116:124)]
 
+# new folks 
+library(readr)
+tmp_df4_timeseries_345_356 <- read_csv("tmp.df4_timeseries_345_356.csv")
+View(tmp_df4_timeseries_345_356)
+
+colnames(tmp.df4_full_stim_downs_jun2021)
+colnames(tmp_df4_timeseries_345_356)
+# downsample to 60 bins
+
+
+# create bins
+# install.packages("OneR")
+# install.packages("OneR")
+library(OneR)
+
+?bin
+unique(tmp_df4_timeseries_345_356$screencontent)
+tmp_df4_timeseries_345_356_stim <- subset(tmp_df4_timeseries_345_356, tmp_df4_timeseries_345_356$screencontent == "stim")
+
+tmp_df4_timeseries_345_356_stim$timebin <- OneR::bin(tmp_df4_timeseries_345_356_stim$timerezero3, nbin = 60)
+
+
+
+# dowsample by averaging?
+colnames(tmp_df4_timeseries_345_356_stim)
+
+
+tmp_df4_timeseries_345_356_stim_downs <- tmp_df4_timeseries_345_356_stim %>%
+  group_by(ssid, tNo, timebin, trial,trialUnq)%>%
+  summarise_at(c('timerezero3','pup_basCor', 'gaze_x_cor_pix', 'gaze_y_cor_pix'), 
+               mean, na.rm = TRUE)
+
+?saveRDS
+saveRDS(tmp_df4_timeseries_345_356_stim_downs, "tmp_df4_timeseries_345_356_stim_downs.rds")
+
+
+# merge pupil series with behavioural data
+colnames(db_full4new_stim_screen_pupil_nopract)
+cname_db_full4new_stim_subset<- colnames(db_full4new_stim_subset)
+
+db_full4new_stim_subset_backup<-db_full4new_stim_subset
+
+# db_full4new_stim_subset<- db_full4new_stim_screen_pupil_nopract[,c(1:4,6:7,12:13,16,21:27, 31:56,80:81,84:96,98:114,116:124)]
+db_full4new_stim_subset<- db_full4new_stim_screen_pupil_nopract[,c(cname_db_full4new_stim_subset)]
+
+View(db_full4new_stim_subset)
 
 # match types of merging variables
 tmp.df4_full_stim_downs_jun2021_with_beh2$ssid<- as.character(tmp.df4_full_stim_downs_jun2021_with_beh2$ssid)
@@ -645,35 +788,59 @@ library(tidyverse)
 install.packages("gazer")
 library(gazer)
 
-tmp.df4_full_stim_downs_jun2021$tNo<- as.numeric(tmp.df4_full_stim_downs_jun2021$tNo)
+# temp backup
+tmp.df4_full_stim_downs_jun2021_backup<- tmp.df4_full_stim_downs_jun2021
+tmp_df4_timeseries_345_356_stim_downs_backup<- tmp_df4_timeseries_345_356_stim_downs
+
+tmp_df4_timeseries_345_356_stim_downs$ssid<- as.character(tmp_df4_timeseries_345_356_stim_downs$ssid)
+
+tmp_df4_timeseries_345_356_stim_downs$tNo<- as.character(tmp_df4_timeseries_345_356_stim_downs$tNo)
+
+unique(tmp.df4_full_stim_downs_jun2021$timebin)
+unique(tmp_df4_timeseries_345_356_stim_downs$timebin)
+
+# bind old and new data
+tmp.df4_full_stim_downs_jun2021 <- bind_rows(tmp.df4_full_stim_downs_jun2021,tmp_df4_timeseries_345_356_stim_downs)
+
+tmp.df4_full_stim_downs_jun2021$tNo<- as.character(tmp.df4_full_stim_downs_jun2021$tNo)
+db_full4new_stim_subset$tNo<- as.character(db_full4new_stim_subset$tNo)
+
+# backup[]
+tmp.df4_full_stim_downs_jun2021_60bins_backup<- tmp.df4_full_stim_downs_jun2021_60bins
 
 tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021, db_full4new_stim_subset, by = c("ssid", "tNo", "trial"))
 
-
 # create a dataframe version where we downsample to60 and not to 30
+
 tmp.df4_full_stim_downs_jun2021_60bins$Label<- substr(tmp.df4_full_stim_downs_jun2021_60bins$stimIAPS, 1,8)
 
-tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021_60bins, imageJ_IAPS, by = "Label")
+tmp.df4_full_stim_downs_jun2021_60bins$Label2<- substr(tmp.df4_full_stim_downs_jun2021_60bins$stimIAPS, 1,4)
+imageJ_IAPS$Label2<- substr(imageJ_IAPS$Label, 1,4)
+
+unique(imageJ_IAPS$Label2)
+unique(tmp.df4_full_stim_downs_jun2021_60bins$Label2)
+
+# backup
+tmp.df4_full_stim_downs_jun2021_60bins_backup<- tmp.df4_full_stim_downs_jun2021_60bins
+
+tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021_60bins, imageJ_IAPS, by = "Label2")
 
 
 tmp.df4_full_stim_downs_jun2021_60bins$Mean_gray_z<- scale(tmp.df4_full_stim_downs_jun2021_60bins$Mean, center = TRUE, scale = TRUE)[,1]
 
 
-
-
-
-
 nrow(tmp.df4_full_stim_downs_jun2021_60bins)
-# 172168 good
+# 172168 good+
+# 205703 (with new)
 
 
 ```
 
 
 Quick check that things make sense
-```{r}
-
-
+30 s timebins
+```{r eval=FALSE, include=FALSE}
+unique(tmp.df4_full_stim_downs_jun2021_with_beh$timebin2)
 # group_by(stimIAPS)%>%
 tmp.df4_full_stim_downs_jun2021_with_beh<- tmp.df4_full_stim_downs_jun2021_with_beh %>%
   ungroup()%>%
@@ -723,7 +890,14 @@ theme_classic()+
 
 
 
+60 bins
 ```{r}
+
+
+
+ground_arousal_lab
+
+
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(!is.na(ground_arousal_lab))%>%
   ggplot(aes(x = timerezero3, y = pup_basCor))+
@@ -1274,7 +1448,7 @@ erotica check
 # maybe not every emotional experience causes a detectable physiologicachangedFiles(
 # preparing ubjects might allow them to calibrate
 ```
-
+abs
 ```{r}
 # does absolute arousal correlate with other variables of interest
 tmp.df4_full_stim_downs_jun2021_60bins$abs_arousal<- abs(tmp.df4_full_stim_downs_jun2021_60bins$arousal)
@@ -1414,9 +1588,7 @@ tmp.df4_full_stim_downs_jun2021_60bins %>%
 
 
 
-    
-  
-  
+  valenc and arousla plots  
 ```{r}
   tmp.df4_full_stim_downs_jun2021_60bins %>%
   ungroup()%>%
@@ -1599,6 +1771,9 @@ each bin is an average of 100ms
 ```{r}
 
 # create number s for time bins
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins$ssid)
+
 tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
   group_by(ssid, tNo)%>%
   mutate(timebin_no = 1:n())
@@ -1648,7 +1823,7 @@ for (b in 1:length(nbins)) {
                                 # (1|stimIAPS),
                               REML = FALSE,
                       data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
-                                    ssid_num< 500 &
+                                    Group == "NT" &
                                     timebin_no == nbins[b]))
 
         #store results from the simulation
@@ -1705,10 +1880,8 @@ for (b in 1:length(nbins)) {
 # timecourse_result_df_pos<- timecourse_result_df
 View(timecourse_60bin_result_df)
 
-  
   # geom_hline(yintercept = .05, color = 'red', size = 1.5)
   
-
 # adjust p values and tag as TRUE whenevee there is at least 3 consecutive p values below .05
 ?p.adjust
 
@@ -1843,6 +2016,7 @@ plots_timecourse <- list()
 
 #  let's use the order arousal, valence, arousal x valence brightness
 View(timecourse_60bin_result_df)
+
 plots_timecourse$eff_size_pup_amp <-   timecourse_60bin_result_df[1:56,] %>% 
   select("timebins","Estimate_ar", "Estimate_vl", "Estimate_br", "Estimate_ar_vl") %>% 
   pivot_longer(-timebins, names_to = "variable", values_to = "Estimate")%>%
@@ -2252,7 +2426,7 @@ timecourse_60bin_result_df_neg[1:56,] %>%
 Pupil velocity test
 # velocity analyses
 
-
+30hz
 ```{r}
 # install.packages("pspline")
 library(pspline)
@@ -2560,8 +2734,8 @@ for (b in 3:length(nbins)) {
                                 # (1|stimIAPS),
                               REML = FALSE,
                       data = subset(tmp.df4_full_stim_downs_jun2021_60bins,
-                                    !is.na(pup_vel_smooth)&
-                                      ssid_num< 500 &
+                                    !is.na(pup_velocity)&
+                                     Group == "NT" &
                                     timebin_no == nbins[b]))
 
         # store results from the simulation
@@ -2836,7 +3010,8 @@ plots_paper$interaction_ar_vl
 # correlation plot
 
 plots_paper$pupil_correlation <-   db_full4new_stim_screen_pupil_nopract %>%
-    subset(ssid_num<500)%>%
+  subset(Group == "NT")%>%
+    # subset(ssid_num<500)%>%
   subset(pupil_outlier == FALSE & arousal_outler == FALSE)%>%
    group_by(ssid,Alexithymia, mediansplit_ground_valence)%>%
     mutate(cortest = cor.test(arousal_c, pup_basCor)$estimate)%>%
@@ -3095,12 +3270,6 @@ theme_classic()+
   scale_color_brewer(palette = "Dark2")+
   xlim(0,6)+
   facet_grid(~mediansplit_self_valence)
-
-
-
-
-```
-
 
 ```
 

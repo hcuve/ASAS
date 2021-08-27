@@ -1,10 +1,11 @@
 ---
-title: "InteroceptionStudy_GPValidation"
-Author: "Helio Cuve & "
-date: "8 January 2021"
-output: html_document
+title: "Preprocing and mergind datasets"
+author: "Helio Cuve"
+date: "24/01/2020"
+output:
+  word_document: default
+  html_document: default
 ---
-
 
 # Loading rdhf5 
 ```{r}
@@ -13,9 +14,6 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install(version = "3.10")
 
 BiocManager::install("rhdf5")
-
-library(rhdf5)
-
 
 ```
 
@@ -31,57 +29,77 @@ if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only = TRUE)
 lapply(new.packages, require, character.only = TRUE)
 
-library(purrr)
-library(data.table)
+  
+install.packages('devtools')
+
+remotes::install_github("dmirman/gazer")
+library(gazer)
 library(dplyr)
-library(tidyr)
 
 # setting a workspace
-# change approproatelly
 
+#change approproatelly
+
+setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020")
+# hdf5FilesPath<- "~/Desktop/University Work/Research_Project/Data Analysis January 2020/Data Analysis Jan 2020"
 setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020")
 hdf5FilesPath<- "D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020"
 
+setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Step1_GpExtractor_Output")
 
-# 2021 data
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021")
-hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
 ```
 
+# plotting preferences
+
+```{r, plotting}
+p<- list()
+```
 
 # gp extractor function
-takes gp files and returns a clean files with messages parsed and deletes unnecessary stuff
+takes gp files and returns a clean files with messages parsed and deletes unecessary stuff
 
-note that starting from 322 we have gsr-v and hr-v, and pulse
+
+Starting from 322 we have gsr v and hr v. And OPulse is around the 30
 
 ```{r, gp extractor}
-
-# hdf5FilesPath<- "D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking"
-
-hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
+gp.extractor(hdf5FilesPath)
 
 gp.extractor = function(hdf5FilesPath) {
   
   setwd(hdf5FilesPath)
-  #getwd()
+  
   hdfFilesList = list.files(hdf5FilesPath, pattern = "\\.hdf5$")
   
   if (length(hdfFilesList) == 0){
     
     return(message('No HDF5 files found in the directory provided.'))
   }
-   f = 30
+   # f = 7
   for (f in 1:length(hdfFilesList)) {
     
     message(sprintf("Extracting file %i / %i - %s", f, length(hdfFilesList), hdfFilesList[f]))
     
-    #note that some r-studio bug sometimes causes this to fail when runnin from notebook, 
-    # in that case run it directly on command line
+    #notr this sometimes fails because e are using a notebook 
+    # Extract Events from hdf5, in that case run it from command
     tmp.events =h5read(hdfFilesList[f], '/data_collection/events/experiment/MessageEvent')
+    
+    # Fixing 228
+    # session 1 = IAPS
+    nrow(tmp.events)
+    # tmp.events<- subset(tmp.events, tmp.events$session_id == 1)
   
+    
     tmp.eyetr  = h5read(hdfFilesList[f], '/data_collection/events/eyetracker/BinocularEyeSampleEvent')
     
-    # Get subject id from Events
+    # tmp.eyetr<- subset(tmp.eyetr, tmp.eyetr$session_id == 1)
+    
+    # tmp.events<- tmp.events[245:nrow(tmp.events), ]
+    
+    
+    # problem file
+    # tmp.events
+    
+    # Get subejct id from Events
     ssid = sapply(strsplit(grep('SubjJID', tmp.events$text, value = TRUE), split = ": "), "[", 2)
     date = sapply(strsplit(grep('DATE', tmp.events$text, value = TRUE), split = ": "), "[", 2)
     session = sapply(strsplit(grep('Session:', tmp.events$text, value = TRUE), split = ":"), "[", 2)
@@ -112,7 +130,14 @@ gp.extractor = function(hdf5FilesPath) {
     tmp.df$text<-NA
     
     for (l in 1:nrow(tmp.events)) {
- 
+      # sub(".*_", "", tmp.events)
+      
+      # sub("[^_]*/_", "", tmp.events$text)
+      # ([^\/]+$)
+      # remove everything upto to _
+      # as.numeric(strsplit(tmp.events$text[l], split = '_')[[1]][3])
+      # "Extracting file %i / %i - %s", f, length(hdfFilesList), hdfFilesList[f])
+      
       message(sprintf("Grabing start messages %s", tmp.events$text[l]))
       
       if ((grepl('tStart', tmp.events$text[l])) == TRUE) {
@@ -133,9 +158,11 @@ gp.extractor = function(hdf5FilesPath) {
     
     tmp.events$tNo<- as.numeric(as.character(gsub(".*_","",tmp.events$text)))
 
+    # tmp.events$tNo[is.na(tmp.events$tNo) == TRUE]<- -7
+    
+    # tmp.events$screencontent = strsplit(tmp.events$text, split = '_')[[1]][2]
+    # readline(prompt="Press [enter] to continue")
      message(sprintf("making screencontent"))
-     
-     tmp.eventsbackup<- tmp.events
     tmp.events$screencontent<- if_else(grepl('fixation', tmp.events$text), 'fixation',
                                        if_else(grepl('Valence', tmp.events$text), 'ValenceResp',
                                                if_else(grepl('rest', tmp.events$text), 'rest1', 
@@ -143,7 +170,7 @@ gp.extractor = function(hdf5FilesPath) {
     
     # unique(tmp.events$screencontent)
     
-    # atorw condition
+    # first let's do condition
     
     tmp.events$Condition<- if_else(grepl('IAPS', tmp.events$text), 'IAPS',
                                    if_else(grepl('Example', tmp.events$text), 'Practice',
@@ -153,29 +180,29 @@ gp.extractor = function(hdf5FilesPath) {
     
     # substitute periods
     tmp.events$stim<- gsub('\\.', '.jpg', tmp.events$stim)
-    
+    # tmp.events$tNo<- as.numeric(tmp.events$tNo)
     tmp.events$tNo<- if_else(tmp.events$Condition == 'Practice', (tmp.events$tNo)-6,
                              if_else(tmp.events$Condition == 'Rest',-7, tmp.events$tNo))
-    
-    # create trial number < 0 are practice trials
+    # tmp.events$tNo<- tmp.events$tNo1
     tmp.events$tNo<- if_else(tmp.events$tNo> -1, tmp.events$tNo+1, tmp.events$tNo) # avoid zeros
     
     tmp.events1 = subset(tmp.events, grepl('tStart',tmp.events$text))
-    # tmp.events1$tNo1<- NULL
-    # tmp.events1$tNo2<- NULL
+    tmp.events1$tNo1<- NULL
+    tmp.events1$tNo2<- NULL
     
-    tmp.events1<- subset(tmp.events1, is.na(tmp.events1$tNo) == FALSE)
-  
-
-    # colnames(tmp.df)
-    # colnames(tmp.df)
-    # colnames(tmp.events1)
-    # colnames(tmp.eyetr)
-    
+    # tmp.eyetr_backup<- tmp.eyetr
+    # tmp.df_backup<- tmp.df
+    # tmp.df<- tmp.df_backup
+    colnames(tmp.df)
+    # rm(tmp.raw.trial)
+    # colnames(tmp.raw.trial)
+    colnames(tmp.df)
+    colnames(tmp.events1)
+    colnames(tmp.eyetr)
     tmp.df$screencontent<- NA
     tmp.df$stim<- NA
+    # e=10
     tmp.events1$tEnd<- if_else(tmp.events1$tNo == -7, tmp.events1$tStart+120, tmp.events1$tEnd)
-    
     message(sprintf("subsetting eyetracking data"))
     
     for(e in 1:nrow(tmp.events1)) {
@@ -191,256 +218,80 @@ gp.extractor = function(hdf5FilesPath) {
       # tmp.raw.trial$stim = tmp.events1$[e]
       tmp.raw.trial$ssid = ssid
       tmp.raw.trial$text = tmp.events1$text[e]
-      
-      message(sprintf("binding tmp.df"))
-      
+       message(sprintf("binding tmp.df"))
       tmp.df= rbind(tmp.raw.trial, tmp.df)
     }
      message(sprintf("done binding"))
     
-    # Arrange the dataframe byu time
+    # Add ssid
+    # tmp.df$ssID = ssid[e]
     tmp.df<- tmp.df%>%
       arrange(time)
     
-    # Save file for the task with subject name
+    # Save file
     name = sprintf("ss%s_GPdata",ssid)
     message(sprintf("saving data"))
+    
     write_csv(tmp.df, paste(name,".csv"))
-
-    # write calibration file
+    # write_csv(tmp.df, "test.csv")
+    # write calibration cali
     name2 = sprintf("ss%s_GPdata_cali", ssid)
     write_csv(cali, paste(name2,".csv"))
     
     
+    
   }
   
+  # write_csv(tmp.df, 'tmpdf_extracted.csv')
   
   message("Processing Completed.")
   tmp.df
 }
 
-# run function
 tmp_full<- gp.extractor(hdf5FilesPath)
 
-```
-
-
-Problem files
-```{r}
-# 355  - did not finish IAPS
-# adjust below manually 
-
-
-hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
-
-gp.extractor = function(hdf5FilesPath) {
-  
-  setwd(hdf5FilesPath)
-  #getwd()
-  hdfFilesList = list.files(hdf5FilesPath, pattern = "\\.hdf5$")
-  
-  if (length(hdfFilesList) == 0){
-    hdfFilesList
-    
-    return(message('No HDF5 files found in the directory provided.'))
-  }
-   f = 10
-  for (f in 1:length(hdfFilesList)) {
-    
-    message(sprintf("Extracting file %i / %i - %s", f, length(hdfFilesList), hdfFilesList[f]))
-    
-    #note that some r-studio bug sometimes causes this to fail when runnin from notebook, 
-    # in that case run it directly on command line
-    tmp.events =h5read(hdfFilesList[f], '/data_collection/events/experiment/MessageEvent')
-  
-    tmp.eyetr  = h5read(hdfFilesList[f], '/data_collection/events/eyetracker/BinocularEyeSampleEvent')
-    
-    # Get subject id from Events
-    ssid = sapply(strsplit(grep('SubjJID', tmp.events$text, value = TRUE), split = ": "), "[", 2)
-    date = sapply(strsplit(grep('DATE', tmp.events$text, value = TRUE), split = ": "), "[", 2)
-    session = sapply(strsplit(grep('Session:', tmp.events$text, value = TRUE), split = ":"), "[", 2)
-    cali<- subset(tmp.events, grepl('Cali', tmp.events$text) == TRUE)
-    
-    # Create DF for trials data
-    tmp.df = data.frame(matrix(ncol = ncol(tmp.eyetr)))
-    names(tmp.df) = names(tmp.eyetr)
-    colnames(tmp.df)
-    
-    # Prepare Events, keep only start/end messages
-    phrases = c('tStart', 'tEnd')
-    tmp.events_backup<- tmp.events
-    # tmp.events<-  tmp.events_backup
-    tmp.events = subset(tmp.events, grepl(paste(phrases, collapse = "|"), tmp.events$text))
-    
-    # Create start/end references
-    tmp.events$tStart   = NA
-    tmp.events$tEnd     = NA
-    
-    # Trial number extraction 
-    tmp.events$tNo      = NA
-    tmp.df$tNo          = NA
-    tmp.df$Condition    = NA
-    
-    # Space for subject id
-    tmp.df$ssid         = NA
-    tmp.df$text<-NA
-    
-    for (l in 1:nrow(tmp.events)) {
- 
-      message(sprintf("Grabing start messages %s", tmp.events$text[l]))
-      
-      if ((grepl('tStart', tmp.events$text[l])) == TRUE) {
-        tmp.events$tStart[l] = tmp.events$time[l]
-        
-        if ((grepl('tEnd', tmp.events$text[l+1])) == TRUE){
-          tmp.events$tEnd[l] = tmp.events$time[l+1]
-        }
-        
-        else {
-          message('trial start/end structure not valid')
-        }
-      }
-      
-    }
-    message(sprintf("done grabbing messages"))
-    # readline(prompt="Press [enter] to continue")
-    
-    tmp.events$tNo<- as.numeric(as.character(gsub(".*_","",tmp.events$text)))
-
-     message(sprintf("making screencontent"))
-     
-     tmp.eventsbackup<- tmp.events
-    tmp.events$screencontent<- if_else(grepl('fixation', tmp.events$text), 'fixation',
-                                       if_else(grepl('Valence', tmp.events$text), 'ValenceResp',
-                                               if_else(grepl('rest', tmp.events$text), 'rest1', 
-                                                       if_else(grepl('IntResp', tmp.events$text), 'IntResp','stim'))))
-    
-    # unique(tmp.events$screencontent)
-    
-    
-    tmp.events$Condition<- if_else(grepl('IAPS', tmp.events$text), 'IAPS',
-                                   if_else(grepl('Example', tmp.events$text), 'Practice',
-                                           if_else(grepl('rest', tmp.events$text), 'Rest', NULL)))
-    tmp.events$stim<- if_else(tmp.events$Condition == 'IAPS', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text),
-                              if_else(tmp.events$Condition == 'Practice', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text), 'REST'))
-    
-    # substitute periods
-    tmp.events$stim<- gsub('\\.', '.jpg', tmp.events$stim)
-    
-    tmp.events$tNo<- if_else(tmp.events$Condition == 'Practice', (tmp.events$tNo)-6,
-                             if_else(tmp.events$Condition == 'Rest',-7, tmp.events$tNo))
-    
-    # create trial number < 0 are practice trials
-    tmp.events$tNo<- if_else(tmp.events$tNo> -1, tmp.events$tNo+1, tmp.events$tNo) # avoid zeros
-    
-    tmp.events1 = subset(tmp.events, grepl('tStart',tmp.events$text))
-    # tmp.events1$tNo1<- NULL
-    # tmp.events1$tNo2<- NULL
-    
-    tmp.events1<- subset(tmp.events1, is.na(tmp.events1$tNo) == FALSE)
-  
-
-    # colnames(tmp.df)
-    # colnames(tmp.df)
-    # colnames(tmp.events1)
-    # colnames(tmp.eyetr)
-    
-    tmp.df$screencontent<- NA
-    tmp.df$stim<- NA
-    tmp.events1$tEnd<- if_else(tmp.events1$tNo == -7, tmp.events1$tStart+120, tmp.events1$tEnd)
-    
-    message(sprintf("subsetting eyetracking data"))
-    
-    for(e in 1:nrow(tmp.events1)) {
-      
-      # Subset the EyeTracking data based on start/end
-      tmp.raw.trial = subset(tmp.eyetr, tmp.eyetr$time >= tmp.events1$tStart[e] & tmp.eyetr$time <= tmp.events1$tEnd[e])
-      
-      tmp.raw.trial$tNo = tmp.events1$tNo[e]
-      
-      tmp.raw.trial$Condition = tmp.events1$Condition[e]
-      tmp.raw.trial$screencontent = tmp.events1$screencontent[e]
-      tmp.raw.trial$stim = tmp.events1$stim[e]
-      # tmp.raw.trial$stim = tmp.events1$[e]
-      tmp.raw.trial$ssid = ssid
-      tmp.raw.trial$text = tmp.events1$text[e]
-      
-      message(sprintf("binding tmp.df"))
-      
-      tmp.df= rbind(tmp.raw.trial, tmp.df)
-    }
-     message(sprintf("done binding"))
-    
-    # Arrange the dataframe byu time
-    tmp.df<- tmp.df%>%
-      arrange(time)
-    
-    # Save file for the task with subject name
-    name = sprintf("ss%s_GPdata",ssid)
-    message(sprintf("saving data"))
-    write_csv(tmp.df, paste(name,".csv"))
-
-    # write calibration file
-    name2 = sprintf("ss%s_GPdata_cali", ssid)
-    write_csv(cali, paste(name2,".csv"))
-    
-    
-  }
-  
-  
-  message("Processing Completed.")
-  tmp.df
-}
-
-unique(tmp.df$tNo)
 
 ```
 
-
-Now cleaning gaze data and prepare data for ledalab and artifact
+now cleaning
+we need to have data for ledalab
+gaze path
+clean and tracloss
 
 ```{r, cleaning}
 # function to read all the csvs into one dataframe
 
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/Step1_GpExtractor_Output/346-355")
 
-# rm(tmp_full)
+
+rm(tmp_full)
 read_plus <- function(flnm) {
   data.table::fread(flnm, select = c("session_id","event_id", "time", "left_gaze_x", "left_gaze_y","right_gaze_x", "right_gaze_y","left_pupil_measure1",
                                      "right_pupil_measure1","gsr", "gsrv", 'hr', "hrv", "hrp", "status", "tNo",  "Condition", "screencontent", "stim", "ssid", "text")) %>% 
     mutate(filename = flnm)
 }
 
+# now read them
+setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Step1_GpExtractor_Output")
 
-# read all clean data 
 tmp.df2 <-
   list.files(pattern = "*.csv", 
              full.names = T) %>% 
   map_df(~read_plus(.))
+# rm(db_beh)
+
+tmp.df2$ssid<- substr(tmp.df2$filename, 5,7)
 
 unique(tmp.df2$ssid)
-
-table(is.na(tmp.df2$ssid))
-# tmp.df2$ssid<- substr(tmp.df2$filename, 5,7)
 head(tmp.df2)
-# check we have all participants
-# unique(tmp.df2$ssid)
-tmp.df2<- subset(tmp.df2, !is.na(ssid))
 
-```
+# check if we have all participants
+colnames(tmp.df2)
+unique(tmp.df2$ssid)
 
-
-
-#####################################################################################
-# gp preprocessing funtion, checks for losses, averages gaze, pupil and pixelate
-#####################################################################################
-
-```{r, gppreprocessing}
+# gp preprocessing cuntion, checks for losses, averages gaze and pupil and pixelate
 gp_preprocessing = function(tmp.df2) {
   
   message(sprintf("step1 lft gaze validity"))
-  
-  # transform invalid gaze into NA based on validity codes
   
   tmp.df2$left_gaze_x_cor<- if_else(tmp.df2$status != '20', tmp.df2$left_gaze_x, NULL)
   tmp.df2$left_gaze_x_cor<- if_else(tmp.df2$status != '22', tmp.df2$left_gaze_x_cor, NULL)
@@ -450,13 +301,12 @@ gp_preprocessing = function(tmp.df2) {
   message(sprintf("step2 right gaze validity"))
   
   tmp.df2$right_gaze_x_cor<- if_else(tmp.df2$status != '2', tmp.df2$right_gaze_x, NULL)
-  #
+  # 
   tmp.df2$right_gaze_x_cor<- if_else(tmp.df2$status != '22', tmp.df2$right_gaze_x_cor, NULL)
   tmp.df2$right_gaze_y_cor<- if_else(tmp.df2$status != '22', tmp.df2$right_gaze_y, NULL)
   tmp.df2$right_gaze_y_cor<- if_else(tmp.df2$status != '22', tmp.df2$right_gaze_y_cor, NULL)
 
   # pupil validity
-  
   message(sprintf("step3 pupil validity"))
   tmp.df2$left_pupil_measure1<- if_else(tmp.df2$status != '20', tmp.df2$left_pupil_measure1, NULL)
   tmp.df2$left_pupil_measure1<- if_else(tmp.df2$status != '22', tmp.df2$left_pupil_measure1, NULL)
@@ -465,30 +315,27 @@ gp_preprocessing = function(tmp.df2) {
   tmp.df2$right_pupil_measure1<- if_else(tmp.df2$status != '22', tmp.df2$right_pupil_measure1, NULL)
   table(is.na(tmp.df2$right_pupil_measure1))
   
-  # check gazepoint out of bounds nd repixelate (1920/2 = 960 by 1200/2 = 600. add half to normalised coordinates from psychopy)
-  
-  message(sprintf("step 4 cutting off screen in points and repixelate"))
-  
+  # tmp.df2$right_pupil_measure1<- if_else(tmp.df2$pupil_meas>7, tmp.df2$right_pupil_measure1, NULL)
+  message(sprintf("step 4 cutingt off screen in points and repixel"))
   tmp.df2$left_gaze_x_cor<- if_else(tmp.df2$left_gaze_x_cor >= -960 & tmp.df2$left_gaze_x_cor <= 960, tmp.df2$left_gaze_x_cor, NULL)
   tmp.df2$right_gaze_x_cor<- if_else(tmp.df2$right_gaze_x_cor >= -960 & tmp.df2$right_gaze_x_cor <= 960, tmp.df2$right_gaze_x_cor, NULL)
   
-  tmp.df2$left_gaze_y_cor<- if_else(tmp.df2$left_gaze_y_cor >= -600 & tmp.df2$left_gaze_y_cor <= 600, tmp.df2$left_gaze_y_cor, NULL)
-  tmp.df2$right_gaze_y_cor<- if_else(tmp.df2$right_gaze_y_cor >= -600 & tmp.df2$right_gaze_y_cor <= 600, tmp.df2$right_gaze_y_cor, NULL)
+  tmp.df2$left_gaze_y_cor<- if_else(tmp.df2$left_gaze_y_cor >= -540 & tmp.df2$left_gaze_y_cor <= 540, tmp.df2$left_gaze_y_cor, NULL)
+  tmp.df2$right_gaze_y_cor<- if_else(tmp.df2$right_gaze_y_cor >= -540 & tmp.df2$right_gaze_y_cor <= 540, tmp.df2$right_gaze_y_cor, NULL)
   
   tmp.df2$left_gaze_x_cor_pix<- tmp.df2$left_gaze_x_cor+960
   tmp.df2$right_gaze_x_cor_pix<- tmp.df2$right_gaze_x_cor+960
   
-  tmp.df2$left_gaze_y_cor_pix<- tmp.df2$left_gaze_y_cor+600
-  tmp.df2$right_gaze_y_cor_pix<- tmp.df2$right_gaze_y_cor+600
+  tmp.df2$left_gaze_y_cor_pix<- tmp.df2$left_gaze_y_cor+540
+  tmp.df2$right_gaze_y_cor_pix<- tmp.df2$right_gaze_y_cor+540
   
-  # is left or right an NA
+  # is left or right and na
   
   tmp.df2$left_na<- is.na(tmp.df2$left_gaze_x_cor) 
   tmp.df2$right_na<- is.na(tmp.df2$right_gaze_x_cor)
   tmp.df2$both_na<- if_else(tmp.df2$left_na == TRUE & tmp.df2$right_na == TRUE, TRUE, FALSE)
   
   message(sprintf("step5 gaze x  means"))
-  
   tmp.df2$gaze_x_cor<-if_else(tmp.df2$left_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$right_gaze_x_cor,
                               if_else(tmp.df2$right_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$left_gaze_x_cor,
                                       ((tmp.df2$left_gaze_x_cor + tmp.df2$right_gaze_x_cor)/2)))
@@ -499,15 +346,13 @@ gp_preprocessing = function(tmp.df2) {
                                       ((tmp.df2$left_gaze_y_cor + tmp.df2$right_gaze_y_cor)/2)))
   
   message(sprintf("step6 repixel gaze means"))
-  
   tmp.df2$gaze_x_cor_pix<- tmp.df2$gaze_x_cor + 960
   min(tmp.df2$gaze_x_cor_pix, na.rm = TRUE)
   
-  tmp.df2$gaze_y_cor_pix<- tmp.df2$gaze_y_cor+600
+  tmp.df2$gaze_y_cor_pix<- tmp.df2$gaze_y_cor+540
   min(tmp.df2$gaze_y_cor_pix, na.rm = TRUE)
   
   # clean_pupil
-  
   message(sprintf("cleaning pupil"))
   
   max(tmp.df2$left_pupil_measure1)
@@ -515,10 +360,9 @@ gp_preprocessing = function(tmp.df2) {
   tmp.df2$pupil<- if_else(tmp.df2$left_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$right_pupil_measure1,
                           if_else(tmp.df2$right_na == TRUE & tmp.df2$both_na == FALSE, tmp.df2$left_pupil_measure1,
                                   ((tmp.df2$left_pupil_measure1 + tmp.df2$right_pupil_measure1)/2)))
-  
   # tmp.df2$trackloss<- if_else(tmp.df2$status > 0, TRUE, FALSE)
   tmp.df2$trialUnq<- paste(tmp.df2$tNo, paste(tmp.df2$screencontent, paste(tmp.df2$stim)))
-  tmp.df2$distance = 630
+  tmp.df2$distance = 600
   
   # min(tmp.df2$pupil, na.rm = TRUE)
   # max(tmp.df2$pupil, na.rm = TRUE)
@@ -529,72 +373,53 @@ gp_preprocessing = function(tmp.df2) {
 
 tmp.df2<- gp_preprocessing(tmp.df2)
  colnames(tmp.df2) 
- 
-min(tmp.df2$pupil, na.rm = TRUE)
-max(tmp.df2$gaze_y_cor_pix, na.rm = TRUE)
- 
+  
+# # calculate trackloss
+# (sprintf("calculating trackloss"))
+#  
+#   tmp.df2_trackloss<- tmp.df2%>%
+#     group_by(tNo, trialUnq, ssid, trackloss)%>%
+#     summarise(n = n()) %>%
+#     mutate(trackloss_prop = n() / sum(n))%>%
+#     mutate(mean_valid = 1- trackloss_prop)
+#   
+# tmp.df2_trackloss<- subset(tmp.df2_trackloss, tmp.df2_trackloss$trackloss == TRUE)
+# tmp.df2_trackloss<- tmp.df2_trackloss %>%
+#   group_by(trackloss)%>%
+#   # summarise(mean_loss = mean(trackloss_prop))%>%
+#   mutate(mean_valid = 1- trackloss_prop)
+# 
+# 
+#   tmp.df2_trackloss$trackloss<- NULL
+  # tmp.df2<- left_join(tmp.df2, tmp.df2_trackloss, by = c('tNo', 'trialUnq', 'ssid'))
   
 ```
 
 
-
-Compute proportions outside the screen
-
-
-# check gazepoint out of bounds nd repixelate (1920/2 = 960 by 1200/2 = 600. add half to normalised coordinates from psychopy)
-  
-  
-  x -960 by 960
-  y -600 by 600
-
-```{r eval=FALSE, include=FALSE}
-range(tmp.df2$gaze_x_cor, na.rm = TRUE)
-
-
-tmp.df2
-range(tmp.df2$left_gaze_y, na.rm = TRUE)
-
-range(tmp.df2$left_gaze_y, na.rm = TRUE)
-range(tmp.df2$left_gaze_x, na.rm = TRUE)
-tmp.df2$x_outside<- ifelse(tmp.df2$left_gaze_x < -960, TRUE,
-                           ifelse(tmp.df2$left_gaze_x > 960, TRUE, FALSE))
-
-
-
-tmp.df2$y_outside<- ifelse(tmp.df2$right_gaze_y < -600, TRUE,
-                           ifelse(tmp.df2$right_gaze_y > 600, TRUE, FALSE))
-
-
-table(tmp.df2$y_outside)
-137/(185406+137)
-0.0007383733*100
-
-range(tmp.df, na.rm = TRUE)
-tmp.df2$y_outside<-NULL
-
-
-
-```
-
-# rezeroing times by trial, by participants
+# rezeroing
 
 ```{r}
+colnames(tmp.df2)
 tmp.df3<- tmp.df2
+
+# tmp.df3<- tmp.df2
+colnames(tmp.df3)
+
 
 # create start at every screen content
 tmp.df3<- tmp.df3%>% 
-  arrange(ssid, time, tNo)%>%
+  arrange(time)%>%
   group_by(ssid)%>%
   mutate(firststart = duplicated(trialUnq))
 
 head(tmp.df3)
 
-# make zero-times
+# make zeros
 tmp.df3$zero<- if_else(tmp.df3$firststart == FALSE, tmp.df3$time, NULL)
 
 # fill in the zeros
 tmp.df3<- tmp.df3%>%
-  group_by(ssid, Condition, tNo)%>%
+  group_by(Condition, tNo, ssid)%>%
   # group_by(text)%>%
   fill(zero)
 
@@ -602,49 +427,59 @@ unique(tmp.df3$zero)
 
 # rezero
 tmp.df3<-tmp.df3%>%
-  arrange(ssid, time, tNo)%>%
+  arrange(time)%>%
   group_by(ssid, tNo)%>%
   mutate(timerezero = time - zero)
 
 min(tmp.df3$timerezero, na.rm = TRUE)
-max(tmp.df3$timerezero, na.rm = TRUE) # max shoudl be around 120s for 2 mnutes
+
 natest<-subset(tmp.df3, is.na(tmp.df3$ssid) == TRUE)
 
 # let's check to see if it looks fine
-ggplot(subset(tmp.df3, tmp.df3$tNo == -1), aes(timerezero, gsr, colour = as.factor(ssid)))+
+ggplot(tmp.df3, aes(time, gsr, colour = as.factor(ssid)))+
   geom_line()
+  # facet_grid(~screencontent)
 
-# create a new time rezero where before stim start, time is negative
 
+  # create a new time rezero where before stim start is negative
 tmp.df3<- tmp.df3%>%
   # arrange(time)%>%
   group_by(ssid, Condition, screencontent)%>%
   mutate(firststartSTIM = duplicated(tNo))
 
-#this will create a time in the stim start which we can use to do the a second rezeroing
+#this will create a time in the stim start wich we can use to do the r=secnd rezero
 tmp.df3$zero_stim<- if_else(tmp.df3$firststartSTIM == FALSE & tmp.df3$screencontent == 'stim', tmp.df3$time, NULL)
    
     # fill down
 tmp.df3<- tmp.df3%>%
-      arrange(time)%>%
+      # arrange(time)%>%
       group_by(tNo, ssid)%>%
-      fill(zero_stim, .direction = c('updown'))
+      fill(zero_stim)
 
+# fill up
+   tmp.df3<- tmp.df3%>%
+      arrange(time)%>%
+     group_by(ssid, tNo)%>%
+      fill(zero_stim, .direction = c('up'))
    tmp.df3$timerezero2<- tmp.df3$time-tmp.df3$zero_stim
-   
    # check timerezero2
-     range(tmp.df3$timerezero2, na.rm = TRUE)
+   
+     min(tmp.df3$timerezero2, na.rm = TRUE)
+  max(tmp.df3$timerezero2, na.rm = TRUE)
 
 # time 3 including rest
-  # simply includes rest as is
+  # simply inclues rest as is
 
 tmp.df3$timerezero3<- if_else(tmp.df3$Condition == 'Rest', tmp.df3$timerezero, tmp.df3$timerezero2)
 min(tmp.df3$timerezero3, na.rm = TRUE)
 
 
-# quick check that everything is fine
+# let's check
+unique(tmp.df3$ssid)
 
-ggplot(subset(tmp.df3, tmp.df3$tNo == 27 ) , aes(x = timerezero3, y= gsr, colour = as.factor(ssid)))+
+#tmp.df3<- subset(tmp.df3, is.na(tmp.df3$ssid) == FALSE)
+
+ggplot(subset(tmp.df3, tmp.df3$Condition == 'IAPS') , aes(x = timerezero3, y= gsr, colour = as.factor(ssid)))+
     geom_smooth()+
     # geom_()+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
@@ -663,6 +498,7 @@ ggplot(subset(tmp.df3, tmp.df3$tNo == -4) , aes(x = timerezero2, y= gsr, colour 
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
 
 
+
 ggplot(subset(tmp.df3, tmp.df3$tNo == -7) , aes(x = timerezero3, y= gsr, colour = as.factor(ssid)))+
   # geom_point()
       geom_line() +
@@ -671,6 +507,7 @@ ggplot(subset(tmp.df3, tmp.df3$tNo == -7) , aes(x = timerezero3, y= gsr, colour 
     geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
+
 
 ```
 
@@ -691,6 +528,9 @@ tmp.df3$intercept_time<- if_else(tmp.df3$firststart == FALSE, tmp.df3$time,
 # ggplot(tmp.df3, aes(time, gsr))+
 #   geom_line()+
 #   geom_vline(aes(xintercept = intercept_time))
+
+
+# should trigger be this or should I create a unique code for this based on the images
 
 unique(tmp.df3$tNo)
 
@@ -714,31 +554,27 @@ unique(tmp.df3$trigger)
 ```
 
 
-
 writing for ledalab
 
 ```{r}
-
 tmp.df3<- tmp.df3%>%
-  arrange(ssid, tNo,time)
+  arrange(ssid, time,tNo)
 # gsr baseline wil be the 1 second before tial start
 # gsr to microsiemnes 1/J3*100000
 
 options(scipen = 999)
-
-tmp.df3$gsr_ms <- 1/tmp.df3$gsr*100000
+tmp.df3$gsr_ms<- 1/tmp.df3$gsr*100000
 unique(tmp.df3$ssid)
 max(tmp.df3$gsr_ms)
 min(tmp.df3$gsr_ms)
 
 # gsr for leda
 colnames(tmp.df3)
-db_GSR<- select(tmp.df3, c(3,  14, 17, 50, 49,51 ))
+db_GSR<- select(tmp.df3, c(3,  14, 17, 50, 49 ))
 db_GSR$tNo<- NULL
 colnames(db_GSR)
 
 unique(db_GSR$Condition)
-
 db_GSR$Condition2<- if_else(db_GSR$Condition == 'Rest', 'Rest', 'IAPS')
 unique(db_GSR$Condition2)
 db_GSR$split_column<- paste0(db_GSR$Condition2,paste(db_GSR$ssid))
@@ -748,8 +584,6 @@ unique(db_GSR$split_column)
 split_column<- unique(db_GSR$split_column)
 
 split_gsr = split(db_GSR, list(db_GSR$split_column))
-
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021")
 
     for (ssid in names(split_gsr)) {
       write_tsv(split_gsr[[ssid]][,c("time","gsr_ms", "trigger")], paste0("gpgsr_", paste0(ssid),".txt"), col_names = FALSE)
@@ -761,8 +595,6 @@ setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/Da
 # baselining gsr
 ```{r}
 # use ms to baseline
-tmp.df3_backup<- tmp.df3
-
 
 tmp.df3$gsr_bas<- if_else(tmp.df3$timerezero3 >= -3 & tmp.df3$timerezero3 < 0, tmp.df3$gsr_ms, NULL)
 # true if baseline within window
@@ -772,7 +604,7 @@ tmp.df3$gsr_bastrue<- if_else(tmp.df3$timerezero3 >= -3 & tmp.df3$timerezero3 < 
 tmp.df3$gsr_bas_mean<- NULL
 
 tmp.df3<- tmp.df3%>%
-  arrange(ssid, time,tNo)%>%
+  arrange(time)%>%
   group_by(ssid, tNo, gsr_bastrue)%>%
   mutate(gsr_bas_median = median(gsr_bas))
 
@@ -832,7 +664,6 @@ ggplot(subset(tmp.df3, tmp.df3$screencontent == 'stim') , aes(x = timerezero3, y
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
 
 
-tmp.df3_backup<- tmp.df3
 # gsr respone
 tmp.df3$gsr_resp_Log<- if_else(tmp.df3$timerezero3 > 1,TRUE, FALSE)
 unique(tmp.df3$gsr_resp_Log)
@@ -843,7 +674,6 @@ tmp.df3 <- tmp.df3 %>%
 
 # gsr response for every bit
 unique(tmp.df3$screencontent)
-
 tmp.df3<- tmp.df3%>%
   # arrange(time)%>%
   group_by(ssid, tNo, screencontent)%>%
@@ -854,13 +684,13 @@ tmp.df3$gsr_response <- if_else(tmp.df3$gsr_resp_Log == TRUE, tmp.df3$gsr_respon
 
 tmp.df3<-
   tmp.df3%>%
-  arrange(ssid, tNo,time)%>%
+  arrange(time)%>%
   group_by(ssid, tNo)%>%
     fill(gsr_response)
 
 tmp.df3<-
   tmp.df3%>%
-  arrange(ssid, tNo,time)%>%
+  arrange(time)%>%
   group_by(ssid, tNo)%>%
     fill(gsr_response,  .direction = c('up'))
   
@@ -869,14 +699,12 @@ tmp.df3<-
 
 unique(tmp.df3$gsr_response )
 
-tmp.df3_backup<- tmp.df3
 ```
 
 #baseline and clean pupil
 
 ```{r}
 library(gazer)
-
 min(tmp.df3$pupil, na.rm = TRUE)
 max(tmp.df3$pupil, na.rm = TRUE)
 
@@ -884,14 +712,9 @@ tmp.df3$pupil<- if_else(tmp.df3$pupil> 7.2, tmp.df3$pupil, NULL)
 
 tmp.df3$pupil<- if_else(tmp.df3$pupil< 45, tmp.df3$pupil, NULL)
 
-tmp.df3_backup <- tmp.df3
-
-
-# note that smothing and interpolating is order dependednt so order by ssid, trial and time
 tmp.df3<- tmp.df3 %>%
-  arrange(ssid, time,tNo)%>%
-  group_by(ssid, trialUnq,tNo,screencontent) %>%
-  mutate(extendpupil=gazer::extend_blinks(pupil, fillback=100, fillforward=100, hz=150))
+  group_by(ssid, trialUnq) %>%
+  mutate(extendpupil=extend_blinks(pupil, fillback=100, fillforward=100, hz=150))
 
 min(tmp.df3$extendpupil, na.rm = TRUE)
 max(tmp.df3$pupil, na.rm = TRUE)
@@ -910,69 +733,26 @@ tmp.df3$trial = tmp.df3$trialUnq
 tmp.df3$extendpupil
 # ?smooth_interpolate_pupil
 
-# library(gazer)
+library(gazer)
 
-?smooth_interpolate_pupil
-
-# vert order dependent
-tmp.df3 <- gazer::smooth_interpolate_pupil(tmp.df3, pupil="pupil", extendpupil="extendpupil",
+tmp.df3 <- smooth_interpolate_pupil(tmp.df3, pupil="pupil", extendpupil="extendpupil",
                                     extendblinks=TRUE, step.first= 'smooth',
                                     maxgap=Inf, 
                                     filter = 'moving',
                                     type="linear", hz=150, n = 30)
 
-# tmp.df3<- tmp.df3 %>%
-#   group_by(ssid, trialUnq,tNo,screencontent) %>%
-#   smooth_interpolate_pupil(pupil="pupil", extendpupil="extendpupil",
-#                                     extendblinks=TRUE, 
-#                            step.first= 'smooth',
-#                                     maxgap=10, 
-#                                     filter = 'moving',
-#                                     type="linear", hz=20, n = 10)
-# 
-# 
-# tmp.df3<-
-#   tmp.df3%>%
-#   arrange(ssid,tNo,time)
-#   # group_by(ssid, tNo, timerezero3)%>%
-# 
-# tmp.df3te<- tmp.df3 %>%
-#   group_by(ssid, Condition,tNo,screencontent) %>%
-#   smooth_interpolate_pupil(pupil="pupil", extendpupil="extendpupil",
-#                                     extendblinks=TRUE, 
-#                            step.first= 'smooth',
-#                                     maxgap=Inf, 
-#                                     filter = 'moving',
-#                                     type="linear", hz=100, n = 5)
+
 
 min(tmp.df3$pup_interp, na.rm = TRUE)
 max(tmp.df3$pup_interp, na.rm = TRUE)
 
-subset(tmp.df3, tNo == 20 & ssid == 347)%>%
-ggplot(aes(x = timerezero3, y= pup_interp))+
+ggplot(subset(tmp.df3, tmp.df3$tNo == 10 & tmp.df3$ssid == 320) , aes(x = timerezero3, y= pup_interp, colour = as.factor(ssid)))+
   geom_line()+
-   geom_line(aes(y = extendpupil), color = 'red')+
   geom_line(aes(y = pupil), colour = 'gray')
   # facet_grid(~Condition)
 
 
-subset(tmp.df3, tNo == -7 & ssid == 350)%>%
-ggplot(aes(x = timerezero3, y= pupil))+
-  geom_line()
-
-
-subset(tmp.df3, tNo == 1)%>%
-ggplot(aes(x = timerezero3, y= pup_interp))+
-  geom_line()+
-   # geom_line(aes(y = extendpupil), color = 'red')+
-  # geom_line(aes(y = pup_interp), colour = 'gray')+
-    facet_grid(~ssid)
-  # facet_grid(~Condition)
-```
-
-
 # create baseline pupil mean
-```{r}
 tmp.df3backup<- tmp.df3
 tmp.df3$pup_bas<- if_else(tmp.df3$timerezero3 >= -1 & tmp.df3$timerezero3 < 1, tmp.df3$pup_interp, NULL)
 # true if bseline if baseline within widnown
@@ -1000,7 +780,7 @@ tmp.df3<- tmp.df3%>%
 
 # do baseline correction
 tmp.df3<- tmp.df3%>%
-  arrange(ssid, tNo, time)%>% # pay attentipn to order
+  arrange(time)%>%
   group_by(ssid, tNo)%>%
   mutate(pup_basCor = pup_interp - pup_bas_med)
 
@@ -1014,7 +794,6 @@ tmp.df3$pup_basCor<- if_else(tmp.df3$Condition == 'Rest', tmp.df3$pup_interp-tmp
 
 
 # MAD removal
-library(gazer)
 max_pup<-tmp.df3 %>%
   dplyr::group_by(subject, trial) %>%
   dplyr::mutate(speed=speed_pupil(pup_interp,time)) %>%
@@ -1031,7 +810,7 @@ tmp.df3$pup_interp_mad<- if_else(tmp.df3$speed< tmp.df3$MAD, tmp.df3$pup_interp,
 
  
   
-ggplot(subset(tmp.df3, tNo == 10 & tmp.df3$ssid == 354) , aes(x = timerezero3, y= pup_basCor))+
+ggplot(subset(tmp.df3, tmp.df3$tNo == 5 & tmp.df3$ssid == 900) , aes(x = timerezero3, y= pup_basCor))+
     # geom_smooth(se = F)+
   geom_line()+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
@@ -1039,35 +818,8 @@ ggplot(subset(tmp.df3, tNo == 10 & tmp.df3$ssid == 354) , aes(x = timerezero3, y
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
 
-
-ggplot(subset(tmp.df3, tNo == 10 & tmp.df3$ssid == 354) , aes(x = timerezero3, y= pup_basCor))+
-    # geom_smooth(se = F)+
-  geom_line()+
-    geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
-    geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
-    geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
-    geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)+
-  xlim(-3,3)
-
-
-# preparation
-subset(tmp.df3, tNo == 10)%>%
-  group_by(ssid, tNo)%>%
-  mutate(pupil_z = pup_interp_mad - mean(pup_interp_mad, na.rm = TRUE))%>%
-  ungroup()%>%
-ggplot(aes(x = timerezero3, y= pupil_z))+
-    # geom_smooth(se = F)+
-  stat_summary(fun = mean, geom = 'line')+
-    geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
-    geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
-    geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
-    geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)+
-  xlim(-3,15)
-```
 unique(tmp.df3$ssid)
 
-```{r}
-# rest period
 ggplot(subset(tmp.df3, tmp.df3$Condition == 'Rest') , aes(x = timerezero3, y= pup_basCor, colour = as.factor(ssid)))+
     geom_smooth(se = T)+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
@@ -1075,9 +827,6 @@ ggplot(subset(tmp.df3, tmp.df3$Condition == 'Rest') , aes(x = timerezero3, y= pu
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
 
-```
-
-```{r}
 colnames(tmp.df3)
 table(is.na(tmp.df3$gsr_ms))
 table(is.na(tmp.df3$hr))
@@ -1087,7 +836,6 @@ table(is.na(tmp.df3$hr))
 
 min(tmp.df3$hr, na.rm = TRUE)
 max(tmp.df3$hr, na.rm = TRUE)
-
 tmp.df3$hrv<- as.double(tmp.df3$hrv)
 tmp.df3$hrv2<- if_else(is.na(tmp.df3$hrv) == TRUE, 999,tmp.df3$hrv)
 
@@ -1102,9 +850,8 @@ tmp.df3$hr_clean<- if_else(tmp.df3$hr_clean > 40 & tmp.df3$hr_clean< 120, tmp.df
 table(is.na(tmp.df3$hr_clean))
 # interpolate, only 2 seconds 
 library(zoo)
-
 tmp.df3<- tmp.df3%>%
-  arrange(ssid, time,tNo)
+  arrange(ssid, time, tNo)
 
 # tmp.df3$hr_interp = 
 
@@ -1115,7 +862,7 @@ tmp.df3<- tmp.df3%>%
 
 
   min(tmp.df3$hr, na.rm = TRUE)
-ggplot(subset(tmp.df3, tmp.df3$tNo == -7 & tmp.df3$ssid == 352) , aes(x = timerezero3, y= hr_interp))+
+ggplot(subset(tmp.df3, tmp.df3$tNo == -7 & tmp.df3$ssid == 320) , aes(x = timerezero3, y= hr_interp))+
     # geom_smooth(se = F)+
   geom_line()+
   geom_line(aes(y = hr_clean), linetype = 'dashed', colour = 'green', size = 0.3)+
@@ -1128,9 +875,7 @@ ggplot(subset(tmp.df3, tmp.df3$tNo == -7 & tmp.df3$ssid == 352) , aes(x = timere
 # na.approx(object, x = index(object), xout, ..., na.rm = TRUE, maxgap = Inf, along)
 # z <- na.spline(zoo(y, x), maxgap = 2)
 
-```
 
-```{r}
 tmp.df3 <- tmp.df3 %>%
     group_by(ssid, tNo, gsr_resp_Log, screencontent)%>%
     mutate(gsr_response_bycond =   max(gsr_basCor))
@@ -1161,7 +906,7 @@ unique(tmp.df4$trackloss)
 tmp.df4$hr_trackloss<- if_else(is.na(tmp.df4$hr_clean) == TRUE, 0, 1) # 1 means valid, 0 missing
 
 
-tmp.df4 <- tmp.df4 %>%
+tmp.df4 <- tmp.df4%>%
   group_by(ssid, tNo, trialUnq, text)%>%
   mutate(gaze_valid_prop = sum(trackloss)/n())%>%
   mutate(gaze_loss_prop = 1 - gaze_valid_prop)%>%
@@ -1169,20 +914,21 @@ tmp.df4 <- tmp.df4 %>%
   mutate(hr_loss_prop = 1 - hr_valid_prop)
 
 # check to see this is right
-ggplot(subset(tmp.df4, tmp.df3$ssid == 353) , aes(x = tNo, y= hr_valid_prop))+
+ggplot(subset(tmp.df4, tmp.df3$ssid == 324) , aes(x = tNo, y= hr_valid_prop))+
     # geom_smooth(se = F)+
   geom_line()+
   geom_line(aes(y = hr_loss_prop), linetype = 'dashed', colour = 'green', size = 0.3)
    # geom_line(aes(y = hr), linetype = 'dotted', colour = 'blue', size = 0.4)
 
-ggplot(subset(tmp.df4, tmp.df3$ssid == 354) , aes(x = tNo, y= gaze_valid_prop))+
+ggplot(subset(tmp.df4, tmp.df3$ssid == 324) , aes(x = tNo, y= gaze_valid_prop))+
     # geom_smooth(se = F)+
   geom_line()+
   geom_line(aes(y = gaze_loss_prop), linetype = 'dashed', colour = 'green', size = 0.3)
    # geom_line(aes(y = hr), linetype = 'dotted', colour = 'blue', size = 0.4)
 
+
 colnames(tmp.df4)
-write_csv(tmp.df4, 'interodata_clean_gp_346_355.csv')
+write_csv(tmp.df4, 'interodata_clean_gp.csv')
 
 # tmp.df4<- read_csv('intero_tsdata_clean.csv')
 
@@ -1193,16 +939,11 @@ unique(tmp.df4$trigger)
 
 # why
 
-tmp.df4$trigger2 <- tmp.df4$trigger
+tmp.df4$trigger2<- tmp.df4$trigger
 
 tmp.df4$trigger2<- if_else(tmp.df4$trigger>99, tmp.df4$trigger, as.double(tmp.df4$tNo))
 
 unique(tmp.df4$trigger2)
-unique(tmp.df4$trigger)
-unique(tmp.df4$tNo)
-
-# \why?
-unique(tmp.df4$text)
 
 tmp.df4<- tmp.df4%>%
   group_by(ssid, tNo, text)%>%
@@ -1229,10 +970,11 @@ tmp.df4_sum<- tmp.df4_sum%>%
 
 write_csv(tmp.df4_sum, 'intero_aggdata_clean.csv')
 
-write_csv(tmp.df4_sum, 'intero_aggdata_clean_3046_355.csv')
-# 
-# head(tmp.df4_sum)
-# unique(tmp.df4_sum$tNo)
+
+
+head(tmp.df4_sum)
+
+unique(tmp.df4_sum$tNo)
 
 ggplot(tmp.df4_sum, aes(tNo, gaze_valid_prop, colour = as.factor(ssid)))+
   geom_point()+
@@ -1248,17 +990,10 @@ ggplot(subset(tmp.df4_sum, tmp.df4_sum$screencontent == 'stim'), aes(gaze_valid_
   # geom_line()
 
 
-
-```
-
-
 # for gaze parsing
 
-```{r}
-
 (sprintf("preparing for gazepath"))
-  
-colnames(tmp.df4)
+  colnames(tmp.df4)
   
   for_gazepath<- select(tmp.df4, c(2:15,17:26, 39:40,42:43))
   
@@ -1279,8 +1014,6 @@ colnames(tmp.df4)
   split_df = split(for_gazepath, list(for_gazepath$split_column))
   
   
-  setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/GP_IAPS_for_gazepath/346_355")
-  
   (sprintf("writing for gazepath"))
   # ssid = split(for_gazepath, list(for_gazepath$ssid))
   # for (ssid in names(split_df)) {
@@ -1291,45 +1024,58 @@ colnames(tmp.df4)
 
 
 ```
-
-
 process gazepath and ledalab
-
-gazepath settings
-
-
-left eye x coord: left_gaze_x_cor_pix
-left eye y coord: left_gaze_y_cor_pix
-
-didtance: distance (mm)
-
-right eye x coord: right_gaze__cor_pix
-right eye y coord: right_gaze_x_cor_pix
-didtance: distance (mm)
-
-trial index: trialnq
-
-
-sample rate: 150
-screen resolution height (pix): 1200
-screen resolution width (pix): 1920
-
-stimuli height (px): 768
-stimuli width (px): 1024
-variables to keep: trial unq
-
-203
-270
-
 ```{r}
-
-
-# install.packages('gazepath')
 library(gazepath)
 GUI()
 
 ```
 
+
+# Import Ledalab
+Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 105 .01 2])
+```{r}
+read_leda <- function(flnm) {
+  data.table::fread(flnm) %>% 
+    mutate(filename = flnm)
+}
+
+# now read them
+db_leda <-
+  list.files(pattern = "*.txt", 
+             full.names = T) %>% 
+  map_df(~read_leda(.))
+
+db_leda$trigger<- as.numeric(db_leda$Event.NID)
+unique(db_leda$trigger)
+db_leda$ssid<- as.numeric(substr(db_leda$filename, 13,15))
+colnames(tmp.df4_sum)
+colnames(db_leda)
+nrow(tmp.df4_sum)
+nrow(db_leda)
+colnames(tmp.df4_sum)
+tmp.df4_sum2<- subset(tmp.df4_sum,tmp.df4_sum$tNo != -7)
+tmp.df4_sum2<- tmp.df4_sum2%>%
+  arrange(ssid, time, tNo)%>%
+  group_by(ssid)%>%
+  mutate(order = 1:224)
+
+db_leda2<- subset(db_leda, db_leda$trigger != -7)
+db_leda2<- db_leda2%>%
+  arrange(ssid, Event.Nr)%>%
+  group_by(ssid)%>%
+  mutate(order = 1:224)
+
+tmp.df4_sum_fullt<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
+tmp.df4_sum_full_backup<- tmp.df4_sum_full
+
+tmp.df4_sum_full<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
+
+# tmp.df4_sum_full<- bind_cols(tmp.df4_sum, db_leda)
+
+tmp.df4_sum_full<- tmp.df4_sum_full%>%
+  arrange(ssid, tNo)
+```
 
 read parsed data
 ```{r}
@@ -1344,15 +1090,14 @@ db_parsed <- list.files(pattern = "*.csv",
 
 
 # return content between spaces
-# put things in the correct order
-library(stringr)
-
+# pu things in the correct order
+# library(stringr)
 db_parsed$screencontent<- str_extract(db_parsed$trialUnq, "(?<=\\s)(.*)(?=\\s)")
 unique(db_parsed$screencontent)
 db_parsed$screencontent[db_parsed$screencontent == 'rest1']<- 'fixation'
 
 
-db_parsed$screencontent_no <- if_else(db_parsed$screencontent == 'fixation', 1,
+db_parsed$screencontent_no<- if_else(db_parsed$screencontent == 'fixation', 1,
                                       if_else(db_parsed$screencontent == 'stim', 2,
                                               if_else(db_parsed$screencontent == 'ValenceResp', 3,
                                                       if_else(db_parsed$screencontent == 'IntResp', 4, NULL))))
@@ -1380,7 +1125,6 @@ db_parsed<-db_parsed%>%
 
 # this might be needed for tempoal analisys
 write_csv(db_parsed, 'db_parsed.csv')
-write_csv(db_parsed, 'db_parsed_346_355.csv')
 
 db_parsed_summarised<- db_parsed%>%
   group_by(ssid, tNo,screencontent, trialUnq, screencontent_no, Value)%>%
@@ -1419,23 +1163,14 @@ db_parsed_summarised2<- db_parsed_summarised2%>%
   arrange(ssid, tNo, screencontent_no)
 # View(db_parsed_summarised2)
 write_csv(db_parsed_summarised2, 'db_parsed_summarised.csv')
-write_csv(db_parsed_summarised2, 'db_parsed_summarised_346_355.csv')
 
 db_parsed_summarised2$ssid<- as.numeric(db_parsed_summarised2$ssid)
 db_parsed_summarised2
+tmp.df4_sum_full<- left_join(tmp.df4_sum_full,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
+rm(tmp.df4_sum_fullt)
+testna<- subset(tmp.df4_sum_fullt, is.na(tmp.df4_sum_fullt$mean_fix_dur) == TRUE)
 
-
-# merge parsed with eyetracking data
-# tmp.df4_sum_full<- left_join(tmp.df4_sum_full,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent")) #original
-
-tmp.df4_sum_full<- left_join(tmp.df4_sum,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
-
-# rm(tmp.df4_sum_fullt)
-# testna<- subset(tmp.df4_sum_fullt, is.na(tmp.df4_sum_fullt$mean_fix_dur) == TRUE)
-# 
-# tmp.df4_sum_fullt
-
-tmp.df4_sum_full
+tmp.df4_sum_fullt
 ```
 
 
@@ -1443,7 +1178,7 @@ tmp.df4_sum_full
 Behavioral data
 
 ```{r}
-# colnames(X309_2019_Dec_11_1807_01)
+colnames(X309_2019_Dec_11_1807_01)
 library(data.table) 
 library(purrr)
 
@@ -1453,16 +1188,13 @@ read_plus_beh <- function(flnm, select = c("condition", "stimIAPS","stimDescript
     mutate(filename = flnm)
 }
 
-
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/IAPSBehav/346_355")
 # now read them
 db_beh <-
   list.files(pattern = "*.csv",
              full.names = T) %>%
   map_df(~read_plus_beh(.))
 
-# problem file
-# db328$condition<-db328$ï..condition
+db328$condition<-db328$ï..condition
 
 db328 <-select(db328, c("condition", "stimIAPS","stimDescription", "ValenceMean","ArousalMean","trigger",
                                      "trialsPract.thisTrialN","trialIAPS.thisTrialN", "self_valence_4.response","self_valence_2.response","Self_intensity_2.response","Self_intensity_3.response", "self_valence_4.rt", "self_valence_2.rt", "Self_intensity_2.rt", "Self_intensity_3.rt"))
@@ -1472,14 +1204,11 @@ db328$ssid<- 328
 
 db328$filename<- db328$ssid
 
-files <- list.files(pattern = ".csv")
-files
-temp <- do.call(rbind,lapply(files, read.csv), header = TRUE)
+# files <- list.files(pattern = ".csv")
+# temp <- do.call(rbind,lapply(files, read.csv), header = TRUE)
 
 #install.packages("data.table", repos = "https://cran.rstudio.com")
 library(data.table)
-
-
 
 # Read all the files and create a FileName column to store filenames
 db_beh <- rbindlist(sapply(files, fread, simplify = FALSE),
@@ -1514,8 +1243,6 @@ View(db_beh)
 colnames(db_beh)
 
 db_beh2<- db_beh
-
-# problem
 db328$filename<- as.character(db328$filename)
 db328$ssid<- as.character(db328$ssid)
 
@@ -1524,7 +1251,6 @@ db328$ssid <- 328
 db_beh2<- bind_rows(db_beh2, db328)
 
 unique(db_beh2$ssid)
-
 # create one column for arousl and RT
 
 db_beh2$valence<- if_else(is.na(db_beh2$self_valence_4.response) == FALSE, db_beh2$self_valence_4.response,
@@ -1570,8 +1296,7 @@ ggplot(db_beh2, aes(x = arousal, y = ArousalMean))+
   geom_smooth(method = lm, se = T)
 
 colnames(db_beh2)
-
-db_beh2$triggeracq <- db_beh2$trigger
+db_beh2$triggeracq<- db_beh2$trigger
 unique(db_beh2$ssid)
 
 db_beh3<- select(db_beh2, c(2:7, 18:23))
@@ -1579,19 +1304,15 @@ db_beh3<- select(db_beh2, c(2:7, 18:23))
 # db_beh3<- subset(db_beh3, is.na(db_beh3$condition) == FALSE)
 
 colnames(db_beh3)
-
 colnames(db_beh3_301_309)
-
 db_beh3$trigger<-NULL
 db_beh3_301_309$triggeracq<- NULL
 
-
 db_beh3_301_309$condition[db_beh3_301_309$condition == "Example Stimuli"]<- "Practice"
-
 db_beh3$condition[db_beh3$condition == "Example Stimuli"]<- "Practice"
 
 
-# db_beh3$triggeracq<- NULL
+db_beh3$triggeracq<- NULL
 
 library(readr)
 db_beh300 <-  read_csv("300-309 beh/tmp.df4300_sum_full.csv")
@@ -1616,54 +1337,19 @@ str(tmp.df4_sum)
 str(db_beh_all)
 tmp.df4_sum$ssid<- as.numeric(tmp.df4_sum$ssid)
 
-db_beh3$ssid <- as.numeric(db_beh3$ssid)
+db_beh3$ssid<- as.numeric(db_beh3$ssid)
 # rm(tmp.df4_sum_full_t)
 
 tmp.df4_sum_full<- left_join(tmp.df4_sum, db_beh_all, by = c('ssid', 'tNo'))
-tmp.df4_sum_full$ssid<- as.numeric(tmp.df4_sum_full$ssid)
-
-tmp.df4_sum_full<- left_join(tmp.df4_sum_full, db_beh3, by = c('ssid', 'tNo'))
 
 tmp.df4_sum_full<- tmp.df4_sum_full%>%
   arrange(ssid, tNo, time)
 
-```
-
 
 # self reports
-- New Tas is already scored
-- use questionnaire scoring 2021
-- score AQ, etc using https://xavierrg.shinyapps.io/datacleaning 
-
-gorilla codes
-
-
-STAI:: 5nzr
-AQ:7uqw
-STAIS: 8rfo
-Demog: 8zto
-BVAQ: 83b1
-BPQ: bbc4
-DASS: chif
-IQ: esh8
-IAS: jvi8
-TAS:pdlt
-demog_meantal health: v2gn
-
-
-consent: 8nsp
-
-```{r}
 
 db_selfrep <- read_csv("intero_selrep.csv")
-library(readxl)
-db_selfrep <- read_excel("db_self_rep_345_356_final.xlsx")
-# View(db_self_rep_345_356_final)
-
-
-db_selfrep$ssid <- as.character(db_selfrep$`Participant No`)
-tmp.df4_sum_full$ssid <- as.character(tmp.df4_sum_full$ssid)
-
+View(intero_selrep)
 tmp.df4_sum_full<- left_join(tmp.df4_sum_full, db_selfrep, by = 'ssid')
 
 unique(tmp.df4_sum_full$ssid)
@@ -1680,96 +1366,15 @@ unique(tmp.df4_sum_full$ssid)
 # tmp.df4_sum_full<- left_join(tmp.df4_sum_full, db_selfrep, by = 'ssid' )
 
 View(tmp.df4_sum_full)
-write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_345_356.csv')
+write_csv(tmp.df4_sum_full, 'intero_data_full.csv')
 
 # tmp.df4_sum_full<- tmp.df4_sum_full%>%
 #   arrange(ssid, tNo, screencontent_no)
-
-colnames(tmp.df4_sum_full)
 ```
 
 
 
-# Import Ledalab
-Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 105 .01 2])
 
-Ledalab('/Users/heliocuve/Documents/InteroStudy/EATProcesing/EAT/forLeda/', 'open','biopac','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 6 .01 2])
-
-
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021")
-
-Ledalab('/Users/heliocuve/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 6 .01 2])
-
-SC column = 2
-Event marker column 3
-sampling rate 150hz
-
-
-346, 351 - GP gsr data is messed up
-- Note triggers need to be recreated here, never figured out why the digital events don't translate to ledalab
-
-```{r}
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021/Processed")
-
-read_leda <- function(flnm) {
-  data.table::fread(flnm) %>% 
-    mutate(filename = flnm)
-}
-
-# now read them
-db_leda <-
-  list.files(pattern = "*.txt", 
-             full.names = T) %>% 
-  map_df(~read_leda(.))
-
-db_leda$trigger<- as.numeric(db_leda$Event.NID)
-unique(db_leda$trigger)
-
-db_leda$ssid<- as.numeric(substr(db_leda$filename, 13,15))
-
-colnames(tmp.df4_sum)
-colnames(db_leda)
-
-nrow(tmp.df4_sum)
-nrow(db_leda)
-
-colnames(tmp.df4_sum)
-
-tmp.df4_sum2<- subset(tmp.df4_sum,tmp.df4_sum$tNo != -7)
-
-tmp.df4_sum2<- tmp.df4_sum2%>%
-  arrange(ssid, time, tNo)%>%
-  group_by(ssid)%>%
-  mutate(order = 1:n())
-
-db_leda2<- subset(db_leda, db_leda$trigger != -7)
-
-db_leda2<- db_leda2%>%
-  arrange(ssid, Event.Nr)%>%
-  group_by(ssid)%>%
-  mutate(order = 1:n())
-
-unique(db_leda2$order)
-
-range(db_leda2$order, na.rm = TRUE)
-
-# tmp.df4_sum_fullt<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
-# tmp.df4_sum_full_backup<- tmp.df4_sum_full
-
-tmp.df4_sum_full<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
-
-# tmp.df4_sum_full<- bind_cols(tmp.df4_sum, db_leda)
-
-tmp.df4_sum_full<- tmp.df4_sum_full%>%
-  arrange(ssid, tNo)
-
-View(tmp.df4_sum_full)
-
-
-trigger<- db_leda2 %>%
-  subset(ssid == 348)%>%
-  select(order, Event.NID, trigger,Event.Nr)
-```
 
 
 check
@@ -1777,22 +1382,11 @@ check
 
 View(tmp.df4_sum_full)
 
-# check stiom screen
-tmp.df4_sum_full_stim<- subset(tmp.df4_sum_full,  tmp.df4_sum_full$screencontent == 'stim')
+tmp.df4_sum_full_stim<- subset( tmp.df4_sum_full,  tmp.df4_sum_full$screencontent == 'stim')
 
-# levels(as.factor(tmp.df4_sum_full_stim$Event.Name))
-
-# exclude trials with very low gaze validity
+levels(as.factor(tmp.df4_sum_full_stim$Event.Name))
 tmp.df4_sum_full_stim<- subset(tmp.df4_sum_full_stim, tmp.df4_sum_full_stim$gaze_valid_prop> .85)
 colnames(tmp.df4_sum_full_stim)
-
-colnames(tmp.df4_sum_full)
-
-
-```
-
-
-```{r eval=FALSE, include=FALSE}
 
 # is objective arousal and self report arousal correated
 tmp.df4_sum_full_stim$ValenceMean_cat<- if_else(tmp.df4_sum_full_stim$ValenceMean > 4, 'pos', 'neg')
@@ -2022,19 +1616,16 @@ tmp.df4_sum_full_stim_cor [1:8,]%>%
 ggplot(tmp.df4_sum_full_stim, aes(arousal_c, log1p(mean_fix_dur)))+
   geom_point()+
   geom_smooth(method = 'lm')
-```
 
+```
 
 
 
 IMPORT BIOPAC
 
 ```{r}
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/IAPS/processed/345_456/CDA")
-
-
-
 colnames(tmp.df4_sum_full)
+
 
 # import
 read_leda_bio <- function(flnm) {
@@ -2048,154 +1639,48 @@ db_leda_bio <-
              full.names = T) %>% 
   map_df(~read_leda_bio(.))
 
-write_csv(db_leda_bio, 'db_leda_bio.csv')
-write_csv(db_leda_bio, 'db_leda_bio_345_355_CDA.csv')
-
-# db_leda_bio <- read_csv("db_leda_bio.csv")
-
-colnames(db_leda_bio)
-
-db_leda_bio$BIO_Event.NID<- db_leda_bio$Event.NID
-db_leda_bio$BIO_filename <- db_leda_bio$filename
+db_leda_bio$trigger<- as.numeric(db_leda_bio$Event.NID)
+db_leda_bio$ssid<- as.numeric(substr(db_leda_bio$filename, 3,5))
 
 
 
-db_leda_bio$ssid<- as.numeric(substr(db_leda_bio$BIO_filename, 3,5))
+colnames(tmp.df4_sum_full)
+unique(tmp.df4_sum_full$trigger)
 
-unique(db_leda_bio$ssid)
-
-# unique(db_leda_bio$trigger)
-
-
-# subset out rest period
-db_leda_bio<- subset(db_leda_bio, Event.Nr>1)
+tmp.df4_sum_full_bio<- subset(tmp.df4_sum_full, tmp.df4_sum_full$ssid>303)
+# tmp.df4_sum_full_bio<- subset(tmp.df4_sum_full_bio, tmp.df4_sum_full_bio$trigger!= -7)
 
 
-db_leda_bio<- subset(db_leda_bio, CDA.nSCR!= "NaN")
-range(db_leda_bio$Event.Nr)
+levels(as.factor(tmp.df4_sum_full_bio$ssid))
+unique(tmp.df4_sum_full_bio$trigger)
+levels(as.factor(db_leda_bio$ssid))
 
-# transform NaNs into proper NA
-db_leda_bio[db_leda_bio == "NaN"] <- NA
-
-# move counter to 1
-range(db_leda_bio$Event.Nr-1)
-# range(db_leda_bio$Event.Nr)
-# trigger$Event.Nr<- NULL
-
-db_leda_bio$order <- db_leda_bio$Event.Nr-1
-# db_leda_bio$trigger<- NULL
-
-
-# merge trigger
-trigger$Event.NID<- NULL
-trigger$ssid<- NULL
-View(db_leda_bio)
-
-db_leda_bio$order
-# db_345_355$order
-
-trigger<- db_345_355 %>%
-  group_by(order,trigger, tNo)%>%
-  summarise_at(c('ssid'), mean, na.rm = TRUE)
-  # select(db_345_355, c(trigger, tNo, order))
-  
-
-  trigger$ssid<- NULL
-
-  db_leda_bio<- left_join(db_leda_bio, trigger)
-
-
-tmp.df4_sum_full
-
-leda_bioames <- colnames(db_leda_bio)
-
-leda_bioames
-newnames<- c("Event.Nr", paste0("BIO_", paste(leda_bioames[2:16])),"BIO_Event.NID","BIO_filename"  ,"ssid","order","trigger")
-
-newnames
-
-db_leda_bio_backup<- db_leda_bio
-
-colnames(db_leda_bio_backup)
-
-names(db_leda_bio) <- newnames
-
-colnames(db_leda_bio)
-
-# db_leda_bio$ssid <- db_leda_bio$BIO_ssid
-
-# db_leda_bio$BIO_ssid<-NULL
-
-
-db_leda_bio
-
-db_leda_bio$ssid<- as.character(db_leda_bio$ssid)
-
-# db_leda_bio$order<- db_leda_bio$BIO_order
-
-unique(tmp.df4_sum_full$Event.Nr)
-
-db_leda_bio$BIO_Event.NID<- NULL
-db_leda_bio$BIO_filename<- NULL
-
-tmp.df4_sum_full_bio<- left_join(tmp.df4_sum_full,  db_leda_bio, by = c("ssid", "order"))
+db_leda_bio$ssid<- as.factor(db_leda_bio$ssid)
+db_leda_bio$trigger<- as.factor(db_leda_bio$trigger)
+db_leda_bio$order<- db_leda_bio$Event.Nr
+tmp.df4_sum_full_bio$ssid<- as.factor(tmp.df4_sum_full_bio$ssid)
+tmp.df4_sum_full_bio$trigger<- as.factor(tmp.df4_sum_full_bio$trigger)
 
 colnames(tmp.df4_sum_full_bio)
-
-write_csv(db_leda_bio, "db_leda_bio_346_347_ledagsr.csv")
-
-write_csv(db_leda_bio, "db_leda_bio_346_355_ledagsr.csv")
-```
-
-
-
-```{r eval=FALSE, include=FALSE}
-# stim
-db_leda_bio_stim<-subset(db_leda_bio, db_leda_bio$trigger< 100)
-unique(db_leda_bio_stim$trigger)
-
-colnames(tmp.df4_sum_full_stim_gp_leda_beh_self)
-(unique(tmp.df4_sum_full_stim_gp_leda_beh_self$trigger))
-
-
-db_leda_bio_stim$ssid<- as.character(db_leda_bio_stim$ssid)
-
-# db_leda_bio_stim$trigger<- as.character(db_leda_bio_stim$trigger)
-
-db_leda_bio$order<- db_leda_bio$Event.Nr
-
-tmp.df4_sum_full_stim_gp_leda_beh_self$ssid<- as.character(tmp.df4_sum_full_stim_gp_leda_beh_self$ssid)
-
-tmp.df4_sum_full_stim_gp_leda_beh_self$trigger<- as.character(tmp.df4_sum_full_stim_gp_leda_beh_self$trigger)
-
-colnames(tmp.df4_sum_full_stim_gp_leda_beh_self)
 
 unique(db_leda_bio$trigger)
 unique(db_leda_bio$Event.Name)
 unique(tmp.df4_sum_full_bio$trigger)
 unique(tmp.df4_sum_full_bio$Event.Name)
 
-tmp.df4_sum_full_stim_gp_leda_beh_self<- tmp.df4_sum_full_stim_gp_leda_beh_self%>%
-  arrange(ssid, tNo, Event.Nr)
+tmp.df4_sum_full_bio%>%
+  arrange(ssid, tNo, order)
+db_leda_bio<- db_leda_bio%>%
+  arrange(ssid, order)
 
-db_leda_bio_stim<- db_leda_bio_stim%>%
-  arrange(ssid, Event.Nr)
-
-#tmp.df4_sum_full_bio$trigger<- tmp.df4_sum_full_bio$tNo
-#tmp.df4_sum_full_bio$trigger<- if_else(tmp.df4_sum_full_bio$screencontent == 'fixation', 100,
- #                                      if_else(tmp.df4_sum_full_bio$screencontent == 'ValenceResp', 101,
-                                               #if_else(tmp.df4_sum_full_bio$screencontent == #'IntResp', 102, #tmp.df4_sum_full_bio$tNo)))
+tmp.df4_sum_full_bio$trigger<- tmp.df4_sum_full_bio$tNo
+tmp.df4_sum_full_bio$trigger<- if_else(tmp.df4_sum_full_bio$screencontent == 'fixation', 100,
+                                       if_else(tmp.df4_sum_full_bio$screencontent == 'ValenceResp', 101,
+                                               if_else(tmp.df4_sum_full_bio$screencontent == 'IntResp', 102, tmp.df4_sum_full_bio$tNo)))
 
 unique(tmp.df4_sum_full_bio$trigger)
-tmp.df4_sum_full_stim_gp_leda_beh_self$Event.Nr<- as.character(tmp.df4_sum_full_stim_gp_leda_beh_self$Event.Nr)
 
-db_leda_bio_stim$Event.Nr<- as.character(db_leda_bio_stim$Event.Nr)
-View(tmp.df4_sum_full_stim_gp_leda_beh_self_biopac)
-
-tmp.df4_sum_full_stim_gp_leda_beh_self_biopac<-left_join(tmp.df4_sum_full_stim_gp_leda_beh_self, db_leda_bio_stim, by = c("Event.Nr", "ssid"))
-
-write_csv(tmp.df4_sum_full_stim_gp_leda_beh_self_biopac, 'tmp.df4_sum_full_stim_gp_leda_beh_self_biopac2.csv')
-
+tmp.df4_sum_full_biot<-left_join(tmp.df4_sum_full_bio, db_leda_bio, by = c("order", "ssid", "trigger"))
 (db_leda_bio$trigger)
 
 nrow(tmp.df4_sum_full_bio)
@@ -2223,22 +1708,19 @@ ggplot(subset(tmp.df4_sum_full_biot, tmp.df4_sum_full_biot$ssid != 308), aes(TTP
 ggplot(subset(tmp.df4_sum_full_biot, tmp.df4_sum_full_biot$ssid != 308 & tmp.df4_sum_full_biot$TTP.AmpSum.y> 0), aes( TTP.AmpSum.y, arousal))+
   geom_point()+
   geom_smooth(method = 'lm', se = T)
-
-tmp.df4_sum_full_biot1 <-subset(tmp.df4_sum_full_biot, tmp.df4_sum_full_biot$ssid != 308)
+tmp.df4_sum_full_biot1 <-subset(tmp.df4_sum_full_biot, tmp\.df4_sum_full_biot$ssid != 308)
 
 cor(tmp.df4_sum_full_biot1$arousal, tmp.df4_sum_full_biot1$Global.Mean.y, use = 'complete.obs')
-
 ```
-
 
 import biopac heart rate
 ```{r}
-
-
 nrow(tmp.df4_sum_full_bio)
 
 colnames(tmp.df4_sum_full_bio)
 unique(tmp.df4_sum_full_bio$ssid)
+
+unique(db_biohr$filename)
 
 # import
 read_biohr <- function(flnm) {
@@ -2247,14 +1729,10 @@ read_biohr <- function(flnm) {
 }
 
 # now read them
-# old
 db_biohr <-
-  list.files(pattern = "*.xls", 
+  list.files(pattern = "*.csv", 
              full.names = T) %>% 
   map_df(~read_biohr(.))
-
-
-unique(db_biohr$filename)
 
 db_biohr$ssid<- substr(db_biohr$filename, 6,8)
 db_biohr$order<- db_biohr$Order
@@ -2262,417 +1740,85 @@ db_biohr$order<- db_biohr$Order
 db_biohr$Order<- NULL
 db_biohr$filename<- NULL
 db_biohr$trigger<- as.factor(as.character(db_biohr$trigger))
-
+unique(tmp.df4_sum_full_bio$ssid)
 unique(db_biohr$ssid)
+tmp.df4_sum_full_bio$trigger<- as.factor(as.character(tmp.df4_sum_full_bio$trigger))
 
 db_biohr$ssid<- as.factor(as.character(db_biohr$ssid))
+tmp.df4_sum_full_bio_hr<- left_join(tmp.df4_sum_full_biot, db_biohr, by = c('ssid', 'order', 'trigger'))
+
+ggplot(subset(tmp.df4_sum_full_bio_hr, tmp.df4_sum_full_bio_hr$screencontent == 'stim'), aes(hr, HR_BIO))+
+  geom_point()+
+  geom_smooth(method = 'lm')
+
+ggplot(subset(tmp.df4_sum_full_bio_hr, tmp.df4_sum_full_bio_hr$screencontent == 'stim'), aes(CDA.PhasicMax.x, CDA.PhasicMax.y))+
+  geom_point()+
+  geom_smooth(method = 'lm')
+tmp.df4_sum_full_bio_hr_stim<- subset(tmp.df4_sum_full_bio_hr, tmp.df4_sum_full_bio_hr$screencontent != 'fixation')
+
+cor(tmp.df4_sum_full_bio_hr_stim$hr, tmp.df4_sum_full_bio_hr_stim$HR_BIO, use = 'complete')
+
+
+# tmp.df4_sum_full_bio_hr_stim_1<- subset(tmp.df4_sum_full_bio_hr_stim, tmp.df4_sum_full_bio_hr_stim$HR_BIO> 50)
+
+tmp.df4_sum_full_bio_hr_stim$valence_cat<- if_else(tmp.df4_sum_full_bio_hr_stim$valence >0, 'pos',
+                                                  if_else(tmp.df4_sum_full_bio_hr_stim$valence < 0, 'neg', 'neutral'))
+
+unique(tmp.df4_sum_full_bio_hr_stim$screencontent)
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, arousal))+
+  geom_point()+
+  geom_smooth(method = 'lm')
+  # facet_grid(~valence_cat)
+
+cor(tmp.df4_sum_full_bio_hr_stim$HR_BIO, tmp.df4_sum_full_bio_hr_stim$arousal, use = 'complete')
+cor(tmp.df4_sum_full_bio_hr_stim$HR_BIO, tmp.df4_sum_full_bio_hr_stim$valence, use = 'complete')
+
+tmp.df4_sum_full_bio_hr_stim%>%
+      group_by(ssid, IAS)%>%
+      summarise(corr = cor(HR_BIO, arousal, use = 'complete'))%>%
+  summarise(new = cor(corr, IAS))
+  # summarise_at(c('TAS'), mean)
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, arousal))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  facet_grid(~valence_cat)
+
+tmp.df4_sum_full_bio_hr_stim%>%
+group_by(valence_cat)%>%
+  summarise(corr = cor(HR_BIO, arousal, use = 'complete'))
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, valence))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  facet_grid(~valence_cat)
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, ValenceMean))+
+  geom_point()+
+  geom_smooth(method = 'lm')
+  # facet_grid(~valence_cat)
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, mean_sac_dur))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  facet_grid(~valence_cat)
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, pup_basCor))+
+  geom_point()+
+  geom_smooth(method = 'lm')+
+  facet_grid(~valence_cat)
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, Global.Mean.y))+
+  geom_point()+
+  geom_smooth(method = 'lm')
+
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, TAS))+
+  geom_point()+
+  geom_smooth(method = 'lm')
+
+ggplot(tmp.df4_sum_full_bio_hr_stim, aes(HR_BIO, `DASS Anxiety`))+
+  geom_point()+
+  geom_smooth(method = 'lm')
 
 ```
-
-
-#HR BIOPAC
-
-
-
-```{r}
-setwd("~/OneDrive - Nexus365/InteroStudy2020/Data Collection 2019- 2020/2020/InteroStudyBIOPAC/IAPS/Processed/HR/345_355")
-library(readxl)
-library(dplyr)
-# db_HR_bio <- read_excel("310_IAPS_Physio_HR.xls")
-
-
-
-# db_HR_bio<- db_HR_bio[6:nrow(db_HR_bio),]
-
-
-library(data.table)
-library(purrr)
-# import
-read_biohr <- function(flnm) {
-  read_excel(flnm) %>% 
-    mutate(filename = flnm)
-}
-
-# now read them
-db_HR_bionew <-
-  list.files(pattern = "*.xls", 
-             full.names = T) %>% 
-  map_df(~read_biohr(.))
-
-db_HR_bio<- db_HR_bionew
-
-unique(db_HR_bionew$filename)
-
-# test<- subset(db_HR_bio, db_HR_bio$filename == "./607_IAPS_Physio_HR.xls")
-
-levels(as.factor(db_HR_bio$filename))
-
-db_HR_bio$ssid<- substr(db_HR_bio $filename, 3,5)
-
-db_HR_bio$filename<- NULL
-
-
-# 
-db_HR_bio$`Stim-Response Analysis`
-
-# flag stimulus
-db_HR_bio$stim <- if_else(grepl('Stimulus', (db_HR_bio$`Stim-Response Analysis`)) == TRUE, db_HR_bio$`Stim-Response Analysis`, NULL)
-
-library(tidyr)
-
-db_HR_bio<- db_HR_bio%>%
-  group_by(ssid)%>%
-  fill(stim)
-
-db_HR_bio
-
-levels(as.factor(db_HR_bio$ssid))
-
-#  remove na in the mean heart rate
-
-db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$...2))
-
-
-db_HR_bio$mhrtext<- is.character(db_HR_bio$...2)
-
-db_HR_bio<- subset(db_HR_bio, !grepl('interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
-
-
-# loosing participants here
-View(db_HR_bio)
-
-db_HR_bio<- subset(db_HR_bio, !grepl('Interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
-
-
-# test<- subset(db_HR_bio, grepl('Interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
-# levels(as.factor(db_HR_biotest$ssid))
-
-db_HR_bio<- subset(db_HR_bio, !grepl('Time', db_HR_bio$`Stim-Response Analysis`) == TRUE)
-
-#db_HR_biotest1<- subset(db_HR_biotest, !is.na(db_HR_biotest$stim))
-
-#test<- subset(db_HR_bio, db_HR_bio$ssid == 607)
-
-
-levels(as.factor(db_HR_bio$ssid))
-
-db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$`Stim-Response Analysis`))
-
-db_HR_bio$...3<- NULL
-db_HR_bio$...4<- NULL
-
-
-db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$...2))
-
-db_HR_bio<- subset(db_HR_bio, db_HR_bio$...2 != 'Mean(CH 40)')
-db_HR_bio$timestart<- db_HR_bio$`Stim-Response Analysis`
-
-db_HR_bio$Mean_HR<- db_HR_bio$...2
-
-db_HR_bio<- db_HR_bio%>%
-  arrange((as.numeric(timestart)), ssid)
-
-db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$stim))
-
-
-db_HR_bio$trigger <- substr(db_HR_bio$stim, 10,13)
-
-# for soem reason this 
-unique((as.numeric(db_HR_bio$trigger)-128))
-
-db_HR_bio$trigger_200<- if_else(db_HR_bio$trigger> 103, TRUE, FALSE)
-
-db_HR_bio$trigger2 <- if_else(db_HR_bio$trigger_200 == TRUE, as.numeric(db_HR_bio$trigger)-128, as.numeric(db_HR_bio$trigger))
-
-
-unique((as.numeric(db_HR_bio$trigger2)))
-
-
-#subset(db_HR_bio, db_HR_bio$ssid!= 328)%>%
-#  group_by(timestart, ssid)%>%
- # mutate(EventNR= 1:225)
-
-
-db_HR_bio1<- subset(db_HR_bio,db_HR_bio$trigger2< 100)
-
-db_HR_bio1<- db_HR_bio1%>%
-  arrange(ssid, as.numeric(timestart))
-
-db_HR_bio1<- subset(db_HR_bio1,!is.na(db_HR_bio1$stim))
-
-#tno
-#subset(db_HR_bio1, db_HR_bio1$ssid != 328)%>%
-table(is.na(db_HR_bio1$ssid))
-# 
-# db_HR_bio1<- db_HR_bio1%>%
-#   arrange(as.numeric(timestart), ssid)
-
-# use this
-
-db_HR_bio1no328<-subset(db_HR_bio1, db_HR_bio1$ssid!= 328)
-db_HR_bio1no328<- subset(db_HR_bio1no328, trigger2> 15 & trigger2<72)
-
-db_HR_bio1no328<- db_HR_bio1no328 %>%
-  arrange(ssid, trigger2)%>%
-  filter(!duplicated(trigger2))
-
-db_HR_bio1no328<- db_HR_bio1no328 %>%
-  group_by(ssid)%>%
-  mutate(tNo = -6:(n()-7)) #56 trials
-
-unique(db_HR_bio1no328$tNo)
-
-range(db_HR_bio1no328$tNo)
-
-
-table(db_HR_bio1no328$tNo)
-
-# test<- subset(db_HR_bio1no328, tNo>49)
-# 
-# db_HR_bio328<-subset(db_HR_bio1, db_HR_bio1$ssid== 352)
-# 
-# subset(db_HR_bio328, trigger> 15 & trigger<72)
-
-
-db_HR_bio1no328<- db_HR_bio1no328%>%
-  arrange(as.numeric(timestart), ssid)
-
-```
-
-
-```{r}
-db_HR_bio2<- db_HR_bio328 %>%
-  group_by(ssid)%>%
-  mutate(tNo = -6:(n()-7))
-unique(db_HR_bio328$tNo)
-```
-
-
-
-```{r}
-db_HR_bio2<- bind_rows(db_HR_bio1no328,db_HR_bio328)
-db_HR_bio2<-db_HR_bio1no328
-
-colnames(db_HR_bio2)
-
-levels(as.factor(db_HR_bio1no328$ssid))
-# db_HR_bio2$ssid<-db_HR_bio2$`as.numeric(ssid)`
-
-
-#mereg old and new heart rate
-# now read them
-# db_biohr$trigger
-# 
-# db_biohr$tno<-db_biohr$trigger
-# db_HR_bio2$trigger
-# colnames(db_biohr)
-# 
-# colnames(db_HR_bio2)
-# 
-# db_biohr$Mean_HR<- db_biohr$HR_BIO
-# 
-# db_biohr$timestart<- db_biohr$Time
-# 
-# 
-# left_join(db_HR_bio2, db_biohr)
-
-
-db_HR_bio2<- select(db_HR_bio2, c(timestart,Mean_HR, tNo, ssid))
-
-
-str((db_HR_bio2))
-# str(db_biohrold2)
-db_biohr$tNo<- db_biohr$tno
-db_biohrold2<- db_biohr
-
-db_biohrold2<- select(db_biohr, c(timestart,Mean_HR, tNo, ssid))
-unique(db_biohrold2$tNo)
-
-db_HR_bio2$timestart<- as.numeric(db_HR_bio2$timestart)
-
-db_biohrold2$timestart<- as.numeric(db_biohrold2$timestart)
-
-db_HR_bio2$Mean_HR<- as.numeric(db_HR_bio2$Mean_HR)
-db_biohrold2$Mean_HR<- as.numeric(db_biohrold2$Mean_HR)
-
-db_HR_bio2$tNo<- as.character(db_HR_bio2$tNo)
-db_biohrold2$tNo<- as.character(db_biohrold2$tNo)
-db_HR_bio2$ssid<- as.character(db_HR_bio2$ssid)
-
-db_biohrold2$ssid<- as.character(db_biohrold2$ssid)
-
-str(db_HR_bio2)
-
-
-# db_biohrold2test<- subset(db_biohrold2, db_biohrold2$tNo != 100)
-# db_biohrold2test<- subset(db_biohrold2test, db_biohrold2test$tNo != 101)
-# db_biohrold2test<- subset(db_biohrold2test, db_biohrold2test$tNo != 102)
-# db_biohrold2test<- subset(db_biohrold2test, db_biohrold2test$tNo != 103)
-# db_HR_bio2$subj<- as.factor(db_HR_bio2$ssid)
-# db_biohrold2test$subj<- as.factor(db_biohrold2test$ssid)
-# db_biohrold2test$ssid<- NULL
-# db_HR_bio2$ssid<- NULL
-
-str(db_HR_bio2)
-
-db_HR_bio2<- db_HR_bio2[,1:4]
-
-db_HR_bio2$Mean_HR<- as.numeric(db_HR_bio2$Mean_HR)
-
-db_biohrold2test$Mean_HR<- as.numeric(db_biohrold2test$Mean_HR)
-
-db_HR_bio2$timestart<- as.numeric(db_HR_bio2$timestart)
-
-db_biohrold2test$timestart<- as.numeric(db_biohrold2test$timestart)
-
-
-# final
-db_HR_bio_final<- db_HR_bio2
-db_HR_bio_final<- bind_rows(db_HR_bio2, db_biohrold2test)
-
-# db_HR_bio_final$ssid<- db_HR_bio_final$subj
-levels(as.factor(db_HR_bio_final$ssid))
-
-db_HR_bio_final$subj<- NULL
-
-write_csv(db_HR_bio_final, 'db_HR_bio_final_mar5.csv')
-
-write_csv(db_HR_bio_final, 'db_HR_bio_final_346_355.csv')
-
-db_HR_bio_final$tNo
-
-db_HR_bio_final$tNo
-
-
-
-
-db_HR_bio1$tNo<- -6:49
-
-db_HR_bio_final$tNo<- if_else(as.numeric(db_HR_bio_final$tNo) < 0, as.numeric(db_HR_bio_final$tNo), as.numeric(db_HR_bio_final$tNo)+1)
-
-db_HR_bio_final$BIO
-
-```
-
-merge heart rate
-
-
-```{r}
-tmp.df4_sum_full_bio$ssid<- as.character(tmp.df4_sum_full_bio$ssid)
-db_HR_bio_final$ssid<- as.character(db_HR_bio_final$ssid)
-
-
-colnames(tmp.df4_sum_full_bio)
-
-tmp.df4_sum_full_bio_hr <- left_join(tmp.df4_sum_full_bio, db_HR_bio_final, by = c('ssid', 'tNo'))
-  
-
-
-```
-
-Merge self reports
-
-# add the self report
-```{r}
-
-View(tmp.df4_sum_full_bio_hr)
-
-library(readxl)
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport")
-
-View(db_selfrep)
-db_selfrep <- read_excel("db_self_rep_345_356_final.xlsx")
-
-
-
-db_selfrep$ssid <- as.character(db_selfrep$`Participant No`)
-
-tmp.df4_sum_full_bio_hr$ssid <- as.character(tmp.df4_sum_full_bio_hr$ssid)
-
-tmp.df4_sum_full_bio_hr_self <- left_join(tmp.df4_sum_full_bio_hr, db_selfrep, by = 'ssid')
-
-write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_bio_hr_self_345_356.csv')
-
-
-```
-
-merge parsed data
-```{r}
-tmp.df4_sum_full_bio_hr_self
-db_parsed_summarised2$ssid<- as.character(db_parsed_summarised2$ssid)
-
-tmp.df4_sum_full_bio_hr_self_parsed <- left_join(tmp.df4_sum_full_bio_hr_self, db_parsed_summarised2, 
-                             by = c("ssid", "trialUnq", "tNo", "screencontent"))
-
-
-# tmp.df4_sum_full<- left_join(tmp.df4_sum,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
-
-# save the timecourse data and the aggregated data
-
-tmp.df4_sum_full_bio_hr_self_parsed
-
-# merge behavioural data
-db_beh3$ssid<- as.character(db_beh3$ssid)
-db_beh3$tNo <- as.character(db_beh3$tNo)
-tmp.df4_sum_full_bio_hr_self_parsed$tNo<- as.character(tmp.df4_sum_full_bio_hr_self_parsed$tNo)
-# tmp.df4_sum_full<- 
-  
-
-tmp.df4_sum_full_bio_hr_self_parsed<- left_join(tmp.df4_sum_full_bio_hr_self_parsed, db_beh3, by = c('ssid', 'tNo'))
-
-
-View(db_beh3)
-tmp.df4_sum_full<- tmp.df4_sum_full%>%
-  arrange(ssid, tNo, time)
-
-
-
-tmp.df4_sum_full_bio_hr_self_parsed$screencontent_no
-
-tmp.df4_sum_full_bio_hr_self_parsed$TAS
-# tmp.df4_sum_full_bio_hr_self_parsed<- tmp.df4_sum_full_bio_hr_self_parsed %>%
-#   subset(screencontent_no>2)%>%
-#   group_by(ssid)%>%
-#   summarise_if(is.numeric,mean, na.rm = TRUE)%>%
-#   ggplot(aes(Age,sdev_gazesum))+
-#   geom_point()+
-#   geom_smooth(method = lm, se = F)
-
-
-colnames(tmp.df4_sum_full_bio_hr_self_parsed)  
-
-tmp.df4_sum_full_bio_hr_self_parsed$Age<- tmp.df4_sum_full_bio_hr_self_parsed$age_response_specific
-tmp.df4_sum_full_bio_hr_self_parsed$gender<- substr(tmp.df4_sum_full_bio_hr_self_parsed$gender_response,1,1)
-
-tmp.df4_sum_full_bio_hr_self_parsed$BIO_filename<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$`Participant Completion Code`<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$`Participant Private ID`<- NULL
-
-tmp.df4_sum_full_bio_hr_self_parsed$`Participant No`<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$age_response_specific<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$Event.NID<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$`Event Index`<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$gender_response<- NULL
-
-tmp.df4_sum_full_bio_hr_self_parsed$`Person testing`<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$Event.Nr.x<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$filename.x<- NULL
-tmp.df4_sum_full_bio_hr_self_parsed$filename.y<- NULL
-
-tmp.df4_sum_full_bio_hr_self_parsed
-
-tmp.df4_sum_full_bio_hr_self_parsed<- tmp.df4_sum_full_bio_hr_self_parsed%>%
-  rename(IAS = IAS_score)%>%
-  rename(ASD_self = ASD)
-
-
-# tmp.df4_sum_full_bio_hr_self_parsed1<- select(tmp.df4_sum_full_bio_hr_self_parsed,)
-
-write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv')
-write_csv(tmp.df4, 'tmp.df4_timeseries_345_356.csv')
-```
-
-
-
-
-
