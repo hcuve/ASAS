@@ -2763,9 +2763,10 @@ db_selfrep$ssid <- as.character(db_selfrep$`Participant No`)
 tmp.df4_sum_full_bio_hr$ssid <- as.character(tmp.df4_sum_full_bio_hr$ssid)
 
 unique(tmp.df4_sum_full_bio_hr_self$ssid)
-table(is.na(tmp.df4_sum_full_bio_hr_self$Mean_HR))
-tmp.df4_sum_full_bio_hr_self <- left_join(tmp.df4_sum_full_bio_hr, db_selfrep, by = 'ssid')
+table(is.na(tmp.df4_sum_full_bio_hr$Mean_HR))
 
+tmp.df4_sum_full_bio_hr_self <- left_join(tmp.df4_sum_full_bio_hr, db_selfrep, by = 'ssid')
+table(is.na(tmp.df4_sum_full_bio_hr_self$Mean_HR))
 write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_bio_hr_self_345_356.csv')
 
 
@@ -2792,6 +2793,8 @@ db_beh3$tNo <- as.character(db_beh3$tNo)
 tmp.df4_sum_full_bio_hr_self_parsed$tNo<- as.character(tmp.df4_sum_full_bio_hr_self_parsed$tNo)
 # tmp.df4_sum_full<- 
   
+tmp.df4_sum_full_bio_hr_self_parsed
+table(is.na(tmp.df4_sum_full_bio_hr_self_parsed$Mean_HR))
 
 tmp.df4_sum_full_bio_hr_self_parsed<- left_join(tmp.df4_sum_full_bio_hr_self_parsed, db_beh3, by = c('ssid', 'tNo'))
 

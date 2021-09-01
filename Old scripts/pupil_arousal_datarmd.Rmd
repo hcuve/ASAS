@@ -2886,7 +2886,7 @@ db_full4new_stim_screen_pupil_nopract_nt %>%
 db_full4new_stim_screen_pupil_nopract_nt %>%
   group_by(ssid,mediansplit_sample_valence2)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
-  ggplot(aes(arousal_c, BIO_CDA.PhasicMax_z, color =mediansplit_sample_valence2))+
+  ggplot(aes(arousal_c, BIO_CDA.PhasicMax_z))+
   geom_point()+
   geom_smooth(method = 'lm', se = F)+
   ggpubr::stat_cor()
@@ -2928,7 +2928,7 @@ anova(pupil_arousal_findings$arousal_phas_max)
 BIO_CDA.PhasicMax
 
 
-pupil_arousal_findings$arousal_scr <- lmer(BIO_CDA.PhasicMax_z ~ valence_c +(1|ssid),
+pupil_arousal_findings$arousal_scr <- lmer(BIO_CDA.PhasicMax_z ~ valence_c + (1|ssid),
                         REML = FALSE,
                         data = subset(db_full4new_stim_screen_pupil_nopract_nt,
                                       pp_arousal_outler == FALSE))

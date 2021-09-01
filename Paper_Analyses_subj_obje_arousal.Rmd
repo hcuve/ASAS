@@ -3719,6 +3719,7 @@ library(readr)
  # read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
 View(tmp_df4_sum_full_bio_hr_self_parsed_345_356)
 
+# tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv
 db_HR_bio_final_346_355_withfix <-  read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
 View(db_HR_bio_final_346_355_withfix)
 
@@ -3733,7 +3734,7 @@ db_HR_bio_final_346_355_withfix_stim <- subset(db_HR_bio_final_346_355_withfix, 
 
 
 # 
-db_HR_bio_final_346_355_withfix_stim$tNo<- db_HR_bio_final_346_355_withfix_stim$tNo3
+# db_HR_bio_final_346_355_withfix_stim$tNo<- db_HR_bio_final_346_355_withfix_stim$tNo3
 unique(db_HR_bio_final_346_355_withfix$tNo)
 unique(db_HR_bio_final_346_355_withfix$tNo)
 
@@ -3757,19 +3758,29 @@ colnames(db_HR_bio_final_346_355_withfix_stim)
 
 db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR<- db_HR_bio_final_346_355_withfix_stim$Mean_HR
 
-
+db_HR_bio_final_346_355_withfix_stim$ssid_num<- as.numeric(db_HR_bio_final_346_355_withfix_stim$ssid)
 # keep controls
 unique(db_full6new_hr_fix_stim$ssid)
 db_full6new_hr_fix_stim$ssid_num <- as.numeric(as.character(db_full6new_hr_fix_stim$ssid))
 
 
 
+table(is.na(db_full6new_hr_fix_stim))
+
+db_full6new_hr_fix_stim$Group<- if_else(db_full6new_hr_fix_stim$ssid_num< 500, "NT",
+                                        if_else(db_full6new_hr_fix_stim$ssid_num>700, "NT",
+                                                "ASC"))
+
+table(is.na(db_full6new_hr_fix_stim$Group))
+
 db_full6new_hr_fix_stim_nt<- subset(db_full6new_hr_fix_stim, Group == "NT")
 unique(db_full6new_hr_fix_stim_nt$ssid_num)
 
-db_full6new_hr_fix_stim_nt<- subset(db_full6new_hr_fix_stim, ssid_num> 303)
+# attention
+db_full6new_hr_fix_stim_nt<- subset(db_full6new_hr_fix_stim_nt, ssid_num> 303)
 unique(db_full6new_hr_fix_stim_nt$ssid)
 colnames(db_full6new_hr_fix_stim_nt)
+
 # HR differences
 db_full6new_hr_fix_stim_nt$Bio_Mean_HR_fix<- if_else(db_full6new_hr_fix_stim_nt$screencontent_no ==1, db_full6new_hr_fix_stim_nt$Bio_Mean_HR, NULL)
 
@@ -3795,7 +3806,7 @@ db_full6new_hr_fix_stim_nt$trigger.x<- NULL
 
 # db_HR_bio_final_346_355_withfix_stim$trig <- as.character(db_HR_bio_final_346_355_withfix_stim$tNo)
 
-db_HR_bio_final_346_355_withfix_stim$triger<- NULL
+# db_HR_bio_final_346_355_withfix_stim$triger<- NULL
 db_HR_bio_final_346_355_withfix_stim$trigger.x<- NULL
 
 db_HR_bio_final_346_355_withfix_stim$trigger.y<- NULL
@@ -3833,15 +3844,24 @@ db_full6new_hr_fix_stim_nt$trialUnq.x<- NULL
 
 
 db_HR_bio_final_346_355_withfix_stim$stim<- db_HR_bio_final_346_355_withfix_stim$stim.x
-db_HR_bio_final_346_355_withfix_stim$stim<- db_HR_bio_final_346_355_withfix_stim$stim.x
+# db_HR_bio_final_346_355_withfix_stim$stim<- db_HR_bio_final_346_355_withfix_stim$stim.x
 
 # bind heartrate old and new
+table(is.na(db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR))
+table(is.na(db_full6new_hr_fix_stim_nt$Bio_Mean_HR))
+test<- subset(db_full6new_hr_fix_stim_nt, is.na(Bio_Mean_HR))
+test1<- subset(db_HR_bio_final_346_355_withfix_stim, is.na(Bio_Mean_HR))
 
 db_full6new_hr_fix_stim_nt1<- bind_rows(db_full6new_hr_fix_stim_nt,
                                         db_HR_bio_final_346_355_withfix_stim)
 
-table(is.na(db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR))
-table(is.na(db_full6new_hr_fix_stim_nt$Bio_Mean_HR))
+
+
+unique(db_full6new_hr_fix_stim_nt$Group)
+
+# 346 missing praticdata - it was processed wrongly
+# 347 missing
+
 
 
 library(dplyr)
@@ -3854,6 +3874,8 @@ test<- subset(db_full6new_hr_fix_stim_nt1, is.na(Bio_Mean_HR))
 unique(test$ssid)
 # 606 
 
+# 348 to 355 are missing pratice
+
 db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1 %>%
   # mutate()
   group_by(as.numeric(ssid_num), as.numeric(tNo)) %>%
@@ -3864,11 +3886,12 @@ db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1 %>%
 
 View(db_full6new_hr_fix_stim_nt1.1)
 
+# 2 1
+# stim - fix
 db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1 %>%
   mutate(Bio_Mean_HR_dif = Bio_Mean_HR - Bio_Mean_HR_fix)
 
-# 2 1
-stim - fix
+
 
 db_full6new_hr_fix_stim_nt1.1%>%
   ggplot(aes(Bio_Mean_HR_dif))+
@@ -3887,15 +3910,15 @@ db_full6new_hr_fix_stim_nt1<- db_full6new_hr_fix_stim_nt1%>%
   group_by(ssid)%>%
   mutate(BIO_CDA.PhasicMax_z= scale(BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])
 
-scatter3d(x = db_full6new_hr_fix_stim_nt1$pup_basCor, 
-          y = db_full6new_hr_fix_stim_nt1$BIO_CDA.PhasicMax_z, 
-          z = db_full6new_hr_fix_stim_nt1$Bio_Mean_HR_dif, 
+car::scatter3d(x = db_full6new_hr_fix_stim_nt1.1$pup_basCor, 
+          y = db_full6new_hr_fix_stim_nt1.1$BIO_CDA.PhasicMax_z, 
+          z = db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif, 
           fit = "smooth",
           
           surface = FALSE,
           point.col = "blue",
           # point
-          groups = as.factor(db_full6new_hr_fix_stim_nt1$mediansplit_ground_arousal),
+          groups = as.factor(db_full6new_hr_fix_stim_nt1.1$mediansplit_ground_arousal),
           ellipsoid = TRUE)
 
 
@@ -3951,6 +3974,8 @@ unique(db_full6new_hr_fix_stim_nt1.1$screencontent_no)
 
 test<- subset(db_full6new_hr_fix_stim_nt1.1, is.na(Bio_Mean_HR_dif))
 
+unique(test$ssid)
+
 db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif_outl <- if_else(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif)>                                                   (median(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif),na.rm = TRUE) +                                                               (4*(sd(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif), na.rm = TRUE)))), "outlier", "not outlier")
 
 
@@ -3963,9 +3988,15 @@ db_full6new_hr_fix_stim_nt1.1%>%
 
 
 ```{r}
+
+db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1%>%
+  ungroup()%>%
+  mutate(arousal_c = scale(arousal, center = TRUE, scale = TRUE)[,1],
+         valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])
+
 db_full6new_hr_fix_stim_nt1.1 %>%
-    subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
-  subset(ssid_num<500)%>%
+    # subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
+  # subset(ssid_num<500)%>%
   group_by(ssid)%>%
   mutate(Bio_Mean_HR_dif_ssid = mean(Bio_Mean_HR_dif, na.rm = TRUE))%>%
   group_by(ssid)%>%
@@ -3980,7 +4011,7 @@ db_full6new_hr_fix_stim_nt1.1 %>%
 
 db_full6new_hr_fix_stim_nt1.1 %>%
     subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
-  subset(ssid_num<500)%>%
+  # subset(ssid_num<500)%>%
   # group_by(ssid)%>%
   mutate(Bio_Mean_HR_dif = abs(Bio_Mean_HR_dif))%>%
   group_by(ssid, stimIAPS)%>%
@@ -4027,7 +4058,146 @@ interactions::interact_plot(hr_bio, pred = arousal_c, modx = TASc)
 
 summary(hr_bio)
 
-subset(db_full6new_hr_fix_stim_nt1, Bio_Mean_HR_dif_outl == "not outlier")
+
+
+# create more variables ground and self
+db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1%>%
+  ungroup()%>%
+  mutate(mediansplit_ground_valence = if_else(ValenceMean >=
+                                                  median(ValenceMean,
+                                                         na.rm = TRUE), "More positive", "More negative"))%>%
+  mutate(mediansplit_ground_arousal = if_else(ArousalMean >=
+                                                  median(ArousalMean,
+                                                         na.rm = TRUE), "High", "Low"))%>%
+    mutate(mediansplit_sample_valence2 = if_else(valence >=
+                                                  median(valence,
+                                                         na.rm = TRUE), "More positive", "More negative"))%>%
+  mutate(mediansplit_sample_arousal2 = if_else(arousal >=
+                                                  median(arousal,
+                                                         na.rm = TRUE), "High", "Low"))
+
+
+db_full6new_hr_fix_stim_nt1.1%>%
+  subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  group_by(ssid,mediansplit_ground_arousal, mediansplit_ground_valence,)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(mediansplit_ground_arousal, Bio_Mean_HR_dif))+
+  geom_jitter(alpha = .2, width = .2)+
+   geom_bar(stat="summary", fun.y = "mean", alpha = .2)+
+  stat_summary(geom = 'pointrange')+
+  # stat_smooth(aes(group = ssid), se = F, method = 'lm', alpha = .2)+
+    facet_grid(~mediansplit_ground_valence)
+
+
+
+```
+
+```{r}
+db_full6new_hr_fix_stim_nt1.1%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  subset(Bio_Mean_HR_dif_outl== "not outlier")%>%
+  group_by(ssid, mediansplit_ground_arousal,mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(mediansplit_ground_arousal, Bio_Mean_HR_dif, fill = mediansplit_ground_valence))+
+  geom_jitter(alpha = .2, width = .2)+
+   geom_bar(stat="summary", fun.y = "mean", alpha = .2)+
+  stat_summary(geom = 'pointrange')+
+  stat_summary(aes(group = ssid), geom = 'line', alpha = .2)+
+  
+ 
+  facet_grid(~mediansplit_ground_valence)+
+     ggpubr::stat_compare_means()+
+  # p$graphstyle+
+  scale_fill_brewer(palette = "Dark2")
+
+```
+
+
+
+Models
+
+```{r}
+table(is.na(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif))
+test3<- subset(db_full6new_hr_fix_stim_nt1.1, is.na(Bio_Mean_HR_dif))
+test4<- subset(db_full6new_hr_fix_stim_nt1.1, !is.na(Bio_Mean_HR_dif))
+unique(test4$ssid)
+
+db_full6new_hr_fix_stim_nt1.1$ssid<- as.factor(as.character(db_full6new_hr_fix_stim_nt1.1$ssid))
+
+db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1%>%
+  ungroup()%>%
+  mutate(arousal_c = scale(arousal, center = TRUE, scale = TRUE)[,1],
+         valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])
+
+unique(db_full6new_hr_fix_stim_nt1$Group)
+# test - analyse just positive
+summary(hr_dif_models$arousal_val)
+
+hr_dif_models$arousal_val <- lmer(Bio_Mean_HR_dif ~   valence_c+
+                                        + (1 | ssid) + 
+                                    (1|stimIAPS),
+                                        # (1|mediansplit_sample_arousal2),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1.1, 
+                   # mediansplit_ground_valence == "More negative" &
+                     Bio_Mean_HR_dif_outl == "not outlier"))
+
+summary(hr_dif_models$arousal_val)
+
+
+summary(hr_dif_models$arousal_AR)
+
+
+View(db_full6new_hr_fix_stim_nt1.1)
+
+hr_outlier<- subset(db_full6new_hr_fix_stim_nt1.1, 
+                   # mediansplit_ground_valence == "More negative" &
+                     Bio_Mean_HR_dif_outl != "not outlier")
+
+
+hr_dif_models$arousal_AR <- lmer(Bio_Mean_HR_dif ~   arousal_c+
+                                        + (1 | ssid) + 
+                                    (1|stimIAPS),
+                                        # (1|mediansplit_sample_arousal2),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1.1, 
+                   # mediansplit_ground_valence == "More negative" &
+                     Bio_Mean_HR_dif_outl == "not outlier"))
+
+
+summary(hr_dif_models$arousal_AR)
+
+
+unique(db_full6new_hr_fix_stim_nt1$ssid)
+
+summary(hr_dif_models$valfrom_hr)
+
+unique(db_full6new_hr_fix_stim_nt1.1$ssid)
+
+hr_dif_models$valfrom_hr <- lmer(arousal_c ~   Bio_Mean_HR_dif* valence_c+
+                                        + (1 | ssid) + (1|stimIAPS),
+                                        # (1|mediansplit_sample_arousal2),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1.1, 
+                   # mediansplit_ground_valence == "More positive" &
+                   Bio_Mean_HR_dif_outl == "not outlier"))
+# arousal_c
+summary(hr_dif_models$valfrom_hr)
+
+# arousal * valence
+
+hr_dif_models$hr_dif_ar_vl <- lmer(Bio_Mean_HR_dif~arousal_c   * valence_c+
+                                        + (1 | ssid),
+                                     # (1|stimIAPS),
+                                        # (1|mediansplit_sample_arousal2),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1.1, 
+                   # mediansplit_ground_valence == "More positive" &
+                   Bio_Mean_HR_dif_outl == "not outlier" & !is.na(Bio_Mean_HR_dif)))
+# arousal_c
+summary(hr_dif_models$hr_dif_ar_vl)
+
 
 
 ```
