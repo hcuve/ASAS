@@ -2662,8 +2662,8 @@ colnames(db_HR_bio2.3.1)
 
 unique(db_HR_bio2.3.1$tNo)
 db_HR_bio2.3.1
-db_HR_bio2.3.2<-select()
-db_HR_bio_final<- select(db_HR_bio2.3.1, c(1,12))
+# db_HR_bio2.3.2<-select()
+db_HR_bio_final<- select(db_HR_bio2.3.1, c(1:12))
 
 # db_HR_bio_final<- bind_rows(db_HR_bio2, db_biohrold2test)
 
@@ -2703,9 +2703,21 @@ db_HR_bio_final$ssid<- as.character(db_HR_bio_final$ssid)
 
 colnames(tmp.df4_sum_full_bio)
 
-tmp.df4_sum_full_bio_hr <- left_join(tmp.df4_sum_full_bio, db_HR_bio_final, by = c('ssid', 'tNo'))
-  
+unique(tmp.df4_sum_full_bio$tNo)
+tmp.df4_sum_full_bio$tNo3<- tmp.df4_sum_full_bio$tNo
+tmp.df4_sum_full_bio1<- tmp.df4_sum_full_bio
+tmp.df4_sum_full_bio1$tNo<-NULL
 
+unique(tmp.df4_sum_full_bio$screencontent)
+unique(db_HR_bio_final$screen_content)
+
+tmp.df4_sum_full_bio$screen_content<- if_else(tmp.df4_sum_full_bio$screencontent == "ValenceResp", "valence",
+                                              if_else(tmp.df4_sum_full_bio$screencontent == "IntResp", "arousal", tmp.df4_sum_full_bio$screencontent))
+
+
+tmp.df4_sum_full_bio_hr <- left_join(tmp.df4_sum_full_bio, db_HR_bio_final, by = c('ssid', 'tNo', 'screen_content'))
+  
+unique(tmp.df4_sum_full_bio_hr$tNo)
 
 ```
 

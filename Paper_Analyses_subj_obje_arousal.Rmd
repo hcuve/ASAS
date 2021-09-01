@@ -41,6 +41,11 @@ colnames(db_full4new_stim_screen_pupil_nopract)
 
 db_345_355_stim<- subset(db_345_355, db_345_355$screencontent == "stim")
 
+# behavioural data
+db_345_355
+db_f
+
+
 db_full4new_stim_screen_pupil_nopract$ssid<- as.character(db_full4new_stim_screen_pupil_nopract$ssid)
 db_345_355_stim$ssid<- as.character(db_345_355_stim$ssid)
 db_345_355_stim$tNo<- as.character(db_345_355_stim$tNo)
@@ -304,14 +309,18 @@ db_full4new_stim_screen_pupil_nopract %>%
   geom_hline(yintercept = -.90)
   geom_histogram()
 
+  db_full4new_stim_screen_pupil_nopract$screencontent
+  
+  table(is.na(  db_full4new_stim_screen_pupil_nopract$pup_basCor ))
+  unique(  db_full4new_stim_screen_pupil_nopract$ssid)
   
   db_full4new_stim_screen_pupil_nopract %>%
-    subset(ssid < 500)%>%
+    # subset(ssid_num < 343)%>%
   # subset(Group == "NT")%>%
-  group_by(ssid, Group)%>%
+  group_by(ssid)%>%
   mutate(cor_ar_pup = cor(arousal, pup_basCor, use = "complete"))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
-  ggplot(aes(TAS,cor_ar_pup, color = Group))+
+  ggplot(aes(TAS,cor_ar_pup))+
   geom_point()+
     geom_smooth(method = lm, se = F)+
     ggpubr::stat_cor()
@@ -348,6 +357,8 @@ db_full4new_stim_screen_pupil_nopract<- db_full4new_stim_screen_pupil_nopract %>
 
 
 # fit pupil response froma rousal and valence
+
+table(is.na(db_full4new_stim_screen_pupil_nopract$valence_c))
 pupil_arousal_findings$pupil_from_ar_vale <- lmer(pup_basCor ~ (valence_c* arousal_c) +
                                                     Mean_gray_z  +
                                                     (1 + Mean_gray_z | ssid)+
@@ -388,6 +399,7 @@ sjPlot::tab_model(pupil_arousal_findings$pupil_from_ar_vale)
 
 
 ```
+
 
 ```{r eval=FALSE, include=FALSE}
 # lassomodels$firt
@@ -563,6 +575,58 @@ interactions::interact_plot(pupil_arousal_findings$pupil_resid_from_ar_vale , pr
 plots_paper$interaction_ar_vl+p$graphstyle
 
 plots_paper$interaction_ar_vl
+
+
+db_full4new_stim_screen_pupil_nopract_nt<- subset(db_full4new_stim_screen_pupil_nopract, Group == "NT")
+
+db_full4new_stim_screen_pupil_nopract_nt%>%
+  group_by(stimIAPS)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(arousal_c, valence_c))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+cor.test(db_full4new_stim_screen_pupil_nopract_nt$valence, db_full4new_stim_screen_pupil_nopract_nt$arousal_c)
+car::scatter3d(db_full4new_stim_screen_pupil_nopract_nt$arousal_c, 
+          db_full4new_stim_screen_pupil_nopract_nt$pup_basCor, 
+          db_full4new_stim_screen_pupil_nopract_nt$valence_c,
+          fit = "smooth"
+          # point = FALSE,
+          
+          # surface = FALSE,
+          # point.col = ""
+          )
+```
+
+
+quick check of TAS
+
+```{r}
+
+db_full4new_stim_screen_pupil_nopract$TASc<- scale(db_full4new_stim_screen_pupil_nopract$TAS, center = TRUE, scale = TRUE)[,1]
+
+db_full4new_stim_screen_pupil_nopract<- db_full4new_stim_screen_pupil_nopract%>%
+  ungroup()%>%
+  mutate(arousal_c = scale(arousal, center = TRUE, scale = TRUE)[,1],
+         valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])
+
+
+pupil_arousal_findings$pupil_from_ar_vale_TAS <- lmer(pup_basCor ~ (valence_c* arousal_c)*TASc +
+                                                    Mean_gray_z  +
+                                                    (1 + Mean_gray_z | ssid)+
+                                                    (0+ arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT"))
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE))
+
+summary(pupil_arousal_findings$pupil_from_ar_vale_TAS)
+
+interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale_TAS, pred = TASc, modx = arousal_c)
+interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale_TAS, pred = TASc, modx = arousal_c, mod2= valence_c)
+
+
 ```
 
 interaction plot
@@ -643,9 +707,10 @@ Predict arousal from pupil
 
 ```{r}
 # with arousal as DV
-pupil_arousal_findings$arousal_from_pup <- lmer(arousal_c ~ valence_c*pup_basCor  + (1| stimIAPS)+
-                                                 # (1 | ssid),
-                                                  (0 +valence_c+pup_basCor | ssid),
+pupil_arousal_findings$arousal_from_pup <- lmer(arousal ~ valence_c*pup_basCor  + 
+                                                  (1| stimIAPS)+
+                                                 # (1 | stimIAPS)+
+                                                  (1  | ssid),
                                                 REML = FALSE,
                       data = db_full4new_stim_screen_pupil_nopract%>%
                          subset(Group == "NT")%>%
@@ -669,13 +734,12 @@ interactions::interact_plot(pupil_arousal_findings$arousal_from_pup, pred =pup_b
 
 # flip dv to valence
 
-pupil_arousal_findings$valence_from_pup <- lmer(valence_c ~ arousal_c*pup_basCor  + (1| stimIAPS)+
+pupil_arousal_findings$valence_from_pup <- lmer(valence ~ arousal_c*pup_basCor  + (1| stimIAPS)+
                                                  # (1 | ssid),
-                                                  (0 +arousal_c +pup_basCor | ssid),
+                                                  (0 +arousal_c | ssid),
                                                 REML = FALSE,
                       data = subset(db_full4new_stim_screen_pupil_nopract, 
-                                    pupil_outlier == FALSE & ssid_num<500 & 
-                                      arousal_outler == FALSE))
+                                    Group == "NT"))
 summary(pupil_arousal_findings$valence_from_pup)
 anova(pupil_arousal_findings$valence_from_pup)
 
@@ -705,8 +769,10 @@ nrow(tmp.df4_full_stim_downs_jun2021)
 tmp.df4_full_stim_downs_jun2021 <- readRDS("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/tmp.df4_full_stim_downs_jun2021.rds")
 
 
+unique(tmp.df4_full_stim_downs_jun2021$timebin)
 # new folks 
 library(readr)
+
 tmp_df4_timeseries_345_356 <- read_csv("tmp.df4_timeseries_345_356.csv")
 View(tmp_df4_timeseries_345_356)
 
@@ -752,7 +818,16 @@ db_full4new_stim_subset<- db_full4new_stim_screen_pupil_nopract[,c(cname_db_full
 
 View(db_full4new_stim_subset)
 
-# match types of merging variables
+```
+
+# match types of merging variables (this is 30-hz)
+
+```{r}
+
+unique(tmp.df4_full_stim_downs_jun2021_with_beh2$timebin2)
+
+
+unique(tmp.df4_full_stim_downs_jun2021_with_behnew$timebin2)
 tmp.df4_full_stim_downs_jun2021_with_beh2$ssid<- as.character(tmp.df4_full_stim_downs_jun2021_with_beh2$ssid)
 db_full4new_stim_subset$ssid<- as.character(db_full4new_stim_subset$ssid)
 
@@ -789,7 +864,12 @@ install.packages("gazer")
 library(gazer)
 
 # temp backup
+
+tmp.df4_full_stim_downs_jun2021
 tmp.df4_full_stim_downs_jun2021_backup<- tmp.df4_full_stim_downs_jun2021
+
+unique(tmp.df4_full_stim_downs_jun2021$timebin)
+
 tmp_df4_timeseries_345_356_stim_downs_backup<- tmp_df4_timeseries_345_356_stim_downs
 
 tmp_df4_timeseries_345_356_stim_downs$ssid<- as.character(tmp_df4_timeseries_345_356_stim_downs$ssid)
@@ -799,31 +879,102 @@ tmp_df4_timeseries_345_356_stim_downs$tNo<- as.character(tmp_df4_timeseries_345_
 unique(tmp.df4_full_stim_downs_jun2021$timebin)
 unique(tmp_df4_timeseries_345_356_stim_downs$timebin)
 
+tmp.df4_full_stim_downs_jun2021$ssid<- as.character(tmp.df4_full_stim_downs_jun2021$ssid)
+tmp.df4_full_stim_downs_jun2021$tNo<- as.character(tmp.df4_full_stim_downs_jun2021$tNo)
 # bind old and new data
-tmp.df4_full_stim_downs_jun2021 <- bind_rows(tmp.df4_full_stim_downs_jun2021,tmp_df4_timeseries_345_356_stim_downs)
+# nrow(tmp.df4_full_stim_downs_jun2021)+ nrow(tmp_df4_timeseries_345_356_stim_downs) = 205703
 
 tmp.df4_full_stim_downs_jun2021$tNo<- as.character(tmp.df4_full_stim_downs_jun2021$tNo)
-db_full4new_stim_subset$tNo<- as.character(db_full4new_stim_subset$tNo)
+
+tmp.df4_full_stim_downs_jun2021 <- bind_rows(tmp.df4_full_stim_downs_jun2021,tmp_df4_timeseries_345_356_stim_downs)
+
+# tmp.df4_full_stim_downs_jun2021
+table(is.na(tmp_df4_timeseries_345_356_stim_downs$pup_basCor))
+# 355
+table(is.na(tmp.df4_full_stim_downs_jun2021$pup_basCor))
+
+
+
 
 # backup[]
-tmp.df4_full_stim_downs_jun2021_60bins_backup<- tmp.df4_full_stim_downs_jun2021_60bins
+tmp.df4_full_stim_downs_jun2021_60bins_backup2<- tmp.df4_full_stim_downs_jun2021_60bins
 
-tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021, db_full4new_stim_subset, by = c("ssid", "tNo", "trial"))
+unique(db_full4new_stim_subset$ssid)
+
+
+unique(tmp.df4_full_stim_downs_jun2021$ssid)
+unique(db_full4new_stim_subset$ssid)
+
+unique(tmp.df4_full_stim_downs_jun2021$tNo)
+unique(db_full4new_stim_subset$tNo)
+
+unique(tmp.df4_full_stim_downs_jun2021$trial)
+unique(db_full4new_stim_subset$trial)
+
+
+tmp.df4_full_stim_downs_jun2021_60bins 
+
+
+table(is.na(db_full4new_stim_subset$arousal))
+
+
+
+db_full4new_stim_subset
+db_full4new_stim_subset$tNo<- as.character(db_full4new_stim_subset$tNo)
+
+
+# try see if arranging things solve the issue
+tmp.df4_full_stim_downs_jun2021<- tmp.df4_full_stim_downs_jun2021%>%
+  arrange(ssid, tNo, timerezero3)
+
+db_full4new_stim_subset<- db_full4new_stim_subset%>%
+  arrange(ssid, tNo)
+
+db_full4new_stim_subset_valis<- subset( db_full4new_stim_subset, gaze_valid_prop>.80)
+
+tmp.df4_full_stim_downs_jun2021_.1 <- left_join(tmp.df4_full_stim_downs_jun2021, db_full4new_stim_subset$gaze_valid_prop, by = c("ssid", "tNo", "trial"))
+
+
+table(is.na(db_full4new_stim_subset_valis$gaze_valid_prop))
+tmp.df4_full_stim_downs_jun2021_.1 <- left_join(db_full4new_stim_subset_valis,tmp.df4_full_stim_downs_jun2021,  by = c("ssid", "tNo", "trial"))
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_.1$arousal))
+nrow(tmp.df4_full_stim_downs_jun2021_.1)
+nrow(tmp.df4_full_stim_downs_jun2021)
+
+nrow(db_full4new_stim_subset)
+nrow(test)
+nrow(tmp.df4_full_stim_downs_jun2021_60bins)
+unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
+
+
+View(db_full4new_stim_subset)
+table(is.na(db_full4new_stim_subset$arousal))
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal))
+
+table(is.na(test$arousal))
+table(is.na(test$arousal))
+
+
+test1<- subset(test, is.na(arousal))
+
+test2<- subset(test, !is.na(arousal))
+table(test2$ssid)
 
 # create a dataframe version where we downsample to60 and not to 30
 
-tmp.df4_full_stim_downs_jun2021_60bins$Label<- substr(tmp.df4_full_stim_downs_jun2021_60bins$stimIAPS, 1,8)
+tmp.df4_full_stim_downs_jun2021_.1$Label<- substr(tmp.df4_full_stim_downs_jun2021_.1$stimIAPS, 1,8)
 
-tmp.df4_full_stim_downs_jun2021_60bins$Label2<- substr(tmp.df4_full_stim_downs_jun2021_60bins$stimIAPS, 1,4)
+tmp.df4_full_stim_downs_jun2021_.1$Label2<- substr(tmp.df4_full_stim_downs_jun2021_.1$stimIAPS, 1,4)
 imageJ_IAPS$Label2<- substr(imageJ_IAPS$Label, 1,4)
 
 unique(imageJ_IAPS$Label2)
-unique(tmp.df4_full_stim_downs_jun2021_60bins$Label2)
+unique(tmp.df4_full_stim_downs_jun2021_.1$Label2)
 
 # backup
-tmp.df4_full_stim_downs_jun2021_60bins_backup<- tmp.df4_full_stim_downs_jun2021_60bins
+tmp.df4_full_stim_downs_jun2021_60bins_backup<- tmp.df4_full_stim_downs_jun2021_.1
 
-tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021_60bins, imageJ_IAPS, by = "Label2")
+tmp.df4_full_stim_downs_jun2021_60bins<- left_join(tmp.df4_full_stim_downs_jun2021_.1, imageJ_IAPS, by = "Label2")
 
 
 tmp.df4_full_stim_downs_jun2021_60bins$Mean_gray_z<- scale(tmp.df4_full_stim_downs_jun2021_60bins$Mean, center = TRUE, scale = TRUE)[,1]
@@ -833,7 +984,10 @@ nrow(tmp.df4_full_stim_downs_jun2021_60bins)
 # 172168 good+
 # 205703 (with new)
 
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$valence))
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$pup_basCor))
 
+as.factor(tmp.df4_full_stim_downs_jun2021_60bins$timebin)
 ```
 
 
@@ -842,6 +996,8 @@ Quick check that things make sense
 ```{r eval=FALSE, include=FALSE}
 unique(tmp.df4_full_stim_downs_jun2021_with_beh$timebin2)
 # group_by(stimIAPS)%>%
+
+
 tmp.df4_full_stim_downs_jun2021_with_beh<- tmp.df4_full_stim_downs_jun2021_with_beh %>%
   ungroup()%>%
   mutate(mediansplit_sample_valence2 = 
@@ -855,7 +1011,9 @@ tmp.df4_full_stim_downs_jun2021_with_beh<- tmp.df4_full_stim_downs_jun2021_with_
 
 
 
-# higher sample rate]
+# higher sample rate
+
+tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_valence2
 
 tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins %>%
   ungroup()%>%
@@ -894,23 +1052,60 @@ theme_classic()+
 ```{r}
 
 
+tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
+  ungroup()%>%
+  mutate(mediansplit_ground_valence = if_else(ValenceMean >=
+                                                  median(ValenceMean,
+                                                         na.rm = TRUE), "More positive", "More negative"))%>%
+  mutate(mediansplit_ground_arousal = if_else(ArousalMean >=
+                                                  median(ArousalMean,
+                                                         na.rm = TRUE), "High", "Low"))%>%
+    mutate(mediansplit_sample_valence2 = if_else(arousal >=
+                                                  median(arousal,
+                                                         na.rm = TRUE), "More positive", "More negative"))%>%
+  mutate(mediansplit_sample_arousal2 = if_else(valence >=
+                                                  median(valence,
+                                                         na.rm = TRUE), "High", "Low"))
 
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$timebin))
 ground_arousal_lab
 
 
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(!is.na(ground_arousal_lab))%>%
   ggplot(aes(x = timerezero3, y = pup_basCor))+
-  stat_smooth(aes(group= ground_arousal_lab, color = ground_arousal_lab), fun = mean,geom = "line",
+  stat_smooth(aes(group= mediansplit_ground_arousal, color = mediansplit_ground_arousal), fun = mean,geom = "line",
                se = F, alpha = .1, size = 1.5)+
-  stat_smooth(aes(group=ground_arousal_lab, color = ground_arousal_lab), size = 3)+  
+  stat_smooth(aes(group=mediansplit_ground_arousal, color = mediansplit_ground_arousal), size = 3)+  
 theme_classic()+
   ylab("Pupil size (z)")+
   xlab("Time (s)")+
   # p$graphstyle+
   scale_color_brewer(palette = "Dark2")+
   xlim(0,6)+
-   facet_grid(~mediansplit_self_valence)
+   facet_grid(~mediansplit_ground_valence)
+
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2))
+
+mediansplit_sample_arousal2
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$Group))
+
+tmp.df4_full_stim_downs_jun2021_60bins %>%
+  subset(Group == "NT")%>%
+  # subset(!is.na(mediansplit_sample_arousal2))%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor))+
+  stat_smooth(aes(group= mediansplit_sample_arousal2, color = mediansplit_sample_arousal2), fun = mean,geom = "line",
+               se = F, alpha = .1, size = 1.5)+
+  stat_smooth(aes(group=mediansplit_sample_arousal2, color = mediansplit_sample_arousal2), size = 3)+  
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)+
+   facet_grid(~mediansplit_sample_valence2)
 
 ```
 
@@ -1812,7 +2007,7 @@ i = 0 # remember to always rezero it
 
 # i =1
 # unique(tmp.df4_full_stim_downs_jun2021_60bins$)
-
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_c))
 for (b in 1:length(nbins)) {
   # for (s in 1:length(nsim)) {
 
@@ -1905,11 +2100,11 @@ duplicated(timecourse_60bin_result_df$p_ar_adj_TRUE, na.rm = TRUE)
 
 timecourse_60bin_result_df %>%
   ggplot(aes(timebins, Estimate_ar_vl))+
-  geom_line(size = 1)
-  geom_line(aes(y = t_vl), linetype = "dashed", size = 1)+
-  geom_line(aes(y = t_br), linetype = "dotted", size = 1)+
-  geom_line(aes(y = t_ar), linetype = "dotdash", size = 1, color = "red")
-
+  # geom_line(size = 1)
+  # geom_line(aes(y = t_vl), linetype = "dashed", size = 1)+
+  # geom_line(aes(y = t_br), linetype = "dotted", size = 1)+
+  # geom_line(aes(y = t_ar), linetype = "dotdash", size = 1, color = "red")
+  # 
 
 View(timecourse_60bin_result_df)
 
@@ -1938,10 +2133,10 @@ timecourse_60bin_result_df%>%
   mutate(p_ar_adj_clust= p.adjust(p_ar, method = "holm"))
 
 timecourse_60bin_result_df %>%
-  mutate(test=rollapply(p_ar, width=3, max, align="left", fill=NA, na.rm=TRUE))%>%
+  mutate(test=rollapply(p_ar, width=3, max, align="left", fill=NA, na.rm=TRUE))
   
 
-  
+View(timecourse_60bin_result_df)  
 
 
 
@@ -2579,11 +2774,11 @@ unique(tmp.df4_full_stim_downs_jun2021_with_behnew$ssid)
 tmp.df4_full_stim_downs_jun2021_with_behnew
 
 
-tmp.df4_full_stim_downs_jun2021_60bins%>%
-  subset(ssid == 331 & tNo ==40)%>%
+tmp.df4_full_stim_downs_jun2021_60bins<- tmp.df4_full_stim_downs_jun2021_60bins%>%
+  # subset(ssid == 331 & tNo ==40)%>%
   group_by(ssid, tNo)%>%
   arrange(ssid,tNo, timerezero3)%>%
-  mutate(pup_vel_smooth = zoo::rollmean(pup_velocity, k = 3, fill = NA))%>%
+  mutate(pup_vel_smooth = zoo::rollmean(pup_velocity, k = 3, fill = NA))
    ggplot(aes(timerezero3, pup_velocity))+
   geom_line()+
   geom_line(aes(y = pup_vel_smooth), color = 'red')
@@ -2592,7 +2787,7 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
 tmp.df4_full_stim_downs_jun2021_60bins$four<- paste0(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2,
                                                      paste0(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_valence2))
                                                      
-paste0(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2)
+# paste0(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2)
 
 
 # unique(tmp.df4_full_stim_downs_jun2021_60bins)
@@ -3271,7 +3466,6 @@ theme_classic()+
   xlim(0,6)+
   facet_grid(~mediansplit_self_valence)
 
-```
 
 
 ```{r}
@@ -3407,4 +3601,336 @@ timecourse_60bin_result_df_vel_dir$test <- rle(timecourse_60bin_result_df_vel_di
 ```
 
 
-pupiul velocity and speed might better caprure arousal dynamics because the temporal dynamics are less adffected by a susrtauned effect of brighetenss. whereas amplitude is p[robably strongly affected by brighteness which restricts variability in input from a arousal componenets
+
+SCR
+```{r}
+
+db_full4new_stim_screen_pupil_nopract_nt<- subset(db_full4new_stim_screen_pupil_nopract, Group == "NT")
+
+db_full4new_stim_screen_pupil_nopract_nt_304<- subset(db_full4new_stim_screen_pupil_nopract_nt, ssid_num>303)
+
+db_full4new_stim_screen_pupil_nopract_nt_304
+
+db_full4new_stim_screen_pupil_nopract_nt_304<- db_full4new_stim_screen_pupil_nopract_nt_304%>%
+  ungroup%>%
+  mutate(valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(arousal_c = scale(arousal, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(TASc = scale(TAS, center = TRUE, scale = TRUE)[,1])
+
+# models
+table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$BIO_CDA.SCR))
+
+pupil_arousal_findings$arousal_scr <- lmer(log(BIO_CDA.SCR+.1) ~ arousal_c*valence_c +
+                                             (1|ssid) + (1|stimIAPS),
+                        REML = FALSE,
+                        data = subset(db_full4new_stim_screen_pupil_nopract_nt_304))
+
+summary(pupil_arousal_findings$arousal_scr)
+
+interactions::interact_plot(pupil_arousal_findings$arousal_scr, pred = arousal_c, modx = valence_c)
+
+
+# arousal_BIO_CDA.AmpSum
+pupil_arousal_findings$arousal_BIO_CDA.AmpSum <- lmer(log(BIO_CDA.AmpSum+.1) ~ arousal_c*valence_c +
+                                             (1|ssid) + (1|stimIAPS),
+                        REML = FALSE,
+                        data = subset(db_full4new_stim_screen_pupil_nopract_nt_304))
+
+summary(pupil_arousal_findings$arousal_BIO_CDA.AmpSum)
+
+interactions::interact_plot(pupil_arousal_findings$arousal_BIO_CDA.AmpSum, pred = arousal_c, modx = valence_c)
+
+
+# BIO_CDA.ISCR
+pupil_arousal_findings$BIO_CDA.ISCR <- lmer(log(BIO_CDA.ISCR+.1) ~ arousal_c*valence_c +
+                                             (1+valence_c|ssid) + (1|stimIAPS),
+                        REML = FALSE,
+                        data = subset(db_full4new_stim_screen_pupil_nopract_nt_304))
+
+summary(pupil_arousal_findings$BIO_CDA.ISCR)
+
+interactions::interact_plot(pupil_arousal_findings$BIO_CDA.ISCR, pred = arousal_c, modx = valence_c)
+
+# alexithymia
+table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$gsr_response))
+pupil_arousal_findings$BIO_CDA.ISCR_TAS <- lmer(log(BIO_CDA.AmpSum +.1) ~ arousal_c+
+                                             (1|ssid) + (1|stimIAPS),
+                        REML = FALSE,
+                        data = subset(db_full4new_stim_screen_pupil_nopract_nt_304$gsr_basCor))
+summary(pupil_arousal_findings$BIO_CDA.ISCR_TAS)
+```
+
+
+Heart rate
+
+```{r}
+
+# keep stim and and fixation
+unique(db_full6new$screencontent)
+unique(db_full6new$screencontent_no)
+colnames(db_full6new)
+
+# 345:355
+library(readr)
+library(readr)
+ # read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
+View(tmp_df4_sum_full_bio_hr_self_parsed_345_356)
+
+db_HR_bio_final_346_355_withfix <-  read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
+View(db_HR_bio_final_346_355_withfix)
+
+db_HR_bio_final_346_355_withfix$screencontent<- db_HR_bio_final_346_355_withfix$screen_content
+db_HR_bio_final_346_355_withfix<- subset(db_HR_bio_final_346_355_withfix, tNo > -7)
+
+db_HR_bio_final_346_355_withfix$screencontent_no<- if_else(db_HR_bio_final_346_355_withfix$screen_content == "fixation", 1,
+                                                           if_else(db_HR_bio_final_346_355_withfix$screen_content == "stim", 2,
+                                                                   if_else(db_HR_bio_final_346_355_withfix$screen_content == "valence", 3, 4)))
+
+db_HR_bio_final_346_355_withfix_stim <- subset(db_HR_bio_final_346_355_withfix, screencontent_no<3)
+
+
+# 
+db_HR_bio_final_346_355_withfix_stim$tNo<- db_HR_bio_final_346_355_withfix_stim$tNo3
+unique(db_HR_bio_final_346_355_withfix$tNo)
+unique(db_HR_bio_final_346_355_withfix$tNo)
+
+db_HR_bio_final_346_355_withfix_stim$tNo2<-NULL
+
+db_HR_bio_final_346_355_withfix_stim$tNo3<- NULL
+
+unique(db_HR_bio_final_346_355_withfix$screencontent)
+unique(db_full6new_hr_fix_stim$screencontent)
+# db_HR_bio_final_346_355_withfix$screencontent_no<- 
+
+
+colnames(db_full6new)
+
+db_full6new_hr_fix_stim <- subset(db_full6new, screencontent_no <3)
+
+View(db_full6new_hr_fix_stim)
+# fixation"    "stim" 
+colnames(db_full6new_hr_fix_stim)
+colnames(db_HR_bio_final_346_355_withfix_stim)
+
+db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR<- db_HR_bio_final_346_355_withfix_stim$Mean_HR
+
+
+# keep controls
+unique(db_full6new_hr_fix_stim$ssid)
+db_full6new_hr_fix_stim$ssid_num <- as.numeric(as.character(db_full6new_hr_fix_stim$ssid))
+
+
+
+db_full6new_hr_fix_stim_nt<- subset(db_full6new_hr_fix_stim, Group == "NT")
+unique(db_full6new_hr_fix_stim_nt$ssid_num)
+
+db_full6new_hr_fix_stim_nt<- subset(db_full6new_hr_fix_stim, ssid_num> 303)
+unique(db_full6new_hr_fix_stim_nt$ssid)
+colnames(db_full6new_hr_fix_stim_nt)
+# HR differences
+db_full6new_hr_fix_stim_nt$Bio_Mean_HR_fix<- if_else(db_full6new_hr_fix_stim_nt$screencontent_no ==1, db_full6new_hr_fix_stim_nt$Bio_Mean_HR, NULL)
+
+
+db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR_fix<- if_else(db_HR_bio_final_346_355_withfix_stim$screencontent_no ==1, db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR, NULL)
+
+View(db_full6new_hr_fix_stim_nt)
+View(db_HR_bio_final_346_355_withfix_stim)
+
+db_HR_bio_final_346_355_withfix_stim$Mean_HR<- NULL
+
+db_HR_bio_final_346_355_withfix_stim$ssid<- as.character(db_HR_bio_final_346_355_withfix_stim$ssid)
+
+
+db_HR_bio_final_346_355_withfix_stim$tNo <- db_HR_bio_final_346_355_withfix_stim$tNo3.x
+unique(db_HR_bio_final_346_355_withfix_stim$tNo)
+
+db_HR_bio_final_346_355_withfix_stim$tNo <- as.character(db_HR_bio_final_346_355_withfix_stim$tNo)
+db_HR_bio_final_346_355_withfix_stim$trigger <- as.character(db_HR_bio_final_346_355_withfix_stim$trigger)
+
+db_full6new_hr_fix_stim_nt$trigger<- as.character(db_full6new_hr_fix_stim_nt$trigger)
+db_full6new_hr_fix_stim_nt$trigger.x<- NULL
+
+# db_HR_bio_final_346_355_withfix_stim$trig <- as.character(db_HR_bio_final_346_355_withfix_stim$tNo)
+
+db_HR_bio_final_346_355_withfix_stim$triger<- NULL
+db_HR_bio_final_346_355_withfix_stim$trigger.x<- NULL
+
+db_HR_bio_final_346_355_withfix_stim$trigger.y<- NULL
+db_HR_bio_final_346_355_withfix_stim$trigger2<- NULL
+db_HR_bio_final_346_355_withfix_stim$trigger_200<- NULL
+
+nrow(db_full6new_hr_fix_stim_nt)+ nrow(db_HR_bio_final_346_355_withfix_stim)
+# 6895
+# nrow(bind_rows(db_full6new_hr_fix_stim_nt, db_HR_bio_final_346_355_withfix_stim))
+db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR_fix
+db_full6new_hr_fix_stim_nt1<- bind_rows(db_full6new_hr_fix_stim_nt,
+                                        db_HR_bio_final_346_355_withfix_stim)
+
+library(dplyr)
+library(tidyverse)
+
+db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1 %>%
+  group_by(ssid, tNo) %>%
+  arrange(ssid, tNo,screencontent_no)%>%
+  fill(Bio_Mean_HR_fix, .direction = "down")%>%
+  subset(screencontent_no == 2)
+
+View(db_full6new_hr_fix_stim_nt1.1)
+
+db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1 %>%
+  mutate(Bio_Mean_HR_dif = Bio_Mean_HR - Bio_Mean_HR_fix)
+
+# 2 1
+stim - fix
+
+db_full6new_hr_fix_stim_nt1.1%>%
+  ggplot(aes(Bio_Mean_HR_dif))+
+  geom_histogram()
+
+?scatter3d 
+
+
+db_full6new_hr_fix_stim_nt1.1%>%
+  subset(!is.na(pup_basCor))%>%
+   subset(!is.na(BIO_CDA.PhasicMax))%>%
+  subset(!is.na(Bio_Mean_HR_dif))
+
+
+db_full6new_hr_fix_stim_nt1<- db_full6new_hr_fix_stim_nt1%>%
+  group_by(ssid)%>%
+  mutate(BIO_CDA.PhasicMax_z= scale(BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])
+
+scatter3d(x = db_full6new_hr_fix_stim_nt1$pup_basCor, 
+          y = db_full6new_hr_fix_stim_nt1$BIO_CDA.PhasicMax_z, 
+          z = db_full6new_hr_fix_stim_nt1$Bio_Mean_HR_dif, 
+          fit = "smooth",
+          
+          surface = FALSE,
+          point.col = "blue",
+          # point
+          groups = as.factor(db_full6new_hr_fix_stim_nt1$mediansplit_ground_arousal),
+          ellipsoid = TRUE)
+
+
+
+cor(db_full6new_hr_fix_stim_nt1[,c("pup_basCor", "BIO_CDA.PhasicMax_z","Bio_Mean_HR_dif")], use = "complete")
+
+
+
+db_full6new_hr_fix_stim_nt1%>%
+  group_by(ssid,mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(pup_basCor,BIO_CDA.PhasicMax_z, color= mediansplit_ground_valence))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ylim(0,.4)+
+  ggpubr::stat_cor()
+
+
+
+db_full6new_hr_fix_stim_nt1%>%
+  # group_by(ssid)%>%
+  # mutate(Bio_Mean_HR_dif_z = scale(Bio_Mean_HR_dif))
+  group_by(ssid,mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(pup_basCor,Bio_Mean_HR_dif_z, color= mediansplit_ground_valence))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  # ylim(-7,2)+
+  ggpubr::stat_cor()
+
+
+
+db_full6new_hr_fix_stim_nt1%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  # group_by(ssid)%>%
+  # mutate(Bio_Mean_HR_dif_z = scale(Bio_Mean_HR_dif))
+  group_by(ssid,mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(BIO_CDA.PhasicMax_z,Bio_Mean_HR_dif, color= mediansplit_ground_valence))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  # ylim(-7,2)+
+  ggpubr::stat_cor()+
+  facet_grid(~mediansplit_ground_valence)
+  
+
+```
+
+
+```{r}
+
+db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif_outl <- if_else(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif)>                                                   (median(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif),na.rm = TRUE) +                                                               (4*(sd(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif), na.rm = TRUE)))), "outlier", "not outlier")
+
+
+db_full6new_hr_fix_stim_nt1.1%>%
+  ggplot(aes(Bio_Mean_HR_dif))+
+  geom_histogram()+
+  facet_grid(~Bio_Mean_HR_dif_outl)
+
+```
+
+
+```{r}
+db_full6new_hr_fix_stim_nt1.1 %>%
+    subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
+  subset(ssid_num<500)%>%
+  group_by(ssid)%>%
+  mutate(Bio_Mean_HR_dif_ssid = mean(Bio_Mean_HR_dif, na.rm = TRUE))%>%
+  group_by(ssid)%>%
+  # mutate(Bio_Mean_HR_dif_stim = mean(Bio_Mean_HR_dif, na.rm = TRUE))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(TAS, Bio_Mean_HR_dif))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+  
+  
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+    subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
+  subset(ssid_num<500)%>%
+  # group_by(ssid)%>%
+  mutate(Bio_Mean_HR_dif = abs(Bio_Mean_HR_dif))%>%
+  group_by(ssid, stimIAPS)%>%
+  mutate(Bio_Mean_HR_dif_stim = abs(Bio_Mean_HR_dif))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(TASc, Bio_Mean_HR_dif))+
+  
+  # geom_point()
+  
+  geom_smooth(aes(group = stimIAPS, y =Bio_Mean_HR_dif_stim), method=lm, se=FALSE, colour = "gray40", alpha = .01,linetype="dashed", size = .2 )+
+  geom_smooth( method=lm, se=FALSE, linetype="dashed",
+             color="darkred", size = 2)+
+  stat_summary(geom = 'pointrange', pch = 1)+
+    ggpubr::stat_cor()+
+  
+  
+  
+  # geom_point()+
+  # stat_summary(aes(group =ssid, y = Bio_Mean_HR_dif),method = "line",alpha = .1)+
+  # ggpubr::stat_cor()+
+  p$graphstyle+
+  xlab("Alexithymia (Z)")+
+  ylab("HR difference")+
+p$graphstyle
+
+
+db_full6new_hr_fix_stim_nt1$TASc<- scale(db_full6new_hr_fix_stim_nt1$TAS, center = TRUE, scale = TRUE)
+
+hr_bio <- lmer(Bio_Mean_HR_dif ~ TASc * arousal_c + 
+                 (1|ssid) + 
+                 (1| stimIAPS),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1.1, 
+                   Bio_Mean_HR_dif_outl == "not outlier"))
+
+
+interactions::interact_plot(hr_bio, pred = arousal_c, modx = TASc)
+
+summary(hr_bio)
+
+subset(db_full6new_hr_fix_stim_nt1, Bio_Mean_HR_dif_outl == "not outlier")
+
+
+```
