@@ -326,6 +326,11 @@ db_full4new_stim_screen_pupil_nopract %>%
     ggpubr::stat_cor()
   geom_hline(yintercept = -.75)+
   geom_hline(yintercept = -.90)
+  
+  
+  
+  
+  
 
 
 
@@ -396,7 +401,32 @@ library(MuMIn)
 library(sjmisc)
 sjPlot::tab_model(pupil_arousal_findings$pupil_from_ar_vale)
 
+table(is.na(db_full4new_stim_screen_pupil_nopract$Group))
 
+table(db_full4new_stim_screen_pupil_nopract$Group)
+
+ db_full4new_stim_screen_pupil_nopract %>%
+   subset(Group == "NT")%>%
+  subset(pupil_outlier == FALSE)%>%
+  subset( arousal_outler == FALSE & !is.na(Alexithymia))%>%
+  subset(!is.na(Alexithymia))%>%
+  # subset(ssid_num<500)%>%
+    # group_by(ssid,Alexithymia, is_valence_high)%>%
+   group_by(ssid,Alexithymia, mediansplit_sample_valence2,mediansplit_sample_arousal2)%>%
+    mutate(cortest = cor(arousal_c, pup_basCor, use = "complete"))%>%
+    summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+        ggplot(aes(mediansplit_sample_valence2, cortest, color = mediansplit_sample_valence2))+
+           geom_bar(stat="summary", fun.y = "mean", alpha = .4)+
+  
+    geom_jitter(width = .1, alpha = .1)+
+        stat_summary( geom = 'pointrange')+
+          stat_summary(aes(group = ssid), geom = 'line', color = "black", alpha = .1)+
+    ylab("R pupil vs self report arousal")+
+  theme_classic()+
+  geom_hline(yintercept = .2, linetype = 'dashed', alpha = .2)+
+   # ggpubr::stat_compare_means(paired = TRUE)+
+  ggpubr::stat_compare_means()
+  facet_grid(~mediansplit_sample_arousal2)
 
 ```
 
@@ -611,6 +641,10 @@ db_full4new_stim_screen_pupil_nopract<- db_full4new_stim_screen_pupil_nopract%>%
          valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])
 
 
+
+db_full4new_stim_screen_pupil_nopract$valence_abs<- abs(db_full4new_stim_screen_pupil_nopract$valence)
+db_full4new_stim_screen_pupil_nopract$valence_abs_c<- scale(db_full4new_stim_screen_pupil_nopract$valence_abs, center = TRUE,scale = TRUE)[,1]
+
 pupil_arousal_findings$pupil_from_ar_vale_TAS <- lmer(pup_basCor ~ (valence_c* arousal_c)*TASc +
                                                     Mean_gray_z  +
                                                     (1 + Mean_gray_z | ssid)+
@@ -626,7 +660,31 @@ summary(pupil_arousal_findings$pupil_from_ar_vale_TAS)
 interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale_TAS, pred = TASc, modx = arousal_c)
 interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale_TAS, pred = TASc, modx = arousal_c, mod2= valence_c)
 
+# abs
+pupil_arousal_findings$pupil_from_vale__tas_abs <- lmer(pup_basCor ~ valence_abs_c* TASc +
+                                                    Mean_gray_z  +
+                                                    (1 + Mean_gray_z | ssid)+
+                                                    (0+ arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT"))
 
+
+
+db_full4new_stim_screen_pupil_nopract$arousal_abs<- abs(db_full4new_stim_screen_pupil_nopract$arousal)
+db_full4new_stim_screen_pupil_nopract$arousal_abs_c<- scale(db_full4new_stim_screen_pupil_nopract$arousal_abs, center = TRUE,scale = TRUE)[,1]
+
+pupil_arousal_findings$pupil_from_ar__tas_abs <- lmer(pup_basCor ~ arousal_abs_c* TASc +
+                                                    Mean_gray_z  +
+                                                    (1 + Mean_gray_z | ssid)+
+                                                    (0+ arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT"))
+
+summary(pupil_arousal_findings$pupil_from_ar__tas_abs)
+
+cor.test(db_full4new_stim_screen_pupil_nopract$valence_abs_c, abs(db_full4new_stim_screen_pupil_nopract$arousal))
 ```
 
 interaction plot
@@ -1073,17 +1131,25 @@ ground_arousal_lab
 
 tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(!is.na(ground_arousal_lab))%>%
-  ggplot(aes(x = timerezero3, y = pup_basCor))+
-  stat_smooth(aes(group= mediansplit_ground_arousal, color = mediansplit_ground_arousal), fun = mean,geom = "line",
-               se = F, alpha = .1, size = 1.5)+
-  stat_smooth(aes(group=mediansplit_ground_arousal, color = mediansplit_ground_arousal), size = 3)+  
+  ggplot(aes(x = timerezero3, y = pup_basCor,color = mediansplit_ground_arousal, linetype = mediansplit_ground_valence))+
+  
+ # stat_summary(aes(group= mediansplit_ground_arousal, color = mediansplit_ground_arousal, linetype = mediansplit_ground_valence), fun = mean,geom = "line", size = 1.5)
+ #  
+  # stat_smooth(aes(group= mediansplit_ground_arousal), fun = mean,geom = "line",
+  #              se = F, alpha = 1, size = 1.5)+
+  stat_smooth(size=1.5, method = "loess", level = 0.95, 
+    fullrange = TRUE, se = FALSE) + 
+  # stat_smooth(aes(group=mediansplit_ground_arousal, color = mediansplit_ground_arousal), size = 3)+  
 theme_classic()+
   ylab("Pupil size (z)")+
   xlab("Time (s)")+
   # p$graphstyle+
   scale_color_brewer(palette = "Dark2")+
   xlim(0,6)+
+   labs(color  = "mediansplit_ground_arousal", linetype = "mediansplit_ground_valence")
    facet_grid(~mediansplit_ground_valence)
+   
+```
 
 
 table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2))
@@ -1107,7 +1173,7 @@ theme_classic()+
   xlim(0,6)+
    facet_grid(~mediansplit_sample_valence2)
 
-```
+
 
 ```{r}
 
@@ -4188,8 +4254,8 @@ summary(hr_dif_models$valfrom_hr)
 # arousal * valence
 
 hr_dif_models$hr_dif_ar_vl <- lmer(Bio_Mean_HR_dif~arousal_c   * valence_c+
-                                        + (1 | ssid),
-                                     # (1|stimIAPS),
+                                        + (1 | ssid)+
+                                     (1|stimIAPS),
                                         # (1|mediansplit_sample_arousal2),
      REML = FALSE,
      data = subset(db_full6new_hr_fix_stim_nt1.1, 
@@ -4199,6 +4265,28 @@ hr_dif_models$hr_dif_ar_vl <- lmer(Bio_Mean_HR_dif~arousal_c   * valence_c+
 summary(hr_dif_models$hr_dif_ar_vl)
 
 
+
+
+db_full6new_hr_fix_stim_nt1.1%>%
+  subset(Bio_Mean_HR_dif_outl == "not outlier" & !is.na(Bio_Mean_HR_dif))%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(valence_c, Bio_Mean_HR_dif))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  xlim(-.4,.6)+
+  ggpubr::stat_cor()
+
+
+db_full6new_hr_fix_stim_nt1.1%>%
+  subset(Bio_Mean_HR_dif_outl == "not outlier" & !is.na(Bio_Mean_HR_dif))%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(valence_c, Bio_Mean_HR_dif))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  xlim(-.4,.6)
+  ggpubr::stat_cor()
 
 ```
 
@@ -4272,9 +4360,36 @@ db_full6new_hr_fix_stim_nt1.1 %>%
 db_full6new_hr_fix_stim_nt1.1 %>%
   group_by(ssid)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
-  ggplot(aes(pup_basCor, Bio_Mean_HR))+
+  ggplot(aes(pup_basCor, Bio_Mean_HR_dif))+
   geom_point()+
   # xlim()
   geom_smooth(method = lm, se = F)+
+  # geom_smooth(aes(group = ssid),method = lm, se = F)
   ggpubr::stat_cor()
+
+
+
+inter_bio<- lmer(pup_basCor~Bio_Mean_HR_dif +BIO_CDA.PhasicMax_z + (1|ssid)+ (1|stimIAPS), 
+                 REML = FALSE,
+                 data = db_full6new_hr_fix_stim_nt1.1)
+
+summary(inter_bio)
+
+
+inter_bio1<- lmer(Bio_Mean_HR_dif~ pup_basCor +BIO_CDA.PhasicMax_z + (1|ssid)+ (1|stimIAPS), 
+                 REML = FALSE,
+                 data = db_full6new_hr_fix_stim_nt1.1)
+
+summary(inter_bio1)
+
+
+inter_bio2<- lmer(log1p(BIO_CDA.PhasicMax+.1)~ Bio_Mean_HR_dif + pup_basCor + (1|ssid)+ 
+                    (1|stimIAPS), 
+                 REML = FALSE,
+                 data = db_full6new_hr_fix_stim_nt1.1)
+
+summary(inter_bio2)
+
+
+# cluster based on bio, pupil angsr_selfrep_matrixthen take these clusters and compare arousal valence
 ```
