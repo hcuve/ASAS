@@ -3607,6 +3607,7 @@ SCR
 
 db_full4new_stim_screen_pupil_nopract_nt<- subset(db_full4new_stim_screen_pupil_nopract, Group == "NT")
 
+unique(db_full4new_stim_screen_pupil_nopract_nt$screencontent)
 db_full4new_stim_screen_pupil_nopract_nt_304<- subset(db_full4new_stim_screen_pupil_nopract_nt, ssid_num>303)
 
 db_full4new_stim_screen_pupil_nopract_nt_304
@@ -3651,13 +3652,55 @@ summary(pupil_arousal_findings$BIO_CDA.ISCR)
 
 interactions::interact_plot(pupil_arousal_findings$BIO_CDA.ISCR, pred = arousal_c, modx = valence_c)
 
+
+# phasic
+unique(db_full4new_stim_screen_pupil_nopract_nt_304$ssid)
+
+pupil_arousal_findings$BIO_CDA.PhasicMax <- lmer(log1p(BIO_CDA.PhasicMax+.1) ~ arousal_c * valence_c + (1|ssid),
+                        REML = FALSE,
+                        data = db_full4new_stim_screen_pupil_nopract_nt_304)
+
+summary(pupil_arousal_findings$BIO_CDA.PhasicMax)
+anova(pupil_arousal_findings$arousal_phas_max)
+interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred = arousal_c, modx = valence_c)
+
+interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred =valence_c , modx =  arousal_c)
+
+# Global
+unique(db_full4new_stim_screen_pupil_nopract_nt_304$ssid)
+
+pupil_arousal_findings$BIO_Global.Mean <- lmer(log1p(BIO_Global.Mean+.1) ~ arousal_c * valence_c + (1|ssid)+ (1|stimIAPS),
+                        REML = FALSE,
+                        data = db_full4new_stim_screen_pupil_nopract_nt_304)
+
+# TTP
+table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$BIO_TTP.AmpSum))
+pupil_arousal_findings$BIO_TTP.AmpSum <- lmer(log1p(BIO_TTP.AmpSum+.1) ~ arousal_c * valence_c + (1|ssid)+ (1|stimIAPS),
+                        REML = FALSE,
+                        data = db_full4new_stim_screen_pupil_nopract_nt_304)
+
+summary(pupil_arousal_findings$BIO_TTP.AmpSum)
+
+
+anova(pupil_arousal_findings$arousal_phas_max)
+interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred = arousal_c, modx = valence_c)
+
+interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred =valence_c , modx =  arousal_c)
+
+
+
 # alexithymia
-table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$gsr_response))
+table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$BIO_CDA.PhasicMax))
+interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred = arousal_c, modx = valence_c)
 pupil_arousal_findings$BIO_CDA.ISCR_TAS <- lmer(log(BIO_CDA.AmpSum +.1) ~ arousal_c+
                                              (1|ssid) + (1|stimIAPS),
                         REML = FALSE,
                         data = subset(db_full4new_stim_screen_pupil_nopract_nt_304$gsr_basCor))
 summary(pupil_arousal_findings$BIO_CDA.ISCR_TAS)
+
+# table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304
+
+# collapsed
 ```
 
 
@@ -3763,15 +3806,59 @@ nrow(db_full6new_hr_fix_stim_nt)+ nrow(db_HR_bio_final_346_355_withfix_stim)
 # 6895
 # nrow(bind_rows(db_full6new_hr_fix_stim_nt, db_HR_bio_final_346_355_withfix_stim))
 db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR_fix
+
+colnames(db_HR_bio_final_346_355_withfix_stim)
+as.factor(db_HR_bio_final_346_355_withfix_stim$stimIAPS)
+db_full6new_hr_fix_stim_nt$stimIAPS
+
+db_HR_bio_final_346_355_withfix_stim
+
+as.factor(db_HR_bio_final_346_355_withfix_stim$stim.x)
+as.factor(db_HR_bio_final_346_355_withfix_stim$stim.y)
+db_HR_bio_final_346_355_withfix_stim$stim.y<- NULL
+
+unique(db_HR_bio_final_346_355_withfix_stim$screencontent)
+unique(db_full6new_hr_fix_stim_nt$screencontent)
+unique(db_full6new_hr_fix_stim_nt$screencontent.y)
+
+db_full6new_hr_fix_stim_nt$screencontent.x<- NULL
+db_full6new_hr_fix_stim_nt$screencontent.y<- NULL
+
+unique(db_full6new_hr_fix_stim_nt$trialUnq.x)
+unique(db_full6new_hr_fix_stim_nt$trialUnq.y)
+
+db_full6new_hr_fix_stim_nt$trialUnq<- db_full6new_hr_fix_stim_nt$trialUnq.x
+db_full6new_hr_fix_stim_nt$trialUnq.y<- NULL
+db_full6new_hr_fix_stim_nt$trialUnq.x<- NULL
+
+
+db_HR_bio_final_346_355_withfix_stim$stim<- db_HR_bio_final_346_355_withfix_stim$stim.x
+db_HR_bio_final_346_355_withfix_stim$stim<- db_HR_bio_final_346_355_withfix_stim$stim.x
+
+# bind heartrate old and new
+
 db_full6new_hr_fix_stim_nt1<- bind_rows(db_full6new_hr_fix_stim_nt,
                                         db_HR_bio_final_346_355_withfix_stim)
+
+table(is.na(db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR))
+table(is.na(db_full6new_hr_fix_stim_nt$Bio_Mean_HR))
+
 
 library(dplyr)
 library(tidyverse)
 
+table(is.na(db_full6new_hr_fix_stim_nt1$Bio_Mean_HR))
+
+test<- subset(db_full6new_hr_fix_stim_nt1, is.na(Bio_Mean_HR))
+
+unique(test$ssid)
+# 606 
+
 db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1 %>%
-  group_by(ssid, tNo) %>%
-  arrange(ssid, tNo,screencontent_no)%>%
+  # mutate()
+  group_by(as.numeric(ssid_num), as.numeric(tNo)) %>%
+  arrange(ssid_num, as.numeric(tNo),as.numeric(screencontent_no))%>%
+  # select(ssid, tNo,screencontent_no, Bio_Mean_HR,Bio_Mean_HR_fix)
   fill(Bio_Mean_HR_fix, .direction = "down")%>%
   subset(screencontent_no == 2)
 
@@ -3860,6 +3947,10 @@ db_full6new_hr_fix_stim_nt1%>%
 
 ```{r}
 
+unique(db_full6new_hr_fix_stim_nt1.1$screencontent_no)
+
+test<- subset(db_full6new_hr_fix_stim_nt1.1, is.na(Bio_Mean_HR_dif))
+
 db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif_outl <- if_else(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif)>                                                   (median(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif),na.rm = TRUE) +                                                               (4*(sd(abs(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif), na.rm = TRUE)))), "outlier", "not outlier")
 
 
@@ -3917,6 +4008,12 @@ p$graphstyle
 
 
 db_full6new_hr_fix_stim_nt1$TASc<- scale(db_full6new_hr_fix_stim_nt1$TAS, center = TRUE, scale = TRUE)
+
+
+# model
+
+table(is.na(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif))
+Bio_Mean_HR_dif_outl
 
 hr_bio <- lmer(Bio_Mean_HR_dif ~ TASc * arousal_c + 
                  (1|ssid) + 
