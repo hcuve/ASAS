@@ -2665,6 +2665,8 @@ db_HR_bio2.3.1
 # db_HR_bio2.3.2<-select()
 db_HR_bio_final<- select(db_HR_bio2.3.1, c(1:12))
 
+table(is.na(db_HR_bio_final$Mean_HR))
+
 # db_HR_bio_final<- bind_rows(db_HR_bio2, db_biohrold2test)
 
 View(db_HR_bio_final)
@@ -2711,13 +2713,33 @@ tmp.df4_sum_full_bio1$tNo<-NULL
 unique(tmp.df4_sum_full_bio$screencontent)
 unique(db_HR_bio_final$screen_content)
 
+unique(tmp.df4_sum_full_bio$screen_content)
+
 tmp.df4_sum_full_bio$screen_content<- if_else(tmp.df4_sum_full_bio$screencontent == "ValenceResp", "valence",
                                               if_else(tmp.df4_sum_full_bio$screencontent == "IntResp", "arousal", tmp.df4_sum_full_bio$screencontent))
 
 
-tmp.df4_sum_full_bio_hr <- left_join(tmp.df4_sum_full_bio, db_HR_bio_final, by = c('ssid', 'tNo', 'screen_content'))
+db_HR_bio_final
+
+table(is.na(tmp.df4_sum_full_bio_hr$Mean_HR))
+
+test<- subset(tmp.df4_sum_full_bio_hr, is.na(Mean_HR))
+
+db_HR_bio_final_norest<- subset(db_HR_bio_final, screen_content!= "Rest")
+
+
+unique(tmp.df4_sum_full_bio$tNo)
+
+unique(db_HR_bio_final_norest$tNo)
+
+# remeber to do this otherwise tno will be matchjing wrong data
+db_HR_bio_final_norest$tNo<- db_HR_bio_final_norest$tNo3
+
+tmp.df4_sum_full_bio_hr <- left_join(tmp.df4_sum_full_bio, db_HR_bio_final_norest, by = c('ssid', 'tNo', 'screen_content'))
   
 unique(tmp.df4_sum_full_bio_hr$tNo)
+
+table(is.na(tmp.df4_sum_full_bio_hr$Mean_HR))
 
 ```
 
@@ -2740,6 +2762,8 @@ db_selfrep$ssid <- as.character(db_selfrep$`Participant No`)
 
 tmp.df4_sum_full_bio_hr$ssid <- as.character(tmp.df4_sum_full_bio_hr$ssid)
 
+unique(tmp.df4_sum_full_bio_hr_self$ssid)
+table(is.na(tmp.df4_sum_full_bio_hr_self$Mean_HR))
 tmp.df4_sum_full_bio_hr_self <- left_join(tmp.df4_sum_full_bio_hr, db_selfrep, by = 'ssid')
 
 write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_bio_hr_self_345_356.csv')
