@@ -4201,3 +4201,80 @@ summary(hr_dif_models$hr_dif_ar_vl)
 
 
 ```
+
+
+
+correlaation between the multiple signals
+
+```{r}
+table(is.na(db_full6new_hr_fix_stim_nt1.1$BIO_C))
+db_full6new_hr_fix_stim_nt1.1$pup_basCor
+db_full6new_hr_fix_stim_nt1.1$TTP.nSCR
+db_full6new_hr_fix_stim_nt1.1$CDA.nSCR
+db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif
+
+
+# 
+library(tidyverse)
+library(ggplot2)
+db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1 %>%
+  group_by(ssid)%>%
+  mutate(BIO_CDA.PhasicMax_z = scale(BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(BIO_CDA.SCR_z = scale(BIO_CDA.SCR, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(BIO_CDA.ISCR_z = scale(BIO_CDA.ISCR, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(BIO_TTP.AmpSum_z = scale(BIO_TTP.AmpSum, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(BIO_CDA.AmpSum_z = scale(BIO_CDA.AmpSum, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(Bio_Mean_HR_dif_z = scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1])
+
+car::scatter3d(x = db_full6new_hr_fix_stim_nt1.1$pup_basCor, 
+          y = db_full6new_hr_fix_stim_nt1.1$BIO_CDA.PhasicMax_z, 
+          z = db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif, 
+          fit = "smooth",
+          
+          surface = TRUE,
+          point.col = "blue")
+          # point
+db_full6new_hr_fix_stim_nt1.1%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(BIO_CDA.PhasicMax_z, pup_basCor))+
+  geom_point()+
+  geom_smooth(method = lm, se = F)+
+  ggpubr::stat_cor()
+
+
+db_full6new_hr_fix_stim_nt1.1%>%
+  group_by(ssid)%>%
+  mutate(cor_pup_scr = cor(BIO_CDA.PhasicMax_z, pup_basCor, use = "complete"))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(cor_pup_scr))+
+  geom_histogram()
+
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(BIO_CDA.SCR_z, Bio_Mean_HR_dif_z))+
+  geom_point()+
+  geom_smooth(method = lm, se = F)+
+  ggpubr::stat_cor()
+
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(BIO_CDA.SCR_z, Bio_Mean_HR))+
+  geom_point()+
+  geom_smooth(method = lm, se = F)+
+  ggpubr::stat_cor()
+
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(pup_basCor, Bio_Mean_HR))+
+  geom_point()+
+  # xlim()
+  geom_smooth(method = lm, se = F)+
+  ggpubr::stat_cor()
+```
