@@ -4470,8 +4470,15 @@ clustering<- clustering%>%
 
 
 # aggregate for clustering first
+
+clustering$AlexGroup<- if_else(clustering$TAS> median(clustering$TAS, na.rm = TRUE), "High", "Low")
+
 clustering_agg <- clustering%>%
   group_by(stimIAPS2, stimDescription)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+clustering_agg2 <- clustering%>%
+  group_by(stimIAPS2, stimDescription,AlexGroup)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
 clustering_agg<- clustering_agg%>%
@@ -4482,6 +4489,11 @@ clustering_agg<- clustering_agg%>%
   #  mutate(BIO_CDA.ISCR_z = scale(BIO_CDA.ISCR, center  = TRUE, scale= TRUE))%>%
   # mutate(BIO_TTP.AmpSum_z = scale(BIO_TTP.AmpSum, center  = TRUE, scale= TRUE))%>%
   # mutate(BIO_CDA.SCR_z = scale(BIO_CDA.SCR, center  = TRUE, scale= TRUE))
+
+clustering_agg2<- clustering_agg2%>%
+  ungroup()%>%
+  mutate(Bio_Mean_HR_dif_z = scale(Bio_Mean_HR_dif, center  = TRUE, scale= TRUE))%>%
+  mutate(pup_basCor_z = scale(pup_basCor, center  = TRUE, scale= TRUE))
 
 View(clustering_agg)
 
@@ -4552,6 +4564,8 @@ regular k means on aggregaed data
 # Importing the dataset
 
 clustering_agg<- subset(clustering_agg, !is.na(stimDescription))
+
+clustering_agg$AlexGroup<- if_else(clustering_agg$TAS> median(clustering_agg$TAS, na.rm = TRUE), "High", "Low")
 colnames(clustering_agg)
 clust_dataset = clustering_agg[c(20,24,25)]
 
@@ -4652,3 +4666,123 @@ ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels)) +
 
 summary(pca_res)
 ```
+
+
+Let's do on the unnagregates data
+
+
+```{r}
+colnames(clustering_agg)
+colnames(clustering)
+
+clustering2<- subset(clustering, !is.na(stimDescription))
+
+
+# K-Means Clustering
+
+
+colnames(clustering2)
+clust2_dataset = clustering2[c(24,2,1,7:11,18,19)]
+
+
+# Feature Scaling
+# training_set = scale(training_set)
+# test_set = scale(test_set)
+
+# Using the elbow method to find the optimal number of clusters
+set.seed(6)
+wcss2 = vector()
+View(clust2_dataset)
+clust2_dataset_nona<- na.omit(clust2_dataset)
+
+for (i in 1:10) wcss2[i] = sum(kmeans(clust2_dataset_nona[,c(1:3)], i)$withinss)
+plot(1:10,
+     wcss,
+     type = 'b',
+     main = paste('The Elbow Method'),
+     xlab = 'Number of clusters',
+     ylab = 'WCSS')
+
+# Fitting K-Means to the dataset
+set.seed(29)
+kmeans2 = kmeans(x = clust2_dataset_nona[,c(1:3)], centers = 3)
+y_kmeans2 = kmeans2$cluster
+
+# Visualising the clusters
+# install.packages("cluster")
+library(cluster)
+
+clusplot(clust_dataset,
+         y_kmeans,
+         lines = 0,
+         shade = TRUE,
+         color = TRUE,
+         labels = 2,
+         plotchar = FALSE,
+         span = TRUE,
+         main = paste('Clusters of customers'),
+         xlab = 'Annual Income',
+         ylab = 'Spending Score')
+
+clust2_dataset_nona$y_kmeans2 <- y_kmeans2
+
+clust2_dataset_nona%>%
+  ggplot(aes(as.factor(y_kmeans2), ArousalMean))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')
+
+clust2_dataset_nona%>%
+  ggplot(aes(as.factor(y_kmeans2), ValenceMean))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')
+
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), valence))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), arousal))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+?car::scatter3d
+View(clustering_agg)
+
+clust2_dataset_nona$y_kmeans2<- as.factor(as.character(clust2_dataset_nona$y_kmeans2))
+car::scatter3d(clust2_dataset_nona$log_Bio_CDA.PhasicMax_z, 
+          clust2_dataset_nona$Bio_Mean_HR_dif, 
+          clust2_dataset_nona$pup_basCor,
+          fit = "smooth",
+          # point = FALSE,
+          # ellipsoid = TRUE,
+          surface = FALSE,
+          # groups = clust2_dataset_nona$y_kmeans2,
+          point.col = clust2_dataset_nona$y_kmeans2
+          )
+
+
+# install.packages("scatterplot3d") # Install
+library("scatterplot3d") # load
+
+
+scatterplot3d(clustering_agg[,c(20,24,25)],pch = 16, color = clustering_agg$y_kmeans, type="h")
+text(clustering_agg$stimDescription, labels = clustering_agg$stimDescription,
+     cex= 0.7, col = "steelblue")
+
+
+require(ggplot2)
+data("iris")
+
+pca_res2 <- prcomp(clust2_dataset_nona[,c(1:3)])
+plot_data2 <- cbind(as.data.frame(pca_res2$x[, 1:2]), labels = clust2_dataset_nona$y_kmeans2)
+
+ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels)) +
+  # geom_point()
+  geom_text(aes(label= clust2_dataset_nona$stimDescription))
+
+
+summary(pca_res2)
+```
+
