@@ -4632,6 +4632,9 @@ clustering_agg%>%
 ?car::scatter3d
 View(clustering_agg)
 clustering_agg$y_kmeans<- as.factor(as.character(clustering_agg$y_kmeans))
+
+clustering_agg2$y_kmeans<- as.factor(as.character(clustering_agg2$y_kmeans))
+
 car::scatter3d(clustering_agg$log_Bio_CDA.PhasicMax_z, 
           clustering_agg$Bio_Mean_HR_dif_z, 
           clustering_agg$pup_basCor_z,
@@ -4641,6 +4644,20 @@ car::scatter3d(clustering_agg$log_Bio_CDA.PhasicMax_z,
           surface = FALSE,
           groups = clustering_agg$y_kmeans,
           point.col = clustering_agg$y_kmeans
+          )
+
+
+clustering_agg2$AlexGroup<-as.factor(clustering_agg2$AlexGroup)
+clustering_agg2<- subset(clustering_agg2, !is.na(stimDescription))
+car::scatter3d(clustering_agg2$log_Bio_CDA.PhasicMax_z, 
+          clustering_agg2$Bio_Mean_HR_dif_z, 
+          clustering_agg2$pup_basCor_z,
+          fit = "smooth",
+          # point = FALSE,
+          ellipsoid = TRUE,
+          surface = FALSE,
+          groups = clustering_agg2$AlexGroup
+          # point.col = clustering_agg2$y_kmeans
           )
 
 
