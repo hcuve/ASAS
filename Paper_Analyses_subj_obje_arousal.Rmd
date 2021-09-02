@@ -4475,12 +4475,15 @@ clustering_agg <- clustering%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)
 
 clustering_agg<- clustering_agg%>%
+  ungroup()%>%
   mutate(Bio_Mean_HR_dif_z = scale(Bio_Mean_HR_dif, center  = TRUE, scale= TRUE))%>%
   mutate(pup_basCor_z = scale(pup_basCor, center  = TRUE, scale= TRUE))
   # mutate(BIO_CDA.PhasicMax_z = scale(BIO_CDA.PhasicMax, center  = TRUE, scale= TRUE))%>%
   #  mutate(BIO_CDA.ISCR_z = scale(BIO_CDA.ISCR, center  = TRUE, scale= TRUE))%>%
   # mutate(BIO_TTP.AmpSum_z = scale(BIO_TTP.AmpSum, center  = TRUE, scale= TRUE))%>%
   # mutate(BIO_CDA.SCR_z = scale(BIO_CDA.SCR, center  = TRUE, scale= TRUE))
+
+View(clustering_agg)
 
 write_csv(clustering_agg, "clustering_agg.csv")
 
@@ -4522,7 +4525,7 @@ left_join(clustering_agg_JASP, stomdescr)%>%
 
 
 Kmeans random initialisation trap
-- what happens if we have a bad ramdon inistialisation fior centroids (center of mass)?
+- what happens if we have a bad ramdon initialization fior centroids (center of mass)?
 The selection can ditacte the outcome.
 
 Solution? K-means++ (happens in the background)
@@ -4536,3 +4539,116 @@ steps
 
 Find how the right number of clusters
 - look at the within cluster summ of squares (distance between the point and the centroid) like in regression if numerator sum of sqyares is bigger than error, we tend to have significant results. we want the modelwith the smalles within sum of squares (elbow method) - looks like a screeplot
+
+
+
+note for clustering methods, because the solution is not known we don't typically have crossvalidation, but can asses stability, etc
+
+regular k means on aggregaed data
+
+```{r}
+# K-Means Clustering
+
+# Importing the dataset
+
+clustering_agg<- subset(clustering_agg, !is.na(stimDescription))
+colnames(clustering_agg)
+clust_dataset = clustering_agg[c(20,24,25)]
+
+
+# Feature Scaling
+# training_set = scale(training_set)
+# test_set = scale(test_set)
+
+# Using the elbow method to find the optimal number of clusters
+set.seed(6)
+wcss = vector()
+for (i in 1:10) wcss[i] = sum(kmeans(clust_dataset, i)$withinss)
+plot(1:10,
+     wcss,
+     type = 'b',
+     main = paste('The Elbow Method'),
+     xlab = 'Number of clusters',
+     ylab = 'WCSS')
+
+# Fitting K-Means to the dataset
+set.seed(29)
+kmeans = kmeans(x = clust_dataset, centers = 3)
+y_kmeans = kmeans$cluster
+
+# Visualising the clusters
+# install.packages("cluster")
+library(cluster)
+
+clusplot(clust_dataset,
+         y_kmeans,
+         lines = 0,
+         shade = TRUE,
+         color = TRUE,
+         labels = 2,
+         plotchar = FALSE,
+         span = TRUE,
+         main = paste('Clusters of customers'),
+         xlab = 'Annual Income',
+         ylab = 'Spending Score')
+
+clustering_agg$y_kmeans<- y_kmeans
+
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), ArousalMean))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), ValenceMean))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), valence))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), arousal))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+?car::scatter3d
+View(clustering_agg)
+clustering_agg$y_kmeans<- as.factor(as.character(clustering_agg$y_kmeans))
+car::scatter3d(clustering_agg$log_Bio_CDA.PhasicMax_z, 
+          clustering_agg$Bio_Mean_HR_dif_z, 
+          clustering_agg$pup_basCor_z,
+          fit = "smooth",
+          # point = FALSE,
+          ellipsoid = TRUE,
+          surface = FALSE,
+          groups = clustering_agg$y_kmeans,
+          point.col = clustering_agg$y_kmeans
+          )
+
+
+# install.packages("scatterplot3d") # Install
+library("scatterplot3d") # load
+
+
+scatterplot3d(clustering_agg[,c(20,24,25)],pch = 16, color = clustering_agg$y_kmeans, type="h")
+text(clustering_agg$stimDescription, labels = clustering_agg$stimDescription,
+     cex= 0.7, col = "steelblue")
+
+
+require(ggplot2)
+data("iris")
+
+pca_res <- prcomp(clustering_agg[,c(20,24,25)], center = TRUE, scale. = TRUE)
+plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg$y_kmeans)
+
+ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels)) +
+  geom_point()+
+  geom_text(aes(label= clustering_agg$stimDescription))
+
+
+summary(pca_res)
+```
