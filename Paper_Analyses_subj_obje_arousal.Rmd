@@ -4773,6 +4773,45 @@ cluster_stim<- select(clustering_agg, c(stimIAPS2,y_kmeans, cluster_interpreted,
 ```
 
 
+use the clusters ti fit mixed models
+
+
+```{r}
+View(clustering)
+
+table(is.na(clustering$stimDescription))
+table(is.na(clustering2$stimDescription))
+
+clustering2
+
+clustering3<- left_join(clustering2, cluster_stim)
+
+cluster_lmers<- list()
+clustering3$stimIAPS2<- as.factor(as.character(clustering3$stimIAPS2))
+
+clustering3$ssid<- as.factor(as.character(clustering3$ssid))
+clustering3
+
+library(lmerTest)
+
+clustering3$arousal
+
+cluster_lmers$arousal <- lmer(arousal ~ cluster_interpreted + 
+                               (1 | ssid)+
+                               (1|stimIAPS2),
+                             REML = FALSE,
+                             data = clustering3)
+
+summary(cluster_lmers$arousal)
+
+anova(cluster_lmers$arousal)
+
+emmeans::emmeans(cluster_lmers$arousal, pairwise~cluster_interpreted, ad)
+
+```
+
+
+
 Let's do on the unnagregates data
 
 
