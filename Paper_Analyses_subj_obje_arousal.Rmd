@@ -4594,40 +4594,29 @@ y_kmeans = kmeans$cluster
 # install.packages("cluster")
 library(cluster)
 
+?clusplot
 clusplot(clust_dataset,
          y_kmeans,
-         lines = 0,
+         lines = 2,
          shade = TRUE,
          color = TRUE,
-         labels = 2,
+         labels = 1,
          plotchar = FALSE,
-         span = TRUE,
-         main = paste('Clusters of customers'),
-         xlab = 'Annual Income',
-         ylab = 'Spending Score')
+         span = TRUE
+         # label = 
+         # main = paste('Clusters of customers'),
+         # xlab = 'Annual Income',
+         # ylab = 'Spending Score'
+         )
 
+
+```
+
+a few visualisations
+```{r}
 clustering_agg$y_kmeans<- y_kmeans
 
-clustering_agg%>%
-  ggplot(aes(as.factor(y_kmeans), ArousalMean))+
-  geom_point()+
-  stat_summary(geom = 'pointrange')
 
-clustering_agg%>%
-  ggplot(aes(as.factor(y_kmeans), ValenceMean))+
-  geom_point()+
-  stat_summary(geom = 'pointrange')
-
-clustering_agg%>%
-  ggplot(aes(as.factor(y_kmeans), valence))+
-  geom_point()+
-  stat_summary(geom = 'pointrange')
-
-
-clustering_agg%>%
-  ggplot(aes(as.factor(y_kmeans), arousal))+
-  geom_point()+
-  stat_summary(geom = 'pointrange')
 
 ?car::scatter3d
 View(clustering_agg)
@@ -4671,7 +4660,7 @@ text(clustering_agg$stimDescription, labels = clustering_agg$stimDescription,
 
 
 require(ggplot2)
-data("iris")
+# data("iris")
 
 pca_res <- prcomp(clustering_agg[,c(20,24,25)], center = TRUE, scale. = TRUE)
 plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg$y_kmeans)
@@ -4681,7 +4670,106 @@ ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels)) +
   geom_text(aes(label= clustering_agg$stimDescription))
 
 
+clustering_agg$cluster_interpreted<- ifelse(clustering_agg$y_kmeans == 1, "mixed",
+                                            ifelse(clustering_agg$y_kmeans == 2, "highlyarousing_aitated", "calmish"))
 summary(pca_res)
+
+# tsne plot
+install.packages("tsne")
+library(tsne)
+
+?tsne
+
+# install.packages("Rtsne")
+require(Rtsne)
+# install.packages("M3C")
+# library(M3C)
+tsne(clustering_agg[,c(20,24,25)])
+
+
+# cluster vs ground arousal means
+library(tidyverse)
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), ArousalMean))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')+
+  ggpubr::stat_compare_means()
+
+clustering_agg %>%
+  ggplot(aes(cluster_interpreted, ArousalMean))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')+
+    ggpubr::stat_compare_means()
+
+
+# cluster vs valence ground
+
+# Visualize: Specify the comparisons you want
+my_comparisons <- list( c("1", "2"), c("1", "3"), c("2", "3") )
+my_comparisons <- list( c("mixed", "highlyarousing_aitated"), c("mixed", "calmish"), c("highlyarousing_aitated", "calmish") )
+clustering_agg$cluster_interpreted
+library(ggpubr)
+ggboxplot(clustering_agg, x = "cluster_interpreted", y = "ArousalMean",
+          color = "cluster_interpreted", palette = "jco")+
+  geom_jitter(width = .1, alpha = .2)+
+  stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
+  stat_compare_means(label.y = 9)     # Add global p-value
+
+
+
+clustering_agg %>%
+  ggplot(aes(as.factor(y_kmeans), ValenceMean))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+clustering_agg%>%
+  ggplot(aes(cluster_interpreted, ValenceMean))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')+
+    ggpubr::stat_compare_means()
+
+ggboxplot(clustering_agg, x = "cluster_interpreted", y = "ValenceMean",
+          color = "cluster_interpreted", palette = "jco")+
+  geom_jitter(width = .1, alpha = .2)+
+  stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
+  stat_compare_means(label.y = 9)  
+
+
+
+```
+
+
+```{r}
+
+
+# based ins ample
+clustering_agg %>%
+  ggplot(aes(as.factor(y_kmeans), valence))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+clustering_agg %>%
+  ggplot(aes(cluster_interpreted, valence))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')+
+    ggpubr::stat_compare_means()
+
+
+clustering_agg%>%
+  ggplot(aes(as.factor(y_kmeans), arousal))+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+clustering_agg%>%
+  ggplot(aes(cluster_interpreted, arousal))+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')+
+  ggpubr::stat_compare_means()
+
+cluster_stim<- select(clustering_agg, c(stimIAPS2,y_kmeans, cluster_interpreted, stimDescription))
+
+
+# plot(test)
 ```
 
 
@@ -4729,6 +4817,7 @@ y_kmeans2 = kmeans2$cluster
 # install.packages("cluster")
 library(cluster)
 
+?clusplot
 clusplot(clust_dataset,
          y_kmeans,
          lines = 0,
@@ -4736,10 +4825,11 @@ clusplot(clust_dataset,
          color = TRUE,
          labels = 2,
          plotchar = FALSE,
-         span = TRUE,
-         main = paste('Clusters of customers'),
-         xlab = 'Annual Income',
-         ylab = 'Spending Score')
+         span = TRUE
+         # main = paste('Clusters of customers'),
+         # xlab = 'Annual Income',
+         # ylab = 'Spending Score'
+         )
 
 clust2_dataset_nona$y_kmeans2 <- y_kmeans2
 
