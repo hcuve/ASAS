@@ -4194,7 +4194,8 @@ db_full6new_hr_fix_stim_nt1.1$ssid<- as.factor(as.character(db_full6new_hr_fix_s
 db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1%>%
   ungroup()%>%
   mutate(arousal_c = scale(arousal, center = TRUE, scale = TRUE)[,1],
-         valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])
+         valence_c = scale(valence, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(Bio_Mean_HR_dif_c= scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1])
 
 unique(db_full6new_hr_fix_stim_nt1$Group)
 # test - analyse just positive
@@ -4241,8 +4242,8 @@ summary(hr_dif_models$valfrom_hr)
 
 unique(db_full6new_hr_fix_stim_nt1.1$ssid)
 
-hr_dif_models$valfrom_hr <- lmer(arousal_c ~   Bio_Mean_HR_dif* valence_c+
-                                        + (1 | ssid) + (1|stimIAPS),
+hr_dif_models$valfrom_hr <- lmer(arousal_c ~   Bio_Mean_HR_dif_c* valence_c+
+                                         (1 | ssid) + (1|stimIAPS),
                                         # (1|mediansplit_sample_arousal2),
      REML = FALSE,
      data = subset(db_full6new_hr_fix_stim_nt1.1, 
@@ -4251,9 +4252,20 @@ hr_dif_models$valfrom_hr <- lmer(arousal_c ~   Bio_Mean_HR_dif* valence_c+
 # arousal_c
 summary(hr_dif_models$valfrom_hr)
 
+
+hr_dif_models$valfrom_hr_ar <- lmer(valence_c ~   Bio_Mean_HR_dif_c * arousal_c+
+                                        + (1 | ssid) + (1|stimIAPS),
+                                        # (1|mediansplit_sample_arousal2),
+     REML = FALSE,
+     data = subset(db_full6new_hr_fix_stim_nt1.1, 
+                   # mediansplit_ground_valence == "More positive" &
+                   Bio_Mean_HR_dif_outl == "not outlier"))
+# arousal_c
+summary(hr_dif_models$valfrom_hr_ar)
+
 # arousal * valence
 
-hr_dif_models$hr_dif_ar_vl <- lmer(Bio_Mean_HR_dif~arousal_c   * valence_c+
+hr_dif_models$hr_dif_ar_vl <- lmer(Bio_Mean_HR_dif~arousal_c   + valence_c+
                                         + (1 | ssid)+
                                      (1|stimIAPS),
                                         # (1|mediansplit_sample_arousal2),
@@ -4390,6 +4402,137 @@ inter_bio2<- lmer(log1p(BIO_CDA.PhasicMax+.1)~ Bio_Mean_HR_dif + pup_basCor + (1
 
 summary(inter_bio2)
 
+sjPlot::tab_model(inter_bio2)
+
+table(is.na(db_full6new_hr_fix_stim_nt1.1$BIO_CDA.PhasicMax))
+table(is.na(db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif))
+table(is.na(db_full6new_hr_fix_stim_nt1.1$pup_basCor))
+
+test<- subset(db_full6new_hr_fix_stim_nt1.1, is.na(Bio_Mean_HR_dif))
+test<- subset(db_full6new_hr_fix_stim_nt1.1, is.na(pup_basCor))
+
+```
+
+
 
 # cluster based on bio, pupil angsr_selfrep_matrixthen take these clusters and compare arousal valence
+
+Let's crate some sort of data driven  parceling of the data
+option one, use a clustering algorithm that receives 3 inputs: pupil, heart rate and SCR and spits clusters,
+
+and then we can compare these clusters on ground truth arousal and valence
+- decisions to make: do we average the responses per participant and cluster at a trial level - this ignores individual variability
+- what do we do with teh nested nature of teh data, one participant has multiple trials, if we don't accout for this, the cluster will treat data from different participants the same way.
+
+If create cluster on a ndividual level- then the issue is different participants will end up with different clusters and clusters for one person are not translaable.
+
+
+The PCA type we did in newyork - barycentric?
+
+
+Let's start with an aggregated case, ignore subjects
+
+
+```{r}
+
+clustering<- db_full6new_hr_fix_stim_nt1.1%>%
+  subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
+  select(
+                    c(Bio_Mean_HR_dif, pup_basCor, BIO_CDA.PhasicMax, BIO_CDA.ISCR, BIO_TTP.AmpSum,
+                      BIO_CDA.SCR, arousal, valence, ArousalMean, ValenceMean, stimIAPS, tNo, TAS, AQ, Age,
+                      gender, ssid, stimDescription))
+
+
+clustering$stimIAPS2<- substr(clustering$stimIAPS, 1,4)
+unique(clustering$stimIAPS)
+
+clustering<- subset(clustering, !is.na(stimIAPS2))
+
+unique(clustering$stimIAPS2)
+
+clusterin
+clustering[clustering == "NaN"]<- NA
+
+# create logarithims for SCR
+
+clustering<- clustering%>%
+  mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+   mutate(log_BIO_CDA.ISCR = log1p(BIO_CDA.ISCR+.1))%>%
+  mutate(log_BIO_TTP.AmpSum = log1p(BIO_TTP.AmpSum+.1))%>%
+  mutate(log_BIO_CDA.SCR = log1p(BIO_CDA.SCR+.1))%>%
+  group_by(ssid)%>%
+  # mutate(log_Bio_Mean_HR_dif_z = scale(log_Bio_Mean_HR_dif, center  = TRUE, scale= TRUE))%>%
+  # mutate(pup_basCor_z = scale(pup_basCor, center  = TRUE, scale= TRUE))%>%
+  mutate(log_Bio_CDA.PhasicMax_z = scale(log_BIO_CDA.PhasicMax, center  = TRUE, scale= TRUE))%>%
+  mutate(log_Bio_CDA.ISCR_z = scale(log_BIO_CDA.ISCR, center  = TRUE, scale= TRUE))%>%
+  mutate(log_Bio_TTP.AmpSum_z = scale(log_BIO_TTP.AmpSum, center  = TRUE, scale= TRUE))%>%
+  mutate(log_Bio_CDA.SCR_z = scale(log_BIO_CDA.SCR, center  = TRUE, scale= TRUE))
+
+
+# aggregate for clustering first
+clustering_agg <- clustering%>%
+  group_by(stimIAPS2, stimDescription)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+clustering_agg<- clustering_agg%>%
+  mutate(Bio_Mean_HR_dif_z = scale(Bio_Mean_HR_dif, center  = TRUE, scale= TRUE))%>%
+  mutate(pup_basCor_z = scale(pup_basCor, center  = TRUE, scale= TRUE))
+  # mutate(BIO_CDA.PhasicMax_z = scale(BIO_CDA.PhasicMax, center  = TRUE, scale= TRUE))%>%
+  #  mutate(BIO_CDA.ISCR_z = scale(BIO_CDA.ISCR, center  = TRUE, scale= TRUE))%>%
+  # mutate(BIO_TTP.AmpSum_z = scale(BIO_TTP.AmpSum, center  = TRUE, scale= TRUE))%>%
+  # mutate(BIO_CDA.SCR_z = scale(BIO_CDA.SCR, center  = TRUE, scale= TRUE))
+
+write_csv(clustering_agg, "clustering_agg.csv")
+
+# kmeans clustering
+
 ```
+
+```{r}
+library(readr)
+clustering_agg_JASP <- read_csv("clustering_agg_JASP.csv")
+View(clustering_agg_JASP)
+
+stomdescr<- select(clustering_agg, c(stimIAPS2, stimDescription))
+clustering_agg_JASP$stimIAPS2<- as.character(clustering_agg_JASP$stimIAPS2)
+
+left_join(clustering_agg_JASP, stomdescr)%>%
+  ggplot(aes( arousal, valence, color = as.factor(clusters)))+
+  geom_text(aes(label = stimDescription))+
+  facet_grid(~ as.factor(clusters))
+
+
+
+left_join(clustering_agg_JASP, stomdescr)%>%
+  ggplot(aes( as.factor(clusters), valence))+
+  geom_jitter(width = .2)+
+  stat_summary(geom  = 'pointrange')
+
+
+left_join(clustering_agg_JASP, stomdescr)%>%
+  ggplot(aes( as.factor(clusters), abs(arousal)))+
+  geom_jitter(width = .2)+
+  stat_summary(geom  = 'pointrange')
+
+  geom_text(aes(label = stimDescription))+
+  facet_grid(~ as.factor(clusters))
+
+
+```
+
+
+Kmeans random initialisation trap
+- what happens if we have a bad ramdon inistialisation fior centroids (center of mass)?
+The selection can ditacte the outcome.
+
+Solution? K-means++ (happens in the background)
+
+steps
+1 - choose the number of k clusters
+2 - select k points and random (centroids) don't need to be in the data
+3 - assign each data point the the closest centroid
+4 - compute and lace new centroids for each cluster
+5 - Reassign each data point to the new closest centroid, if any reassignment take place go back to 4 other wise convergence
+
+Find how the right number of clusters
+- look at the within cluster summ of squares (distance between the point and the centroid) like in regression if numerator sum of sqyares is bigger than error, we tend to have significant results. we want the modelwith the smalles within sum of squares (elbow method) - looks like a screeplot
