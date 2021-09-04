@@ -4767,7 +4767,7 @@ clusplot(clust_dataset,
          # ylab = 'Spending Score'
          )
 
-
+test$Distances
 ```
 
 a few visualisations
@@ -4823,9 +4823,16 @@ require(ggplot2)
 pca_res <- prcomp(clustering_agg[,c(20,24,25)], center = TRUE, scale. = TRUE)
 plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg$y_kmeans)
 
-ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels)) +
-  geom_point()+
-  geom_text(aes(label= clustering_agg$stimDescription))
+# plot_data$
+ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels, fill = labels)) +
+  geom_point(size = 2, alpha = .4)+
+  geom_text(aes(label= clustering_agg$stimDescription))+
+  stat_ellipse()+
+  ylab("Componet 2")+
+  xlab("Component 1")+
+  p$graphstyle+
+  theme()
+```
 
 
 clustering_agg$cluster_interpreted<- ifelse(clustering_agg$y_kmeans == 1, "mixed",
