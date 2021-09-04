@@ -405,7 +405,8 @@ table(is.na(db_full4new_stim_screen_pupil_nopract$Group))
 
 table(db_full4new_stim_screen_pupil_nopract$Group)
 
- db_full4new_stim_screen_pupil_nopract %>%
+# unique(db_full4new_stim_screen_pupil_nopract$ssid)
+plots_paper$pupil_correlation <- db_full4new_stim_screen_pupil_nopract %>%
    subset(Group == "NT")%>%
   subset(pupil_outlier == FALSE)%>%
   subset( arousal_outler == FALSE & !is.na(Alexithymia))%>%
@@ -423,11 +424,13 @@ table(db_full4new_stim_screen_pupil_nopract$Group)
           stat_summary(aes(group = ssid), geom = 'line', color = "black", alpha = .1)+
     ylab("R pupil vs self report arousal")+
   theme_classic()+
-  geom_hline(yintercept = .2, linetype = 'dashed', alpha = .2)+
+  geom_hline(yintercept = 0, linetype = 'dashed', alpha = .2)+
    # ggpubr::stat_compare_means(paired = TRUE)+
   ggpubr::stat_compare_means()
-  facet_grid(~mediansplit_sample_arousal2)
+  # facet_grid(~mediansplit_sample_arousal2)
 
+  
+  plots_paper$pupil_correlation+ p$graphstyle
 ```
 
 

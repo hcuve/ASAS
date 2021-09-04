@@ -1,0 +1,478 @@
+---
+title: "Figures"
+author: "Helio"
+date: "04/09/2021"
+output: html_document
+---
+
+interaction plot
+
+```{r}
+sf = 1 # scaling factor to make it easier to change sizes of everything, in which case change here
+
+p$graphstyle_int <-  theme(#base plot theme
+  
+  # axis lines
+  axis.line.y = element_line(color="black", size = 1.5),
+  axis.line.x = element_line(color="black", size = 1,5),
+  
+  axis.title.y=element_text(size = 16*(sf+.5), margin=margin(0,5,0,0)),
+  axis.title.x=element_text(size = 16*(sf+.5), margin=margin(0,5,0,0)),
+  
+  # text
+  strip.text.x = element_text(size = 12*(sf+.5),  colour = "black"),
+  strip.text.y = element_text(size = 12*(sf+.5),  colour = "black"),
+  
+  text=element_text(size = 14, family = "sans"),
+  axis.text.x = element_text(size = 14*(sf+.5), family = "sans", colour = "black",),
+  axis.text.y = element_text(size = 14*(sf+.5), family = "sans", colour = "black"),
+  
+  
+  # panel
+  panel.grid.major = element_blank(),
+  panel.background = element_blank(),
+  # panel.background = element_rect(fill="transparent"),
+  # panel.border = element_rect(fill="transparent"),
+  # strip shades (reco rectagles)
+   # strip.background = element_blank(),
+  
+  # legend
+  legend.position = "top",
+  legend.key = element_rect(colour = "transparent", fill="transparent"),
+  #legend.direction = "horizontal",
+
+  legend.text = element_text(size = 10*(sf+.3)),
+  # legend.title = element_text(size = 10*(sf+.3)),
+  # legend line tends to be really small in print so adjust here
+  legend.key.height = unit(.5, "cm"),
+  legend.key.width = unit(2, "cm"),
+  
+  #legend.text = element_text(size = 10*sf),
+  # legend.title=element_blank(),
+  #legend.text = element_blank(),
+  #axis.ticks = element_blank(),
+)
+
+```
+
+
+Pupil
+- arousalx valence effect
+
+```{r}
+
+plots_paper$interaction_ar_vl <- interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale , pred = arousal_c, modx = valence_c,
+                            line.thickness = 2)
+
+# ?interactions::interact_plot()
+plots_paper$interaction_ar_vl<- plots_paper$interaction_ar_vl +
+  theme_classic()+
+  p$graphstyle_int+
+  xlab("Subjective arousal (z)")+
+  ylab("Pupil change (z)")+
+  scale_y_continuous(breaks = c(-1,0,1))
+
+
+library(interactions)
+
+plots_paper$interaction_ar_vl<- plots_paper$interaction_ar_vl +   scale_y_continuous(breaks = c(-1.5,-1,-.5,0,.5), limits = c(-2,.5))
+
+
+plots_paper$interaction_ar_vl <- plots_paper$interaction_ar_vl +
+   theme_classic()+
+   p$graphstyle_int
+   # change leged title
+   guides(linetype=guide_legend(title="New Legend Title"), fill = guide_legend(title="New Legend Title"))
+   
+plots_paper$interaction_ar_vl 
+
+# plots_paper[["interaction_ar_vl"]][["data"]]%>%
+#   ggplot(aes(arousal_c, pup_basCor, linetype = modx_group))+
+#   stat_summary(aes(fill = modx_group), geom = 'line', size = 2)+
+#   p$graphstyle_int
+
+
+
+```
+
+Illustration to show that pupil tracks arousal better for more positive emotions
+- check how this looks with clusters
+
+
+```{r}
+
+symnum.args <- list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 1), symbols = c("****", "***", "**", "*", "ns"))
+
+db_full4new_stim_screen_pupil_nopract
+plots_paper$pupil_correlation <- db_full4new_stim_screen_pupil_nopract %>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
+   subset(Group == "NT")%>%
+  # subset(pupil_outlier == FALSE)%>%
+  # subset( arousal_outler == FALSE & !is.na(Alexithymia))%>%
+  # subset(!is.na(Alexithymia))%>%
+  # subset(ssid_num<500)%>%
+    # group_by(ssid,Alexithymia, is_valence_high)%>%
+   group_by(ssid, mediansplit_sample_valence2)%>%
+    mutate(cortest = cor(arousal_c, pup_basCor, use = "complete"))%>%
+    summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+        ggplot(aes(mediansplit_sample_valence2, cortest, fill = mediansplit_sample_valence2, 
+                   color = mediansplit_sample_valence2))+
+           geom_bar(aes(linetype = mediansplit_sample_valence2), 
+                    stat="summary", fun.y = "mean", alpha = .3, width = .5, size = 2)+
+    geom_jitter(width = .1, alpha = .1)+
+        stat_summary( geom = 'pointrange', color = "black")+
+          stat_summary(aes(group = ssid), geom = 'line', color = "black", alpha = .3)+
+    ylab("R pupil vs self report arousal")+
+  theme_classic()+
+  geom_hline(yintercept = 0, linetype = 'dashed', alpha = .2)+
+   # ggpubr::stat_compare_means(paired = TRUE)+
+  ggpubr::stat_compare_means(method = 't.test',
+                             symnum.args = symnum.args)+
+   ylab(expression("Pupil vs subjective arousal ("*rho * ")"))+
+   xlab("Subjective valence")
+   
+ plots_paper$pupil_correlation<- plots_paper$pupil_correlation+ p$graphstyle+
+    scale_fill_brewer(palette = "Dark2")+
+     scale_color_brewer(palette = "Dark2")
+
+plots_paper$pupil_correlation
+
+# try with cluster]
+
+db_full4new_stim_screen_pupil_nopract$stimIAPS2<- substring(db_full4new_stim_screen_pupil_nopract$stimIAPS,1,4)
+left_join(db_full4new_stim_screen_pupil_nopract, cluster_stim)%>%
+  subset(!is.na(mediansplit_sample_valence2))%>%
+   subset(Group == "NT")%>%
+  # subset(pupil_outlier == FALSE)%>%
+  # subset( arousal_outler == FALSE & !is.na(Alexithymia))%>%
+  # subset(!is.na(Alexithymia))%>%
+  # subset(ssid_num<500)%>%
+    # group_by(ssid,Alexithymia, is_valence_high)%>%
+   group_by(ssid, cluster_interpreted)%>%
+    mutate(cortest = cor(arousal_c, pup_basCor, use = "complete"))%>%
+    summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+        ggplot(aes(cluster_interpreted, cortest, fill = cluster_interpreted, 
+                   color = cluster_interpreted))+
+           geom_bar(aes(linetype = cluster_interpreted), 
+                    stat="summary", fun.y = "mean", alpha = .4, width = .5, size = 2)+
+    geom_jitter(width = .1, alpha = .1)+
+        stat_summary( geom = 'pointrange')+
+          stat_summary(aes(group = ssid), geom = 'line', color = "black", alpha = .1)+
+    ylab("R pupil vs self report arousal")+
+  theme_classic()+
+  geom_hline(yintercept = 0, linetype = 'dashed', alpha = .2)+
+   # ggpubr::stat_compare_means(paired = TRUE)+
+  ggpubr::stat_compare_means(method = 't.test',
+                             symnum.args = symnum.args)+
+   ylab("R - pupil vs subjective arousal")+
+   xlab("Subjective valence")
+   
+```
+
+
+
+<!-- timecourse of pupil based on self reports -->
+
+```{r}
+# left_join(tmp.df4_full_stim_downs_jun2021_60bins_no_na, cluster_stim)%>%
+# tmp.df4_full_stim_downs_jun2021_60bins %>%
+
+
+tmp.df4_full_stim_downs_jun2021_60bins_no_na%>%
+  ungroup()%>%
+  mutate(mediansplit_ground_valence = if_else(ValenceMean >=
+                                                  median(ValenceMean,
+                                                         na.rm = TRUE), "More positive", "More negative"))%>%
+  mutate(mediansplit_ground_arousal = if_else(ArousalMean >=
+                                                  median(ArousalMean,
+                                                         na.rm = TRUE), "High", "Low"))%>%
+    mutate(mediansplit_sample_valence2 = if_else(valence >=
+                                                  median(valence,
+                                                         na.rm = TRUE), "More positive", "More negative"))%>%
+  mutate(mediansplit_sample_arousal2 = if_else(arousal >=
+                                                  median(arousal,
+                                                         na.rm = TRUE), "High", "Low"))
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins_no_na$ssid)
+
+tmp.df4_full_stim_downs_jun2021_60bins_no_na%>%
+  subset(Group == "NT")%>%
+  ggplot(aes(x = timerezero3, y = pup_basCor,
+             color = mediansplit_sample_arousal2, 
+             linetype = mediansplit_sample_valence2))+
+  geom_smooth()+
+  # stat_smooth(size=1.5, method = "loess", level = 0.95, 
+  #   fullrange = TRUE) + 
+  # stat_smooth(aes(group=mediansplit_ground_arousal, color = mediansplit_ground_arousal), size = 3)+  
+theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  # p$graphstyle+
+  scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)
+   # labs(color  = "mediansplit_ground_arousal", linetype = "mediansplit_ground_valence")
+
+
+tmp.df4_full_stim_downs_jun2021_60bins_no_na<- tmp.df4_full_stim_downs_jun2021_60bins_no_na%>%
+group_by(ssid) %>%
+  mutate(pp_arousal_outler = if_else(arousal > (median(arousal, na.rm = TRUE) + 
+                                               (4*mad(arousal, na.rm = TRUE))), TRUE,
+         if_else(arousal < (median(arousal, na.rm = TRUE) - 
+                              (4*mad(arousal, na.rm = TRUE))), TRUE, FALSE)))%>%
+   mutate(pupil_outlier = if_else(pup_basCor > (median(pup_basCor, na.rm = TRUE) 
+                                                + (3*mad(pup_basCor, na.rm = TRUE))), TRUE,
+         if_else(pup_basCor < (median(pup_basCor, na.rm = TRUE) - 
+                                 (3*mad(pup_basCor, na.rm = TRUE))), TRUE, FALSE)))
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins_no_na$mediansplit_sample_arousal2)
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins_no_na$mediansplit_sample_arousal2))
+
+table(is.na(tmp.df4_full_stim_downs_jun2021_60bins_no_na$mediansplit_sample_valence2))
+
+
+tmp.df4_full_stim_downs_jun2021_60bins_no_na$Arpisal_newlab<- if_else(tmp.df4_full_stim_downs_jun2021_60bins_no_na$mediansplit_sample_arousal2 == "High", "Agitated", "Calm")
+
+plots_paper$pupil_course<- tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
+  subset(is.na(mediansplit_sample_arousal2) == FALSE)%>%
+  subset(Group == "NT")%>%
+  subset(pp_arousal_outler == FALSE)%>%
+  subset(pupil_outlier == FALSE)%>%
+  
+  ggplot(aes(x = timerezero3, y = pup_basCor, color = Arpisal_newlab, linetype = mediansplit_sample_valence2)) +
+  # aes(group = ssid),
+  geom_smooth()+
+  # stat_smooth(size=1.5, method = "loess", level = 0.95, 
+  #   fullrange = TRUE) + 
+  # stat_smooth(aes(group=mediansplit_ground_arousal, color = mediansplit_ground_arousal), size = 3)+  
+# theme_classic()+
+  ylab("Pupil size (z)")+
+  xlab("Time (s)")+
+  p$graphstyle+
+   # scale_color_brewer(palette = "Dark2")+
+  xlim(0,6)+
+   labs(color  = "Subjective valence", linetype = "Subjective arousal")
+  
+plots_paper$pupil_course<- plots_paper$pupil_course+
+    guides(color=guide_legend(nrow=2, byrow=TRUE))
+  
+plots_paper$pupil_course
+#   
+#   tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
+#   subset(is.na(mediansplit_sample_arousal2) == FALSE)%>%
+#   subset(Group == "NT")%>%
+#   subset(pp_arousal_outler == FALSE)%>%
+#   subset(pupil_outlier == FALSE)%>%
+#   
+#   ggplot(aes(x = timerezero3, y = pup_basCor, color = mediansplit_ground_arousal, linetype = mediansplit_ground_valence)) +
+#   # aes(group = ssid),
+#   geom_smooth(se = F)+
+#   # stat_smooth(size=1.5, method = "loess", level = 0.95, 
+#   #   fullrange = TRUE) + 
+#   # stat_smooth(aes(group=mediansplit_ground_arousal, color = mediansplit_ground_arousal), size = 3)+  
+# # theme_classic()+
+#   ylab("Pupil size (z)")+
+#   xlab("Time (s)")+
+#   # p$graphstyle+
+#   # scale_color_brewer(palette = "Dark2")+
+#   xlim(0,6)
+#   facet_grid(mediansplit_sample_arousal2~mediansplit_)
+#    
+#   
+#   
+#     tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
+#   subset(is.na(mediansplit_sample_arousal2) == FALSE)%>%
+#   subset(Group == "NT")%>%
+#   subset(pp_arousal_outler == FALSE)%>%
+#   subset(pupil_outlier == FALSE)%>%
+#   
+#   ggplot(aes(x = timerezero3, y = pup_basCor, color = mediansplit_sample_arousal2, linetype = mediansplit_ground_valence)) +
+#   # aes(group = ssid),
+#   geom_smooth(se = F)+
+#   # stat_smooth(size=1.5, method = "loess", level = 0.95, 
+#   #   fullrange = TRUE) + 
+#   # stat_smooth(aes(group=mediansplit_ground_arousal, color = mediansplit_ground_arousal), size = 3)+  
+# # theme_classic()+
+#   ylab("Pupil size (z)")+
+#   xlab("Time (s)")+
+#   # p$graphstyle+
+#   # scale_color_brewer(palette = "Dark2")+
+#   xlim(0,6)
+#   facet_grid(mediansplit_sample_arousal2~mediansplit_)
+   
+```
+
+
+
+timecourse stats plots
+```{r}
+require(RColorBrewer) # make color friendly plots
+require(tidyverse)
+
+brewer.pal(4, "Dark2") # gives the exact names of pallets
+  # "#1B9E77" "#D95F02" "#7570B3" "#E7298A"
+  # timecourse_60bin_result_df$
+  # Estimate_ar, Estimate_ar_vl,Estimate_br. Estimate_v
+  
+plots_timecourse <- list()
+
+#  let's use the order arousal, valence, arousal x valence brightness
+View(timecourse_60bin_result_df)
+
+plots_timecourse$eff_size_pup_amp <-   timecourse_60bin_result_df[1:56,] %>% 
+  select("timebins","Estimate_ar", "Estimate_vl", "Estimate_br", "Estimate_ar_vl") %>% 
+  pivot_longer(-timebins, names_to = "variable", values_to = "Estimate")%>%
+    subset(!is.na(Estimate))%>%
+  #change the order of the coloring variable here and the name of legends
+  mutate(variable = factor(variable, c("Estimate_ar", "Estimate_vl","Estimate_ar_vl",  "Estimate_br"), labels = c("arousal", "valence", "arousal x valence", "brightness")))%>%
+  ggplot(aes(timebins, Estimate, group = variable, color= variable))+
+  geom_line(aes(linetype = variable), size = 1)+
+  
+  scale_color_brewer(palette = "Dark2")+
+    # scale_color_manual(values=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"))+
+  # use hom correction for significance
+  
+    # brighteness
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_br_adj_TRUE == TRUE]
+  
+    annotate(geom = 'rect', # use annotate instead of geom_rect, as it is more flexible
+             xmin = .16, # got these values from the data-frame. need to fidn a way to automate this
+                xmax = 6,
+                ymin = -2.03+(sf*.3), # if I ever need to change this, use the scaling factor sf
+                ymax = -2+.1+.01+(sf*.3),
+                fill =  "#E7298A" , alpha = .5)+ 
+    
+      annotate("text", 
+                x = (1+5.4)/2,
+                y = ((-2) +(-2+.1))/2+(sf*.3),
+                label = "brightness") +
+    
+    # arousal
+  
+    # timecourse_60bin_result_df$p_ar_adj
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_adj_TRUE == TRUE]
+     annotate(geom = 'rect', xmin = 1,
+                xmax = 6,
+                ymin = -2.03+.1+.1+.1+.1+(sf*.3),
+                ymax = -2+.1+.1+.1+.1+.1+.01+(sf*.3),
+                fill = "#1B9E77", alpha = .5)+
+        annotate("text", 
+                  x = (1+5.4)/2,
+                y = ((-2+.1+.1+.1+.1) +(-2+.1+.1+.1+.1+.1))/2+(sf*.3),
+                 label = "arousal") +
+
+    # arousal-valence
+   # timecourse_60bin_result_df$p_ar_vl_adj
+    # timecourse_60bin_result_df$timebins[timecourse_60bin_result_df$p_ar_vl_adj_TRUE == TRUE]
+       annotate(geom = 'rect', 
+                xmin = 1,
+                xmax = 3.30,
+                ymin = -2.03+.1+.1+(sf*.3),
+                ymax = -2+.1+.1+.1+.01+(sf*.3),
+                
+                fill ="#7570B3", alpha = .5, label = "text")+
+    annotate("text", 
+                x = (1+3.30)/2,
+                y = ((-2+.1+.1) +(-2+.1+.1+.1))/2+(sf*.3),
+                label = "arousal x valence") +
+        xlab("Time (s)")+
+    ylab("Effect size")+
+    xlab("Time (s)")+
+    ylab("Effect size")+
+  xlim(0,6)
+
+plots_timecourse$eff_size_pup_amp 
+# need to rename the label legends
+
+
+# Edit legend title and labels
+plots_timecourse$eff_size_pup_amp <- plots_timecourse$eff_size_pup_amp + 
+  p$graphstyle +
+    guides(colour = guide_legend(override.aes = list(size=2)))+ #the line size of the legend tends to be smaller in print
+  scale_x_continuous(limits = c(0,6), breaks = c(0,2,4,6))+
+  scale_y_continuous(limits = c(-2,.7), breaks = c(-1, -0.5, 0,0.5))
+  
+
+
+plots_timecourse$eff_size_pup_amp<- plots_timecourse$eff_size_pup_amp+
+  guides(color=guide_legend(nrow=2,byrow=TRUE))
+# plots_timecourse$eff_size_pup_velocity
+plots_timecourse$eff_size_pup_amp
+```
+SCR and heart rate
+```{r}
+plots_paper$interaction_SCR<-
+  
+interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred = arousal_c, modx = valence_c,line.thickness = 2)
+
+plots_paper$interaction_SCR
+
+plots_paper$interaction_SCR <- plots_paper$interaction_SCR +   scale_y_continuous(breaks = c(.4,.45, .5, .55), limits = c(.4,.58))
+
+
+plots_paper$interaction_SCR
+
+
+plots_paper$interaction_SCR<- plots_paper$interaction_SCR +
+# plots_paper$interaction_ar_vl +
+  theme_classic()+
+  p$graphstyle_int+
+  xlab("Subjective arousal (z)")+
+  ylab("Phasic SCR (log)")
+  
+# scale_y_continuous(breaks = c(-1,0,1))
+
+  plots_paper$interaction_SCR+
+    
+
+```
+
+
+
+```{r}
+  install.packages("expression")
+
+plots_paper$bio_HR <- 
+db_full6new_hr_fix_stim_nt1.11%>%
+    subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+    group_by(stimIAPS)%>%
+    mutate(mean_hr_dif = mean(Bio_Mean_HR_dif, na.rm = TRUE))%>%
+    ggplot(aes(valence_c, mean_hr_dif))+
+    # geom_point()+
+    geom_smooth(method = 'lm', se = F)+
+    stat_summary(aes(y = Bio_Mean_HR_dif),geom = 'pointrange')+
+  
+  xlab("Subjective valence (z)")+
+  ylab(expression(Delta*" heart rate (bpm)"))
+    p$graphstyle+ylim(-4,1)
+  # ggpubr::stat_cor()
+
+plots_paper$bio_HR
+  # scale_y_continuous(breaks = c(-4,-3,-2,1))
+  
+
+```
+
+
+
+pacthwork
+
+```{r}
+library(patchwork)
+
+plot_patch1<-
+(plots_paper$interaction_ar_vl +
+plots_paper$pupil_correlation +
+plots_paper$pupil_course +
+plots_timecourse$eff_size_pup_amp+
+  plots_paper$interaction_SCR+
+  plots_paper$bio_HR)+
+  plot_layout(nrow = 3)+
+  plot_annotation(tag_levels = "A")
+  
+plot_patch1
+
+ggsave("patch_plot1.png", plot_patch1, device = "png", width = 15,height = 15, dpi = 800)
+ggsave("patch_plot1.tiff", plot_patch1, device = "tiff", width = 15,height = 15, dpi = 800)
+```
+
