@@ -522,25 +522,55 @@ p$graphstyle_tsne <-  theme(#base plot theme
   #legend.text = element_blank(),
   #axis.ticks = element_blank(),
 )
+?stat_ellipse
 
-pca_res <- prcomp(clustering_agg[,c(20,24,25)], center = TRUE, scale. = TRUE)
-plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg$y_kmeans)
-stat_el
+
+clustering_agg
+clustering_agg$cluster_interpreted<- NULL
+clustering_agg$AlexGroup<-NULL
+clustering_agg$y_kmeans<-NULL
+
+clustering_agg_JASPtest$stimIAPS2<- as.character(clustering_agg_JASPtest$stimIAPS2)
+clust_stim2<- select(clustering_agg_JASPtest, c(stimIAPS2,clusters, stimDescription))
+
+test<- left_join(clustering_agg,clust_stim2)
+
+colnames(clustering_agg_JASPtest)
+clustering_agg_JASPtest<- subset(clustering_agg_JASPtest, !is.na(clustering_agg_JASPtest$clusters))
+pca_res <- prcomp(clustering_agg_JASPtest[,c(24,23,19)], center = TRUE, scale. = FALSE)
+plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg_JASPtest$clusters)
+plot_data$labels<- factor(plot_data$labels)
+# stat_el
 # plot_data$
-plots_paper$PCA_clust <- ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels, fill = labels)) +
-  geom_point(size = 2, alpha = .6)+
-  geom_text(aes(label= clustering_agg$stimDescription), alpha = .4)+
-  stat_ellipse(aes(fill = labels))+
+plots_paper$PCA_clust 
+
+
+plot_data%>%
+  subset(!is.na(labels))%>%
+   # subset(!is.na(cluster))%>%
+  ggplot( aes(x = PC1, y = PC2, colour = labels)) +
+  geom_point(size = 1, alpha = .8)+
+  # geom_text(aes(label= test$stimDescription), alpha = .7, size = 5)+
+  # stat_ellipse()+
+  # stat_ellipse(aes(x = PC1,y=PC2,
+  #                  lty=labels,
+  #                  fill=labels, 
+  #                  color=labels),
+  #   geom="polygon",
+  #   alpha=0.2, 
+  #   size = 1.5)+
+  # scale_fill_manual(values=c("red","green","blue"))+
+    # scale_color_manual(values=c("red","green","blue"))+
+  # scale_linetype_manual(values=c(1,2,3))+
   ylab("Componet 2")+
   xlab("Component 1")+
-  p$graphstyle+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
+  p$graphstyle +
   
-theme(axis.text.y   = element_text(size=14),
-        axis.text.x   = element_text(size=14),
-        axis.title.y  = element_text(size=14),
-        axis.title.x  = element_text(size=14),
+theme(
+  # axis.text.y   = element_text(size=14),
+        # axis.text.x   = element_text(size=14),
+        # axis.title.y  = element_text(size=14),
+        # axis.title.x  = element_text(size=14),
         panel.background = element_blank(),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -548,6 +578,60 @@ theme(axis.text.y   = element_text(size=14),
         panel.border = element_rect(colour = "black", fill=NA, size=3)
   )
 
+plots_paper$PCA_clust
 ggsave("PCA_clust.tiff", plots_paper$PCA_clust , device = "tiff", width = 10, height = 7, dpi = 800)
 
+```
+
+```{r}
+
+clust_stim2
+clustering_new <- left_join(clustering, clust_stim2, by = c("stimIAPS2", "stimDescription"))
+
+clustering_new$Cluster<- clustering_new$clusters
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins_no_na1$ssid)
+clustering_new %>%
+  subset(!is.na(Cluster))%>%
+  # subset(ssid_num>303)%>%^
+  group_by(ssid, Cluster)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # mutate(arousal2 = abs(arousal))%>%
+  subset(arousal> -9)%>%
+  ggboxplot(x = "Cluster", y = "arousal",
+          color = "Cluster")+
+  geom_jitter(width = .1, alpha = .2)+
+    stat_summary(aes(group =ssid), geom =  'line', alpha = .2, size = .1)+
+  xlab("Cluster")+
+  ylab("Subjective arousal \n (calm - agitated)")+
+  p$graphstyle+ theme(legend.position = "none")
+  # stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
+  # stat_compare_means(label.y = 9)
+plots_paper$arousal_clust
+# valence cluster
+
+plots_paper$valence_clust<- tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
+  group_by(ssid, Cluster)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  mutate(arousal2 = abs(arousal))%>%
+  subset(arousal> -9)%>%
+  ggboxplot(x = "Cluster", y = "valence",
+          color = "Cluster")+
+  geom_jitter(width = .1, alpha = .2)+
+    stat_summary(aes(group =ssid), geom =  'line', alpha = .2, size = .1)+
+  xlab("Cluster")+
+  ylab("Subjective valence \n (negative - positive)")+
+  p$graphstyle+ theme(legend.position = "none")
+  # stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
+  # stat_compare_means(label.y = 9)
+
+plots_paper$valence_clust
+
+clust_subjective<- plots_paper$valence_clust+plots_paper$arousal_clust+
+  plot_layout(ncol = 2)+plot_annotation(tag_levels = "A")
+
+
+clust_subjective
+
+ggsave("clust_subjective.tiff", clust_subjective, device = "tiff", width = 10, height = 5, dpi = 800)
 ```

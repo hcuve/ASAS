@@ -4725,7 +4725,7 @@ clustering_agg<- subset(clustering_agg, !is.na(stimDescription))
 
 clustering_agg$AlexGroup<- if_else(clustering_agg$TAS> median(clustering_agg$TAS, na.rm = TRUE), "High", "Low")
 colnames(clustering_agg)
-clust_dataset = clustering_agg[c(20,24,25)]
+clust_dataset = clustering_agg[c(25,24,20)]
 
 
 # Feature Scaling
@@ -4733,7 +4733,7 @@ clust_dataset = clustering_agg[c(20,24,25)]
 # test_set = scale(test_set)
 
 # Using the elbow method to find the optimal number of clusters
-set.seed(6)
+set.seed(1)
 wcss = vector()
 for (i in 1:10) wcss[i] = sum(kmeans(clust_dataset, i)$withinss)
 plot(1:10,
@@ -4744,7 +4744,7 @@ plot(1:10,
      ylab = 'WCSS')
 
 # Fitting K-Means to the dataset
-set.seed(29)
+set.seed(1)
 kmeans = kmeans(x = clust_dataset, centers = 3)
 y_kmeans = kmeans$cluster
 
@@ -4753,6 +4753,9 @@ y_kmeans = kmeans$cluster
 library(cluster)
 
 ?clusplot
+
+clust_dataset
+y_kmeans
 clusplot(clust_dataset,
          y_kmeans,
          lines = 2,
@@ -4820,18 +4823,35 @@ text(clustering_agg$stimDescription, labels = clustering_agg$stimDescription,
 require(ggplot2)
 # data("iris")
 
-pca_res <- prcomp(clustering_agg[,c(20,24,25)], center = TRUE, scale. = TRUE)
+clust_dataset
+
+clustering_agg%>%
+  subset(y_kmeans == 3)%>%
+  select(c(stimDescription))
+
+clustering_agg_JASPtest%>%
+   subset(clusters == 3)%>%
+  select(c(stimDescription))
+
+clustering_agg_bonkers <- subset(clustering_agg, stimIAPS2 != "9926")
+
+pca_res <- prcomp(clustering_agg_bonkers[1:55,c(25,24,20)], center = TRUE, scale. = TRUE)
+pca_res <- prcomp(clustering_agg_JASPtest[,c(24,23,19)], center = TRUE, scale. = FALSE)
 plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg$y_kmeans)
 
 # plot_data$
 ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels, fill = labels)) +
   geom_point(size = 2, alpha = .4)+
-  geom_text(aes(label= clustering_agg$stimDescription))+
-  stat_ellipse()+
+  # geom_text(aes(label= clustering_agg$stimDescription))+
+  stat_ellipse(show.legend = TRUE)+
   ylab("Componet 2")+
   xlab("Component 1")+
+  # scale_color_manual(values = c("red", "green", "blue"))+
   p$graphstyle+
   theme()
+
+?scale_color_manual
+scale_color_brewer(breaks=c("1","5","10","50","100"), palette = "Set1")
 ```
 
 
@@ -4902,7 +4922,7 @@ ggboxplot(clustering_agg, x = "cluster_interpreted", y = "ValenceMean",
 
 
 
-tmp.df4_full_stim_downs_jun2021_60bins_no_na%>%
+tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
   group_by(ssid, cluster_interpreted)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
   mutate(arousal2 = abs(arousal))%>%
@@ -4915,6 +4935,8 @@ tmp.df4_full_stim_downs_jun2021_60bins_no_na%>%
   stat_compare_means(label.y = 9) 
 
 options(scipen = 999)
+
+```{r}
 tmp.df4_full_stim_downs_jun2021_60bins_no_na%>%
   group_by(ssid, cluster_interpreted)%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
@@ -4980,36 +5002,79 @@ clustering2
 clustering3<- left_join(clustering2, cluster_stim)
 
 cluster_lmers<- list()
-clustering3$stimIAPS2<- as.factor(as.character(clustering3$stimIAPS2))
+clustering_new$stimIAPS2<- as.factor(as.character(clustering_new$stimIAPS2))
 
-clustering3$ssid<- as.factor(as.character(clustering3$ssid))
+clustering_new$ssid<- as.factor(as.character(clustering_new$ssid))
 clustering3
 
 library(lmerTest)
 
 clustering3$arousal
-
-cluster_lmers$arousal <- lmer(arousal ~ cluster_interpreted + 
+clustering_new$Cluster<- as.factor(clustering_new$Cluster)
+cluster_lmers$arousal <- lmer(arousal ~ Cluster + 
                                (1 | ssid)+
                                (1|stimIAPS2),
                              REML = FALSE,
-                             data = clustering3)
+                             data = clustering_new)
 
 summary(cluster_lmers$arousal)
 
 anova(cluster_lmers$arousal)
 
-emmeans::emmeans(cluster_lmers$arousal, pairwise~cluster_interpreted)
+emmeans::emmeans(cluster_lmers$arousal, pairwise~Cluster)
 
 # valence
-cluster_lmers$valence <- lmer(valence ~ cluster_interpreted + 
+cluster_lmers$valence <- lmer(valence ~ Cluster + 
+                               (1 | ssid)+
+                               (1|stimIAPS2),
+                             REML = FALSE,
+                             data = clustering_new)
+
+summary(cluster_lmers$valence)
+emmeans::emmeans(cluster_lmers$valence, pairwise~Cluster)
+
+
+cluster_lmers$pup_clust <- lmer(pup_basCor ~ cluster_interpreted + 
                                (1 | ssid)+
                                (1|stimIAPS2),
                              REML = FALSE,
                              data = clustering3)
+                             
+cluster_lmers$pup_clust1 <- lmer(pup_basCor ~ y_kmeans + 
+                               (1 | ssid)+
+                               (1|stimIAPS2),
+                             REML = FALSE,
+                             data = clustering3)
+                             
+summary(cluster_lmers$pup_clust1)
 
-summary(cluster_lmers$valence)
-emmeans::emmeans(cluster_lmers$valence, pairwise~cluster_interpreted)
+emmeans::emmeans(cluster_lmers$pup_clust1, pairwise~y_kmeans, adjust = "bonf")
+
+
+table(is.na(clustering3$Bio_Mean_HR_dif))
+cluster_lmers$hrdif_clust2 <- lmer(Bio_Mean_HR_dif ~ y_kmeans + 
+                               (1 | ssid),
+                               # <!-- (1|stimIAPS2), -->
+                             REML = FALSE,
+                             data = clustering3)
+                             
+                             summary(cluster_lmers$pup_clust1)
+
+emmeans::emmeans(cluster_lmers$hrdif_clust2, pairwise~y_kmeans, adjust = "bonf")
+summary(cluster_lmers$hrdif_clust2)
+
+
+cluster_lmers$scr_clust2 <- lmer(log_BIO_CDA.PhasicMax ~ y_kmeans + 
+                               (1 | ssid)+
+                               (1|stimIAPS),
+                             REML = FALSE,
+                             data = clustering3)
+                             
+                             summary(cluster_lmers$scr_clust2)
+
+emmeans::emmeans(cluster_lmers$scr_clust2, pairwise~y_kmeans, adjust = "bonf")
+summary(cluster_lmers$hrdif_clust2)
+
 
 ```
 
