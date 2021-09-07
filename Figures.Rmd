@@ -7,6 +7,8 @@ output: html_document
 
 interaction plot
 
+https://uc-r.github.io/kmeans_clustering
+
 ```{r}
 sf = 1 # scaling factor to make it easier to change sizes of everything, in which case change here
 
@@ -537,7 +539,7 @@ test<- left_join(clustering_agg,clust_stim2)
 
 colnames(clustering_agg_JASPtest)
 clustering_agg_JASPtest<- subset(clustering_agg_JASPtest, !is.na(clustering_agg_JASPtest$clusters))
-pca_res <- prcomp(clustering_agg_JASPtest[,c(24,23,19)], center = TRUE, scale. = FALSE)
+pca_res <- prcomp(clustering_agg_JASPtest[,c(24,23,19)], center = TRUE, scale. = TRUE)
 plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg_JASPtest$clusters)
 plot_data$labels<- factor(plot_data$labels)
 # stat_el
@@ -551,13 +553,13 @@ plot_data%>%
   ggplot( aes(x = PC1, y = PC2, colour = labels)) +
   geom_point(size = 1, alpha = .8)+
   # geom_text(aes(label= test$stimDescription), alpha = .7, size = 5)+
-  # stat_ellipse()+
+  stat_ellipse()+
   # stat_ellipse(aes(x = PC1,y=PC2,
   #                  lty=labels,
-  #                  fill=labels, 
+  #                  fill=labels,
   #                  color=labels),
   #   geom="polygon",
-  #   alpha=0.2, 
+  #   alpha=0.2,
   #   size = 1.5)+
   # scale_fill_manual(values=c("red","green","blue"))+
     # scale_color_manual(values=c("red","green","blue"))+
@@ -591,7 +593,7 @@ clustering_new <- left_join(clustering, clust_stim2, by = c("stimIAPS2", "stimDe
 clustering_new$Cluster<- clustering_new$clusters
 
 unique(tmp.df4_full_stim_downs_jun2021_60bins_no_na1$ssid)
-clustering_new %>%
+plots_paper$arousal_clust<- clustering_new %>%
   subset(!is.na(Cluster))%>%
   # subset(ssid_num>303)%>%^
   group_by(ssid, Cluster)%>%
@@ -610,8 +612,10 @@ clustering_new %>%
 plots_paper$arousal_clust
 # valence cluster
 
-plots_paper$valence_clust<- tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
+plots_paper$valence_clust<- clustering_new %>%
+  subset(!is.na(Cluster))%>%
   group_by(ssid, Cluster)%>%
+  
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
   mutate(arousal2 = abs(arousal))%>%
   subset(arousal> -9)%>%
@@ -634,4 +638,252 @@ clust_subjective<- plots_paper$valence_clust+plots_paper$arousal_clust+
 clust_subjective
 
 ggsave("clust_subjective.tiff", clust_subjective, device = "tiff", width = 10, height = 5, dpi = 800)
+```
+
+
+
+```{r}
+tsne::tsne()
+
+```
+
+Phasic responses reveal limited cross correlations across physiological signals
+```{r}
+
+correlation_plot<- db_full6new_hr_fix_stim_nt1.1 %>%
+  mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+  subset(ssid!= "347")%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  group_by(ssid)%>%
+  mutate(Bio_Mean_HR_dif = scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1],
+         pup_basCor = scale(pup_basCor, center = TRUE, scale = TRUE)[,1],
+         log_BIO_CDA.PhasicMax = scale(log_BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(ssid, mediansplit_ground_valence)%>%
+  mutate(cor_hr_pup = cor(Bio_Mean_HR_dif, pup_basCor, use = "complete"))%>%
+  mutate(cor_hr_scr = cor(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  mutate(cor_pup_scr = cor(pup_basCor, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  select(c(ssid, mediansplit_ground_valence,cor_hr_pup, cor_hr_scr, cor_pup_scr))%>%
+  gather(key, value, -ssid,-mediansplit_ground_valence)%>%
+  group_by(ssid,mediansplit_ground_valence, key, value)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(key, value, color = key))+
+  geom_hline(yintercept = 0, size = 1.5, linetype = "dashed", alpha = .5)+
+  geom_line(aes(group = ssid), se = F, color = "black", alpha = .2)+
+  geom_jitter(width = .1, alpha = .5)+
+  
+  stat_summary(geom = 'pointrange', color = "black")+
+    facet_grid(~mediansplit_ground_valence)+
+  
+  p$graphstyle+
+  ylab("Correlation")+
+  scale_x_discrete(
+        labels=c("HR vs. Pupil", "HR vs. SCR", "Pupil vs. SCR"))+
+  theme(axis.title.x = element_blank(), axis.text.x = element_text( 
+                           size=14, angle=45), legend.position = "none")+
+  scale_color_brewer(palette = "Dark2")
+  # ggpubr::ggviolin(aes(x = "key", y = "value"))
+  
+  # subset(db_full6new_hr_fix_stim_nt1.1, Bio_Mean_HR_dif )
+  
+  correlation_plot
+  
+  db_full6new_hr_fix_stim_nt1.1
+  
+  ?cut
+  db_full6new_hr_fix_stim_nt1.1$valeence_groun_3cat<- cut(db_full6new_hr_fix_stim_nt1.1$ValenceMean, breaks = 3, labels = c("negative", "mid", "positive"))
+  
+  db_full6new_hr_fix_stim_nt1.1 %>%
+  mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+  subset(ssid!= "347")%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+    subset(!is.na(valeence_groun_3cat))%>%
+  group_by(ssid)%>%
+  mutate(Bio_Mean_HR_dif = scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1],
+         pup_basCor = scale(pup_basCor, center = TRUE, scale = TRUE)[,1],
+         log_BIO_CDA.PhasicMax = scale(log_BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])%>%
+    group_by(ssid, valeence_groun_3cat)%>%
+  mutate(cor_hr_pup = cor(Bio_Mean_HR_dif, pup_basCor, use = "complete"))%>%
+  mutate(cor_hr_scr = cor(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  mutate(cor_pup_scr = cor(pup_basCor, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  select(c(ssid,valeence_groun_3cat, cor_hr_pup, cor_hr_scr, cor_pup_scr))%>%
+  gather(key, value, -ssid, - valeence_groun_3cat)%>%
+  group_by(ssid, key, value, valeence_groun_3cat)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(valeence_groun_3cat, value, color = valeence_groun_3cat))+
+  geom_hline(yintercept = 0, size = 1.5, linetype = "dashed", alpha = .5)+
+    geom_hline(yintercept = .2, size = 1.5, linetype = "dashed", alpha = .5)+
+    geom_hline(yintercept = -.2, size = 1.5, linetype = "dashed", alpha = .5)+
+  geom_line(aes(group = ssid), se = F, color = "black", alpha = .2)+
+  geom_jitter(width = .1, alpha = .5)+
+  
+  stat_summary(geom = 'pointrange', color = "black")+
+    facet_grid(~key)+
+  
+  p$graphstyle+
+  ylab("Correlation")+
+  scale_x_discrete(
+        labels=c("HR vs. Pupil", "HR vs. SCR", "Pupil vs. SCR"))+
+  theme(axis.title.x = element_blank(), axis.text.x = element_text( 
+                           size=14, angle=45))+
+  scale_color_brewer(palette = "Dark2")
+  
+  
+```
+  
+
+
+```{r}
+ggsav
+
+ hr_rmmcorr<- db_full6new_hr_fix_stim_nt1.1 %>%
+  # mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+  subset(ssid!= "347")%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")
+plot(rmcorr::rmcorr(participant = "ssid", measure1 = "Bio_Mean_HR_dif", measure2 = "pup_basCor", data = hr_rmmcorr))
+
+
+plot(rmcorr::rmcorr(participant = "ssid", measure1 = "log_BIO_CDA.PhasicMax_z", measure2 = "pup_basCor", data = hr_rmmcorr))
+
+
+hr_rmmcorr<- hr_rmmcorr%>%
+  group_by(ssid)%>%
+  mutate(log_BIO_CDA.PhasicMax_z= scale(log_BIO_CDA.PhasicMax, center =TRUE, scale = TRUE))
+  
+plot(rmcorr::rmcorr(participant = "ssid", measure1 = "log_BIO_CDA.PhasicMax_z", measure2 = "Bio_Mean_HR_dif", data = hr_rmmcorr))
+
+correlation_plot
+
+scater_pupil_HR<- db_full6new_hr_fix_stim_nt1.1 %>%
+  subset(!is.na(stimDescription))%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  group_by(stimIAPS,mediansplit_ground_valence, stimDescription)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(Bio_Mean_HR_dif, pup_basCor))+
+  geom_point(aes(color = mediansplit_ground_valence), size = 2, alpha = .6)+
+  geom_text(aes(label = stimDescription,olor = mediansplit_ground_valence), alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()+
+  xlab(expression("Average "*Delta*" heart rate (bpm)"))+
+  # xlab("Average heart rate difference")+
+  ylab("Average pupil change (au)")+
+  p$graphstyle
+
+scater_pupil_HR
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  subset(!is.na(stimDescription))%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  group_by(stimIAPS, stimDescription,mediansplit_ground_valence)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(Bio_Mean_HR_dif, pup_basCor, color = mediansplit_ground_valence))+
+  geom_point(size = 2, alpha = .6)+
+  geom_text(aes(label = stimDescription), alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()+
+  xlab(expression("Average "*Delta*" heart rate (bpm)"))+
+  # facet_grid(~mediansplit_ground_valence)+
+  # xlab("Average heart rate difference")+
+  ylab("Average pupil change (au)")+
+  p$graphstyle
+
+
+db_full6new_hr_fix_stim_nt1.1$log_BIO_CDA.PhasicMax_z<- scale(db_full6new_hr_fix_stim_nt1.1$log_BIO_CDA.PhasicMax, center =  TRUE,scale = TRUE)[,1]
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  subset(!is.na(stimDescription))%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  group_by(stimIAPS, stimDescription,mediansplit_ground_valence)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax_z, color = mediansplit_ground_valence))+
+  geom_point(size = 2, alpha = .6)+
+  geom_text(aes(label = stimDescription), alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()+
+  xlab(expression("Average "*Delta*" heart rate (bpm)"))+
+  # facet_grid(~mediansplit_ground_valence)+
+  # xlab("Average heart rate difference")+
+  ylab("Average pupil change (au)")+
+  p$graphstyle
+
+
+db_full6new_hr_fix_stim_nt1.1$stimIAPS2<- as.factor(substr(db_full6new_hr_fix_stim_nt1.1$stimIAPS, 1,4))
+
+
+macthed_test$matched<- "matched"
+
+macthed_test$stimIAPS2<- as.factor(macthed_test$stimIAPS2)
+
+# mac
+testmatched_hr_stim<- left_join(macthed_test,db_full6new_hr_fix_stim_nt1.1,  by = c("stimIAPS2"))
+
+testmatched_hr_stim %>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  subset(!is.na(matched))%>%
+  group_by(stimIAPS, stimDescription,mediansplit_ground_valence)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ungroup()%>%
+  mutate(log_BIO_CDA.PhasicMax_z = scale(log_BIO_CDA.PhasicMax), pup_basCor_z = scale(pup_basCor))%>%
+  ggplot(aes(Bio_Mean_HR_dif, pup_basCor, color = mediansplit_ground_valence))+
+  geom_point(size = 2, alpha = .6)+
+  geom_text(aes(label = stimDescription), alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()+
+  xlab(expression("Average "*Delta*" heart rate (bpm)"))+
+  # facet_grid(~mediansplit_ground_valence)+
+  # xlab("Average heart rate difference")+
+  ylab("Average pupil change (au)")+
+  p$graphstyle
+
+
+
+testmatched_hr_stim %>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  subset(!is.na(matched))%>%
+  group_by(stimIAPS, stimDescription,mediansplit_ground_valence)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ungroup()%>%
+  mutate(log_BIO_CDA.PhasicMax_z = scale(log_BIO_CDA.PhasicMax), pup_basCor_z = scale(pup_basCor))%>%
+  ggplot(aes(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax_z, color = mediansplit_ground_valence))+
+  geom_point(size = 2, alpha = .6)+
+  geom_text(aes(label = stimDescription), alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()+
+  xlab(expression("Average "*Delta*" heart rate (bpm)"))+
+  # facet_grid(~mediansplit_ground_valence)+
+  # xlab("Average heart rate difference")+
+  ylab("Average pupil change (au)")+
+  p$graphstyle
+
+
+testmatched_hr_stim %>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  subset(!is.na(matched))%>%
+  group_by(stimIAPS, stimDescription,mediansplit_ground_valence)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ungroup()%>%
+  mutate(log_BIO_CDA.PhasicMax_z = scale(log_BIO_CDA.PhasicMax), pup_basCor_z = scale(pup_basCor))%>%
+  ggplot(aes(pup_basCor_z, log_BIO_CDA.PhasicMax_z, color = mediansplit_ground_valence))+
+  geom_point(size = 2, alpha = .6)+
+  geom_text(aes(label = stimDescription), alpha = .3)+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()+
+  xlab(expression("Average "*Delta*" heart rate (bpm)"))+
+  # facet_grid(~mediansplit_ground_valence)+
+  # xlab("Average heart rate difference")+
+  ylab("Average pupil change (au)")+
+  p$graphstyle
+
+
+library(patchwork)
+patch_correlations <- correlation_plot+scater_pupil_HR+
+   plot_layout(ncol = 2)+plot_annotation(tag_levels = "A")
+patch_correlations
+ggsave("patch_correlations.tiff", patch_correlations, device = "tiff", width = 12, height = 5, dpi = 800)
 ```

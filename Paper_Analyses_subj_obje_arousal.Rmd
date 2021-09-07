@@ -902,9 +902,41 @@ db_full4new_stim_screen_pupil_nopract%>%
 
 # pollu
 db_full4new_stim_screen_pupil_nopract$valence_c_sq<- db_full4new_stim_screen_pupil_nopract$valence**2
-polyyrelation<- lmer(arousal_c ~ valence_c+valence_c_sq+ (1|ssid) + (1|stimIAPS),
+polyyrelation <- lmer(arousal_c ~ valence_c+valence_c_sq+ (1|ssid) + (1|stimIAPS),
                      REML = FALSE,
                      data = db_full4new_stim_screen_pupil_nopract)
+
+summary(polyyrelation)
+
+
+polyyrelation1 <- lmer(arousal_c ~ valence_c + (1|ssid) + (1|stimIAPS),
+                     REML = FALSE,
+                     data = db_full4new_stim_screen_pupil_nopract)
+
+
+polyyrelation3 <- lmer(arousal_c ~ valence_c_sq+ (1|ssid) + (1|stimIAPS),
+                     REML = FALSE,
+                     data = subset(db_full4new_stim_screen_pupil_nopract, )
+
+summary(polyyrelation)
+summary(polyyrelation)
+
+MuMIn::r.squaredGLMM(polyyrelation)
+MuMIn::r.squaredGLMM(polyyrelation1)
+MuMIn::r.squaredGLMM(polyyrelation3)
+
+
+anova(polyyrelation3, polyyrelation, polyyrelation1)
+
+db_full4new_stim_screen_pupil_nopract%>%
+  subset(Group == "NT")%>%
+  mutate(ssid= as.numeric(ssid))%>%
+  subset(ssid = 20)%>%
+  ggplot(aes(valence_c, arousal_c, color = ssid))+
+  geom_point()+
+  stat_ellipse()+
+  stat_smooth()
+
 ```
 
 
@@ -3911,7 +3943,7 @@ db_full4new_stim_screen_pupil_nopract_nt_304$stimIAPS2<- as.character(substr(db_
 
 nrow(db_full4new_stim_screen_pupil_nopract_nt_304)
 nrow(testmatched_scr)
-testmatched_scr<- left_join(macthed_test, db_full4new_stim_screen_pupil_nopract_nt_304, by = "stimIAPS2")
+testmatched_scr<- right_join(macthed_test, db_full4new_stim_screen_pupil_nopract_nt_304, by = "stimIAPS2")
 
 testmcthedscr <- lmer(log1p(BIO_CDA.PhasicMax+.1) ~ arousal_c * valence_c + (1|ssid) + (1|stimIAPS),
                         REML = FALSE,
@@ -4674,16 +4706,18 @@ summary(inter_bio)
 
 inter_bio1<- lmer(Bio_Mean_HR_dif~ pup_basCor +BIO_CDA.PhasicMax_z + (1|ssid)+ (1|stimIAPS), 
                  REML = FALSE,
-                 data = db_full6new_hr_fix_stim_nt1.1)
+                 data = subset(db_full6new_hr_fix_stim_nt1.1, Bio_Mean_HR_dif_outl!= "outlier"))
 
 summary(inter_bio1)
+# MuMin::
 
 
 inter_bio2<- lmer(log1p(BIO_CDA.PhasicMax+.1)~ Bio_Mean_HR_dif + pup_basCor + (1|ssid)+ 
                     (1|stimIAPS), 
                  REML = FALSE,
-                 data = db_full6new_hr_fix_stim_nt1.1)
+                 data = subset(db_full6new_hr_fix_stim_nt1.1, Bio_Mean_HR_dif_outl!= "outlier"))
 
+db_full6new_hr_fix_stim_nt1.1$log_BIO_CDA.PhasicMax<- log1p(db_full6new_hr_fix_stim_nt1.1$BIO_CDA.PhasicMax+.1)
 summary(inter_bio2)
 
 sjPlot::tab_model(inter_bio2)
@@ -4702,6 +4736,8 @@ library(tidyr)
 library(tidyverse)
 ?gather
 
+unique(db_full6new_hr_fix_stim_nt1.1$ssid)
+
 db_full6new_hr_fix_stim_nt1.1 %>%
   mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
   subset(ssid!= "347")%>%
@@ -4719,7 +4755,61 @@ db_full6new_hr_fix_stim_nt1.1 %>%
   ggplot(aes(key, value))+
   geom_jitter(width = .1, alpha = .1)+
   geom_line(aes(group = ssid), se = F)+
-  stat_summary(geom = 'pointrange')
+  stat_summary(geom = 'pointrange')+
+  geom_hline(yintercept = 0, size = 1.5, linetype = "dashed")+
+  p$graphstyle
+
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+  subset(!is.na(stimIAPS))%>%
+  group_by(stimIAPS)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ungroup()%>%
+  # group_by(stimIAPS)%>%
+  mutate(cor_hr_pup = cor(Bio_Mean_HR_dif, pup_basCor, use = "complete"))%>%
+  mutate(cor_hr_scr = cor(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  mutate(cor_pup_scr = cor(pup_basCor, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  select(c(stimIAPS, cor_hr_pup, cor_hr_scr, cor_pup_scr))%>%
+  gather(key, value, -stimIAPS)%>%
+  group_by(stimIAPS, key, value)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(key, value))+
+  geom_hline(yintercept = 0, size = 1.5, linetype = "dashed")+
+  geom_jitter(width = .1, alpha = .1)+
+  geom_line(aes(group = stimIAPS), se = F)+
+  stat_summary(geom = 'pointrange')+
+  # ggpubr::stat_compare_means(paired = FALSE)+
+  p$graphstyle
+
+
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(Bio_Mean_HR_dif, pup_basCor))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  group_by(ssid)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(Bio_Mean_HR_dif, pup_basCor))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
+
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  group_by(stimIAPS)%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(Bio_Mean_HR_dif, pup_basCor))+
+  geom_point()+
+  geom_smooth(method = 'lm', se = F)+
+  ggpubr::stat_cor()
 
 ```
 
