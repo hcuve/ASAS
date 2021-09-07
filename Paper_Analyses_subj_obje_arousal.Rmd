@@ -388,6 +388,7 @@ car::vif(pupil_arousal_findings$pupil_from_ar_vale) #curoff 4
 # valence_c           arousal_c         Mean_gray_z valence_c:arousal_c 
 #            1.876902            1.801054            1.004734            1.080785
 
+summary(pupil_arousal_findings$pupil_from_ar_vale)
 plots_paper$interaction_ar_vl <- interactions::interact_plot(pupil_arousal_findings$pupil_from_ar_vale , pred = arousal_c, modx = valence_c)
 
 plots_paper$interaction_ar_vl 
@@ -431,6 +432,78 @@ plots_paper$pupil_correlation <- db_full4new_stim_screen_pupil_nopract %>%
 
   
   plots_paper$pupil_correlation+ p$graphstyle
+  
+  
+summary(lmer(pup_basCor ~ (valence_c) +
+                                                    Mean_gray_z  +
+                                                    (1 + Mean_gray_z | ssid)+
+                                                    (0+ valence_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE)))
+
+summary(lmer(pup_basCor ~ (arousal_c) +
+                                                    Mean_gray_z  +
+                                                    (1 + Mean_gray_z | ssid)+
+                                                    (0+ valence_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE)))
+
+
+summary(lmer(pup_basCor ~ (arousal_c+valence_c)
+                                                      +
+                                                    (1 + Mean_gray_z | ssid)+
+                                                    (0+ valence_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE)))
+
+
+macthed_test$stimIAPS2<- as.character(macthed_test$stimIAPS2)
+test_matchedM<- left_join( macthed_test, db_full4new_stim_screen_pupil_nopract,by = "stimIAPS2")
+
+matchedPupiltest <- lmer(pup_basCor ~ (arousal_c*valence_c)
+                                                      +
+                                                    (1 + Mean_gray_z | ssid)+
+                                                    (0+ valence_c | ssid),
+                                                  REML = FALSE,
+                      data = test_matchedM%>%
+                         subset(Group == "NT"))
+
+matchedPupiltest
+
+interactions::interact_plot(matchedPupiltest , pred =arousal_c  , modx =  valence_c)
+
+```
+
+
+swicth predictirs
+
+```{r}
+unique(db_full4new_stim_screen_pupil_nopract$ssid)
+
+library(lmerTest)
+pupil_arousal_findings$ar_from_val_pup <- lmer(arousal_c ~ valence_c*pup_basCor +
+                                                    Mean_gray_z  +
+                                                    (1 | ssid)+
+                                                    (1|stimIAPS),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                        subset(Group == "NT"))
+                        # subset(pupil_outlier == FALSE)%>%
+                        # subset(arousal_outler == FALSE))
+
+summary(pupil_arousal_findings$ar_from_val_pup)
+
+interactions::interact_plot(pupil_arousal_findings$ar_from_val_pup, pred = valence_c, modx =  pup_basCor)
+
 ```
 
 
@@ -811,8 +884,27 @@ interactions::interact_plot(pupil_arousal_findings$valence_from_pup , pred = val
 
 interactions::interact_plot(pupil_arousal_findings$valence_from_pup, pred =pup_basCor , modx =  arousal_c)
 
+test<- subset(db_full4new_stim_screen_pupil_nopract, 
+                                    Group == "NT")
+
+cor.test(test$arousal_c, test$valence_c)
+?rmcorr::rmcorr
+plot(rmcorr::rmcorr(participant = "stimIAPS2", measure1 = "arousal_c", measure2 = "valence_c", data = test))
 
 
+plot(rmcorr::rmcorr(participant = "ssid", measure1 = "arousal_c", measure2 = "valence_c", data = test))
+
+
+db_full4new_stim_screen_pupil_nopract%>%
+  ggplot(aes(arousal_c, valence_c))+
+  geom_point()
+
+
+# pollu
+db_full4new_stim_screen_pupil_nopract$valence_c_sq<- db_full4new_stim_screen_pupil_nopract$valence**2
+polyyrelation<- lmer(arousal_c ~ valence_c+valence_c_sq+ (1|ssid) + (1|stimIAPS),
+                     REML = FALSE,
+                     data = db_full4new_stim_screen_pupil_nopract)
 ```
 
 
@@ -1565,7 +1657,7 @@ absolutetest %>%
 
 # try and compute correlation using valencabs(
 
-tmp.df4_full_stim_downs_jun2021_60bins%>%
+tmp.df4_full_stim_downs_jun2021_60bins %>%
   subset(!is.na(ground_valence_2))%>%
   group_by(ssid, stimIAPS,ground_valence_2)%>%
   
@@ -1580,6 +1672,9 @@ tmp.df4_full_stim_downs_jun2021_60bins%>%
   # geom_point()+
   stat_summary(funy = mean, geom = 'pointrange')
     theme(axis.text.x = element_text(angle = 60))
+    
+    
+
 
 
 ```
@@ -3804,8 +3899,33 @@ anova(pupil_arousal_findings$arousal_phas_max)
 interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred = arousal_c, modx = valence_c)
 
 
-# 
+# macthed test
 
+```
+
+```{r}
+unique(db_full4new_stim_screen_pupil_nopract_nt_304$ssid)
+
+db_full4new_stim_screen_pupil_nopract_nt_304$stimIAPS2<- as.character(substr(db_full4new_stim_screen_pupil_nopract_nt_304$stimIAPS, 1,4))
+
+
+nrow(db_full4new_stim_screen_pupil_nopract_nt_304)
+nrow(testmatched_scr)
+testmatched_scr<- left_join(macthed_test, db_full4new_stim_screen_pupil_nopract_nt_304, by = "stimIAPS2")
+
+testmcthedscr <- lmer(log1p(BIO_CDA.PhasicMax+.1) ~ arousal_c * valence_c + (1|ssid) + (1|stimIAPS),
+                        REML = FALSE,
+                        data = testmatched_scr)
+
+summary(testmcthedscr)
+
+anova(pupil_arousal_findings$arousal_phas_max)
+
+interactions::interact_plot(testmcthedscr, pred = arousal_c, modx = valence_c)
+
+```
+
+```
 pupil_arousal_findings$BIO_CDA.PhasicMax_ar <- lmer(log1p(BIO_CDA.PhasicMax+.1) ~ arousal_c + (1|ssid),
                         REML = FALSE,
                         data = db_full4new_stim_screen_pupil_nopract_nt_304)
@@ -3820,6 +3940,12 @@ pupil_arousal_findings$BIO_CDA.PhasicMax_vl <- lmer(log1p(BIO_CDA.PhasicMax+.1) 
 interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred =valence_c , modx =  arousal_c)
 
 summary(pupil_arousal_findings$BIO_CDA.PhasicMax_vl)
+
+
+```
+
+semi matched dataset
+```
 
 
 # deal with colinearity by swicthing predictor to dv
@@ -4569,6 +4695,32 @@ table(is.na(db_full6new_hr_fix_stim_nt1.1$pup_basCor))
 test<- subset(db_full6new_hr_fix_stim_nt1.1, is.na(Bio_Mean_HR_dif))
 test<- subset(db_full6new_hr_fix_stim_nt1.1, is.na(pup_basCor))
 
+library(ggplot2)
+library(reshape2)
+library(data.table)
+library(tidyr)
+library(tidyverse)
+?gather
+
+db_full6new_hr_fix_stim_nt1.1 %>%
+  mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+  subset(ssid!= "347")%>%
+  group_by(ssid)%>%
+  mutate(Bio_Mean_HR_dif = scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1],
+         pup_basCor = scale(pup_basCor, center = TRUE, scale = TRUE)[,1],
+         log_BIO_CDA.PhasicMax = scale(log_BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])%>%
+  mutate(cor_hr_pup = cor(Bio_Mean_HR_dif, pup_basCor, use = "complete"))%>%
+  mutate(cor_hr_scr = cor(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  mutate(cor_pup_scr = cor(pup_basCor, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  select(c(ssid, cor_hr_pup, cor_hr_scr, cor_pup_scr))%>%
+  gather(key, value, -ssid)%>%
+  group_by(ssid, key, value)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(key, value))+
+  geom_jitter(width = .1, alpha = .1)+
+  geom_line(aes(group = ssid), se = F)+
+  stat_summary(geom = 'pointrange')
+
 ```
 
 
@@ -4665,6 +4817,38 @@ write_csv(clustering_agg, "clustering_agg.csv")
 library(readr)
 clustering_agg_JASP <- read_csv("clustering_agg_JASP.csv")
 View(clustering_agg_JASP)
+
+clustering_agg_JASP$valence_median_split<- if_else(clustering_agg_JASP$valence > median(clustering_agg_JASP$valence,na.rm = TRUE), "positive", "negative")
+
+clustering_agg_JASP$ValenceMean_median_split <- if_else(clustering_agg_JASP$ValenceMean > median(clustering_agg_JASP$ValenceMean,na.rm = TRUE), "positive", "negative")
+
+clustering_agg_JASP%>%
+  mutate(abs_ar  = abs(arousal))%>%
+  # ggplot(aes(valence_median_split, arousal))+
+  ggpubr::ggboxplot(x = "valence_median_split", y = "abs_ar")+
+  geom_point()
+
+
+clustering_agg_JASP%>%
+  mutate(abs_ar = abs(clustering_agg_JASP))
+  # ggplot(aes(valence_median_split, arousal))+
+  ggpubr::ggboxplot(x = "ValenceMean_median_split", y = "ArousalMean")+
+  geom_point()+
+  stat_summary(geom = 'pointrange')
+
+write_csv(clustering_agg_JASP, "clustering_agg_JASP_newtomatch.csv")
+
+library(readxl)
+macthed_test <- read_excel("macthed_test.xlsx")
+View(macthed_test)
+
+macthed_test%>%
+  # ggplot(aes(valence_median_split, arousal))+
+  ggpubr::ggboxplot(x = "ValenceMean_median_split", y = "ArousalMean")+
+  # geom_point()+
+  stat_summary(geom = 'pointrange')
+```
+
 
 stomdescr<- select(clustering_agg, c(stimIAPS2, stimDescription))
 clustering_agg_JASP$stimIAPS2<- as.character(clustering_agg_JASP$stimIAPS2)
@@ -4835,14 +5019,14 @@ clustering_agg_JASPtest%>%
 
 clustering_agg_bonkers <- subset(clustering_agg, stimIAPS2 != "9926")
 
-pca_res <- prcomp(clustering_agg_bonkers[1:55,c(25,24,20)], center = TRUE, scale. = TRUE)
-pca_res <- prcomp(clustering_agg_JASPtest[,c(24,23,19)], center = TRUE, scale. = FALSE)
+pca_res <- prcomp(clustering_agg[,c(25,24,20)], center = TRUE, scale. = TRUE)
+pca_res <- prcomp(clustering_agg_JASPtest[,c(24,23,19)], center = TRUE, scale. = TRUE)
 plot_data <- cbind(as.data.frame(pca_res$x[, 1:2]), labels = clustering_agg$y_kmeans)
 
 # plot_data$
 ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels, fill = labels)) +
   geom_point(size = 2, alpha = .4)+
-  # geom_text(aes(label= clustering_agg$stimDescription))+
+  geom_text(aes(label= clustering_agg$stimDescription))+
   stat_ellipse(show.legend = TRUE)+
   ylab("Componet 2")+
   xlab("Component 1")+
@@ -5013,7 +5197,7 @@ clustering3$arousal
 clustering_new$Cluster<- as.factor(clustering_new$Cluster)
 cluster_lmers$arousal <- lmer(arousal ~ Cluster + 
                                (1 | ssid)+
-                               (1|stimIAPS2),
+                               (1|stimIAPS),
                              REML = FALSE,
                              data = clustering_new)
 
@@ -5026,13 +5210,42 @@ emmeans::emmeans(cluster_lmers$arousal, pairwise~Cluster)
 # valence
 cluster_lmers$valence <- lmer(valence ~ Cluster + 
                                (1 | ssid)+
-                               (1|stimIAPS2),
+                               (1|stimIAPS),
                              REML = FALSE,
                              data = clustering_new)
 
 summary(cluster_lmers$valence)
 emmeans::emmeans(cluster_lmers$valence, pairwise~Cluster)
 
+
+clustering_new_agg<- clustering_new%>%
+  subset(!is.na(Cluster))%>%
+  group_by(ssid, Cluster)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+clustering_new_agg$Cluster<- factor(clustering_new_agg$Cluster)
+
+clustering_new_agg
+clusr_ar<- afex::aov_ez(id = "ssid",
+             data = clustering_new_agg,
+             dv = "arousal",
+             within = "Cluster",
+             between = NULL)
+
+
+clustering_new_agg%>%
+  ggplot(aes(Cluster, arousal))+
+  geom_jitter(width = .2)+
+  geom_boxplot()
+emmeans::emmeans(clusr_ar, pairwise~Cluster, adjust = "bonf")
+
+
+clusr_vl<- afex::aov_ez(id = "ssid",
+             data = clustering_new_agg,
+             dv = "valence",
+             within = "Cluster",
+             between = NULL)
+
+emmeans::emmeans(clusr_vl, pairwise~Cluster, adjust = "bonf")
 
 cluster_lmers$pup_clust <- lmer(pup_basCor ~ cluster_interpreted + 
                                (1 | ssid)+
