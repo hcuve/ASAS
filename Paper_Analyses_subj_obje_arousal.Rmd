@@ -4087,6 +4087,7 @@ unique(db_full6new_hr_fix_stim$screencontent)
 
 colnames(db_full6new)
 
+db_full6new$bio_cda.n
 db_full6new_hr_fix_stim <- subset(db_full6new, screencontent_no <3)
 
 View(db_full6new_hr_fix_stim)
@@ -4111,6 +4112,7 @@ db_full6new_hr_fix_stim$Group<- if_else(db_full6new_hr_fix_stim$ssid_num< 500, "
 
 table(is.na(db_full6new_hr_fix_stim$Group))
 
+db_full6new_hr_fix_stim$bio_cda.n
 db_full6new_hr_fix_stim_nt<- subset(db_full6new_hr_fix_stim, Group == "NT")
 unique(db_full6new_hr_fix_stim_nt$ssid_num)
 
@@ -4122,7 +4124,9 @@ colnames(db_full6new_hr_fix_stim_nt)
 # HR differences
 db_full6new_hr_fix_stim_nt$Bio_Mean_HR_fix<- if_else(db_full6new_hr_fix_stim_nt$screencontent_no ==1, db_full6new_hr_fix_stim_nt$Bio_Mean_HR, NULL)
 
+table(is.na(db_HR_bio_final_346_355_withfix_stim$BIO_CDA.nSCR))
 
+unique(db_HR_bio_final_346_355_withfix_stim$ssid)
 db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR_fix<- if_else(db_HR_bio_final_346_355_withfix_stim$screencontent_no ==1, db_HR_bio_final_346_355_withfix_stim$Bio_Mean_HR, NULL)
 
 View(db_full6new_hr_fix_stim_nt)
@@ -4190,6 +4194,7 @@ table(is.na(db_full6new_hr_fix_stim_nt$Bio_Mean_HR))
 test<- subset(db_full6new_hr_fix_stim_nt, is.na(Bio_Mean_HR))
 test1<- subset(db_HR_bio_final_346_355_withfix_stim, is.na(Bio_Mean_HR))
 
+db_full6new_hr_fix_stim_nt$bio_cda.
 db_full6new_hr_fix_stim_nt1<- bind_rows(db_full6new_hr_fix_stim_nt,
                                         db_HR_bio_final_346_355_withfix_stim)
 
@@ -4213,7 +4218,7 @@ unique(test$ssid)
 # 606 
 
 # 348 to 355 are missing pratice
-
+table(is.na(db_full6new_hr_fix_stim_nt1$BIO_CDA.nSCR))
 db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1 %>%
   # mutate()
   group_by(as.numeric(ssid_num), as.numeric(tNo)) %>%
@@ -4225,7 +4230,7 @@ db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1 %>%
 View(db_full6new_hr_fix_stim_nt1.1)
 
 # 2 1
-# stim - fix
+# stim - fix = positive stim> neg stim<
 db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1 %>%
   mutate(Bio_Mean_HR_dif = Bio_Mean_HR - Bio_Mean_HR_fix)
 
@@ -4712,10 +4717,11 @@ summary(inter_bio1)
 # MuMin::
 
 
+table(is.na(db_full6new_hr_fix_stim_nt1.1$BIO_CDA.nSCR))
 inter_bio2<- lmer(log1p(BIO_CDA.PhasicMax+.1)~ Bio_Mean_HR_dif + pup_basCor + (1|ssid)+ 
                     (1|stimIAPS), 
                  REML = FALSE,
-                 data = subset(db_full6new_hr_fix_stim_nt1.1, Bio_Mean_HR_dif_outl!= "outlier"))
+                 data = subset(db_full6new_hr_fix_stim_nt1.1$BIO_CDA.nSCR, Bio_Mean_HR_dif_outl!= "outlier"))
 
 db_full6new_hr_fix_stim_nt1.1$log_BIO_CDA.PhasicMax<- log1p(db_full6new_hr_fix_stim_nt1.1$BIO_CDA.PhasicMax+.1)
 summary(inter_bio2)
@@ -5366,7 +5372,7 @@ cluster_lmers$hrdif_clust2 <- lmer(Bio_Mean_HR_dif ~ y_kmeans +
 emmeans::emmeans(cluster_lmers$hrdif_clust2, pairwise~y_kmeans, adjust = "bonf")
 summary(cluster_lmers$hrdif_clust2)
 
-
+clustering3$
 cluster_lmers$scr_clust2 <- lmer(log_BIO_CDA.PhasicMax ~ y_kmeans + 
                                (1 | ssid)+
                                (1|stimIAPS),

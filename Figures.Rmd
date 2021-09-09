@@ -445,9 +445,9 @@ db_full6new_hr_fix_stim_nt1.11%>%
     stat_summary(aes(y = Bio_Mean_HR_dif),geom = 'pointrange')+
   
   xlab("Subjective valence (z)")+
-  ylab(expression(Delta*" heart rate (bpm)"))
-    p$graphstyle+ylim(-4,1)
-  # ggpubr::stat_cor()
+  ylab(expression(Delta*" heart rate (bpm)"))+
+    # p$graphstyle+ylim(-4,1)+
+  ggpubr::stat_cor(label.y = -1)
 
 plots_paper$bio_HR
   # scale_y_continuous(breaks = c(-4,-3,-2,1))
@@ -886,4 +886,131 @@ patch_correlations <- correlation_plot+scater_pupil_HR+
    plot_layout(ncol = 2)+plot_annotation(tag_levels = "A")
 patch_correlations
 ggsave("patch_correlations.tiff", patch_correlations, device = "tiff", width = 12, height = 5, dpi = 800)
+```
+
+supplemental
+
+unique(db_full4new_stim_screen_pupil_nopract$ssid)
+
+```{r}
+
+fix_dur_byval<-
+db_full4new_stim_screen_pupil_nopract %>%
+  subset(pp_arousal_outler== FALSE)%>%
+  subset(Group == "NT")%>%
+  subset(pupil_outlier == FALSE)%>%
+  subset(!is.na(Alexithymia))%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_mean = mean(pup_basCor, na.rm = TRUE), sd_pup = sd(pup_basCor, na.rm = TRUE), subj = n())%>%
+  group_by(ssid, mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_se = sd_pup/(sqrt(subj)))%>%
+  ggplot(aes(mediansplit_ground_valence, mean_fix_dur))+
+  # geom_bar(stat="summary", fun.y = "mean", alpha = .4, color = FALSE)+
+      geom_jitter(width = .1, alpha=.2)+
+  stat_summary(geom = 'pointrange',  size = 1, colour = "Black") +
+  # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
+  geom_line(aes(group = ssid), alpha = .1)+
+  p$graphstyle+
+  xlab("Valence")+
+  ylab("Average fixation duration (ms)")+
+  # ylab("Baseline corrected pupil")+
+
+  scale_color_brewer(palette = "Dark2")+
+   scale_fill_brewer(palette = "Dark2")+
+  ggpubr::stat_compare_means(method = "t.test", paired =  TRUE)
+  # facet_grid(~mediansplit_ground_valence)+
+  # ylim(-3.3,1.3)
+
+? ggpubr::stat_compare_means
+fix_dur_byval
+
+fix_dur_byval<-
+db_full4new_stim_screen_pupil_nopract %>%
+  subset(pp_arousal_outler== FALSE)%>%
+  subset(Group == "NT")%>%
+  subset(pupil_outlier == FALSE)%>%
+  subset(!is.na(Alexithymia))%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_mean = mean(pup_basCor, na.rm = TRUE), sd_pup = sd(pup_basCor, na.rm = TRUE), subj = n())%>%
+  group_by(ssid, mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_se = sd_pup/(sqrt(subj)))%>%
+  ggplot(aes(mediansplit_ground_valence, mean_fix_dur))+
+  # geom_bar(stat="summary", fun.y = "mean", alpha = .4, color = FALSE)+
+      geom_jitter(width = .1, alpha=.2)+
+  stat_summary(geom = 'pointrange', alpha = .1, size = 1, colour = "Black") +
+  # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
+  geom_line(aes(group = ssid), alpha = .1)+
+  p$graphstyle+
+  xlab("Valence")+
+  ylab("Average fixation duration (ms)")+
+  # ylab("Baseline corrected pupil")+
+
+  scale_color_brewer(palette = "Dark2")+
+   scale_fill_brewer(palette = "Dark2")+
+  ggpubr::stat_compare_means(method = "t.test", paired =  TRUE)
+  # facet_grid(~mediansplit_ground_valence)+
+
+
+fix_dur_count<- db_full4new_stim_screen_pupil_nopract %>%
+  subset(pp_arousal_outler== FALSE)%>%
+  subset(Group == "NT")%>%
+  subset(pupil_outlier == FALSE)%>%
+  subset(!is.na(Alexithymia))%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_mean = mean(pup_basCor, na.rm = TRUE), sd_pup = sd(pup_basCor, na.rm = TRUE), subj = n())%>%
+  group_by(ssid, mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_se = sd_pup/(sqrt(subj)))%>%
+  ggplot(aes(mediansplit_ground_valence, fix_count))+
+  # geom_bar(stat="summary", fun.y = "mean", alpha = .4, color = FALSE)+
+      geom_jitter(width = .1, alpha=.2)+
+  stat_summary(geom = 'pointrange', size = 1, colour = "Black") +
+  # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
+  geom_line(aes(group = ssid), alpha = .1)+
+  p$graphstyle+
+  xlab("Valence")+
+  ylab("Average fixation count")+
+  # ylab("Baseline corrected pupil")+
+
+  scale_color_brewer(palette = "Dark2")+
+   scale_fill_brewer(palette = "Dark2")+
+  ggpubr::stat_compare_means(method = "t.test", paired =  TRUE)
+
+
+# data loss
+loss_dur_byval<- db_full4new_stim_screen_pupil_nopract %>%
+  subset(pp_arousal_outler== FALSE)%>%
+  subset(Group == "NT")%>%
+  subset(pupil_outlier == FALSE)%>%
+  subset(!is.na(Alexithymia))%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_mean = mean(pup_basCor, na.rm = TRUE), sd_pup = sd(pup_basCor, na.rm = TRUE), subj = n())%>%
+  group_by(ssid, mediansplit_ground_valence)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # group_by(mediansplit_ground_valence)%>%
+  # mutate(pup_basCor_se = sd_pup/(sqrt(subj)))%>%
+  ggplot(aes(mediansplit_ground_valence, 1-gaze_valid_prop))+
+  # geom_bar(stat="summary", fun.y = "mean", alpha = .4, color = FALSE)+
+      geom_jitter(width = .1, alpha=.2)+
+  stat_summary(geom = 'pointrange', size = 1, colour = "Black") +
+  # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
+  geom_line(aes(group = ssid), alpha = .1)+
+  p$graphstyle+
+  xlab("Valence")+
+  ylab("Average gaze loss (prop)")+
+  # ylab("Baseline corrected pupil")+
+
+  scale_color_brewer(palette = "Dark2")+
+   scale_fill_brewer(palette = "Dark2")+
+  ggpubr::stat_compare_means(method = "t.test", paired =  TRUE)
+
+gaze_control <- fix_dur_byval+fix_dur_count+
+loss_dur_byval
+
+ggsave("gaze_control.tiff",gaze_control, device = "tiff", width = 12, height = 6, dpi = 800)
 ```

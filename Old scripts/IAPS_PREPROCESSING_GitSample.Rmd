@@ -1,0 +1,221 @@
+---
+title: "InteroceptionStudy_GP"
+Author: "Helio Cuve"
+date: "8 January 2020"
+output: html_document
+---
+
+
+# Loading rdhf5 
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.10")
+
+BiocManager::install("rhdf5")
+
+library(rhdf5)
+
+
+```
+
+# Preferences
+list necessary package install them if not already and load them
+```{r}
+
+list.of.packages <- c("ggplot2", "data.table", 'readr', "rhdf5", 'tidyverse', "gazer", 'lmerTest')
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+lapply(list.of.packages, require, character.only = TRUE)
+lapply(new.packages, require, character.only = TRUE)
+
+library(purrr)
+library(data.table)
+library(dplyr)
+library(tidyr)
+
+# setting a workspace
+
+setwd("D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020")
+hdf5FilesPath<- "D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020"
+
+
+# 2021 data
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021")
+hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
+```
+
+# gp extractor function
+takes gp files and returns a clean files with messages parsed and deletes unnecessary stuff
+
+note that starting from 322 we have gsr-v and hr-v, and pulse
+
+```{r, gp extractor}
+
+# hdf5FilesPath<- "D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking"
+
+hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
+
+gp.extractor = function(hdf5FilesPath) {
+  
+  setwd(hdf5FilesPath)
+  #getwd()
+  hdfFilesList = list.files(hdf5FilesPath, pattern = "\\.hdf5$")
+  
+  if (length(hdfFilesList) == 0){
+    
+    return(message('No HDF5 files found in the directory provided.'))
+  }
+   f = 30
+  for (f in 1:length(hdfFilesList)) {
+    
+    message(sprintf("Extracting file %i / %i - %s", f, length(hdfFilesList), hdfFilesList[f]))
+    
+    #note that some r-studio bug sometimes causes this to fail when runnin from notebook, 
+    # in that case run it directly on command line
+    tmp.events =h5read(hdfFilesList[f], '/data_collection/events/experiment/MessageEvent')
+  
+    tmp.eyetr  = h5read(hdfFilesList[f], '/data_collection/events/eyetracker/BinocularEyeSampleEvent')
+    
+    # Get subject id from Events
+    ssid = sapply(strsplit(grep('SubjJID', tmp.events$text, value = TRUE), split = ": "), "[", 2)
+    date = sapply(strsplit(grep('DATE', tmp.events$text, value = TRUE), split = ": "), "[", 2)
+    session = sapply(strsplit(grep('Session:', tmp.events$text, value = TRUE), split = ":"), "[", 2)
+    cali<- subset(tmp.events, grepl('Cali', tmp.events$text) == TRUE)
+    
+    # Create DF for trials data
+    tmp.df = data.frame(matrix(ncol = ncol(tmp.eyetr)))
+    names(tmp.df) = names(tmp.eyetr)
+    colnames(tmp.df)
+    
+    # Prepare Events, keep only start/end messages
+    phrases = c('tStart', 'tEnd')
+    tmp.events_backup<- tmp.events
+    # tmp.events<-  tmp.events_backup
+    tmp.events = subset(tmp.events, grepl(paste(phrases, collapse = "|"), tmp.events$text))
+    
+    # Create start/end references
+    tmp.events$tStart   = NA
+    tmp.events$tEnd     = NA
+    
+    # Trial number extraction 
+    tmp.events$tNo      = NA
+    tmp.df$tNo          = NA
+    tmp.df$Condition    = NA
+    
+    # Space for subject id
+    tmp.df$ssid         = NA
+    tmp.df$text<-NA
+    
+    for (l in 1:nrow(tmp.events)) {
+ 
+      message(sprintf("Grabing start messages %s", tmp.events$text[l]))
+      
+      if ((grepl('tStart', tmp.events$text[l])) == TRUE) {
+        tmp.events$tStart[l] = tmp.events$time[l]
+        
+        if ((grepl('tEnd', tmp.events$text[l+1])) == TRUE){
+          tmp.events$tEnd[l] = tmp.events$time[l+1]
+        }
+        
+        else {
+          message('trial start/end structure not valid')
+        }
+      }
+      
+    }
+    message(sprintf("done grabbing messages"))
+    # readline(prompt="Press [enter] to continue")
+    
+    tmp.events$tNo<- as.numeric(as.character(gsub(".*_","",tmp.events$text)))
+
+     message(sprintf("making screencontent"))
+     
+     tmp.eventsbackup<- tmp.events
+    tmp.events$screencontent<- if_else(grepl('fixation', tmp.events$text), 'fixation',
+                                       if_else(grepl('Valence', tmp.events$text), 'ValenceResp',
+                                               if_else(grepl('rest', tmp.events$text), 'rest1', 
+                                                       if_else(grepl('IntResp', tmp.events$text), 'IntResp','stim'))))
+    
+    # unique(tmp.events$screencontent)
+    
+    # atorw condition
+    
+    tmp.events$Condition<- if_else(grepl('IAPS', tmp.events$text), 'IAPS',
+                                   if_else(grepl('Example', tmp.events$text), 'Practice',
+                                           if_else(grepl('rest', tmp.events$text), 'Rest', NULL)))
+    tmp.events$stim<- if_else(tmp.events$Condition == 'IAPS', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text),
+                              if_else(tmp.events$Condition == 'Practice', sub(".*_ *(.*?) *jpg.*", "\\1", tmp.events$text), 'REST'))
+    
+    # substitute periods
+    tmp.events$stim<- gsub('\\.', '.jpg', tmp.events$stim)
+    
+    tmp.events$tNo<- if_else(tmp.events$Condition == 'Practice', (tmp.events$tNo)-6,
+                             if_else(tmp.events$Condition == 'Rest',-7, tmp.events$tNo))
+    
+    # create trial number < 0 are practice trials
+    tmp.events$tNo<- if_else(tmp.events$tNo> -1, tmp.events$tNo+1, tmp.events$tNo) # avoid zeros
+    
+    tmp.events1 = subset(tmp.events, grepl('tStart',tmp.events$text))
+    # tmp.events1$tNo1<- NULL
+    # tmp.events1$tNo2<- NULL
+    
+    tmp.events1<- subset(tmp.events1, is.na(tmp.events1$tNo) == FALSE)
+  
+
+    # colnames(tmp.df)
+    # colnames(tmp.df)
+    # colnames(tmp.events1)
+    # colnames(tmp.eyetr)
+    
+    tmp.df$screencontent<- NA
+    tmp.df$stim<- NA
+    tmp.events1$tEnd<- if_else(tmp.events1$tNo == -7, tmp.events1$tStart+120, tmp.events1$tEnd)
+    
+    message(sprintf("subsetting eyetracking data"))
+    
+    for(e in 1:nrow(tmp.events1)) {
+      
+      # Subset the EyeTracking data based on start/end
+      tmp.raw.trial = subset(tmp.eyetr, tmp.eyetr$time >= tmp.events1$tStart[e] & tmp.eyetr$time <= tmp.events1$tEnd[e])
+      
+      tmp.raw.trial$tNo = tmp.events1$tNo[e]
+      
+      tmp.raw.trial$Condition = tmp.events1$Condition[e]
+      tmp.raw.trial$screencontent = tmp.events1$screencontent[e]
+      tmp.raw.trial$stim = tmp.events1$stim[e]
+      # tmp.raw.trial$stim = tmp.events1$[e]
+      tmp.raw.trial$ssid = ssid
+      tmp.raw.trial$text = tmp.events1$text[e]
+      
+      message(sprintf("binding tmp.df"))
+      
+      tmp.df= rbind(tmp.raw.trial, tmp.df)
+    }
+     message(sprintf("done binding"))
+    
+    # Arrange the dataframe byu time
+    tmp.df<- tmp.df%>%
+      arrange(time)
+    
+    # Save file for the task with subject name
+    name = sprintf("ss%s_GPdata",ssid)
+    message(sprintf("saving data"))
+    write_csv(tmp.df, paste(name,".csv"))
+
+    # write calibration file
+    name2 = sprintf("ss%s_GPdata_cali", ssid)
+    write_csv(cali, paste(name2,".csv"))
+    
+    
+  }
+  
+  
+  message("Processing Completed.")
+  tmp.df
+}
+
+# run function
+tmp_full<- gp.extractor(hdf5FilesPath)
+
+```
