@@ -913,6 +913,7 @@ db_full4new_stim_screen_pupil_nopract %>%
   # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
   geom_line(aes(group = ssid), alpha = .1)+
   p$graphstyle+
+  theme(axis.text.x = element_text(size = 14, angle = 45), axis.title.x = element_blank())+
   xlab("Valence")+
   ylab("Average fixation duration (ms)")+
   # ylab("Baseline corrected pupil")+
@@ -945,6 +946,7 @@ db_full4new_stim_screen_pupil_nopract %>%
   # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
   geom_line(aes(group = ssid), alpha = .1)+
   p$graphstyle+
+  theme(axis.text.x = element_text(size = 14, angle = 45), axis.title.x = element_blank())+
   xlab("Valence")+
   ylab("Average fixation duration (ms)")+
   # ylab("Baseline corrected pupil")+
@@ -973,6 +975,7 @@ fix_dur_count<- db_full4new_stim_screen_pupil_nopract %>%
   # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
   geom_line(aes(group = ssid), alpha = .1)+
   p$graphstyle+
+    theme(axis.text.x = element_text(size = 14, angle = 45), axis.title.x = element_blank())+
   xlab("Valence")+
   ylab("Average fixation count")+
   # ylab("Baseline corrected pupil")+
@@ -1001,6 +1004,7 @@ loss_dur_byval<- db_full4new_stim_screen_pupil_nopract %>%
   # geom_errorbar(aes(ymin = pup_basCor_mean-pup_basCor_se, ymax = pup_basCor_mean+pup_basCor_se ))+
   geom_line(aes(group = ssid), alpha = .1)+
   p$graphstyle+
+  theme(axis.text.x = element_text(size = 14, angle = 45), axis.title.x = element_blank())+
   xlab("Valence")+
   ylab("Average gaze loss (prop)")+
   # ylab("Baseline corrected pupil")+
@@ -1009,8 +1013,110 @@ loss_dur_byval<- db_full4new_stim_screen_pupil_nopract %>%
    scale_fill_brewer(palette = "Dark2")+
   ggpubr::stat_compare_means(method = "t.test", paired =  TRUE)
 
+library(patchwork)
 gaze_control <- fix_dur_byval+fix_dur_count+
 loss_dur_byval
 
-ggsave("gaze_control.tiff",gaze_control, device = "tiff", width = 12, height = 6, dpi = 800)
+https://lvdmaaten.github.io/tsne/
+
+ggsave("gaze_control.tiff",gaze_control, device = "tiff", width = 13, height = 6, dpi = 800)
+https://www.r-bloggers.com/2017/09/multi-dimensional-reduction-and-visualisation-with-t-sne/
+  https://cran.r-project.org/web/packages/Rtsne/Rtsne.pdf
+https://uc-r.github.io/kmeans_clustering
+```
+
+
+
+3dplots
+```{r}
+clustering_agg_JASP
+clustering_agg_JASPtest
+
+clustering_agg_noflood$log_Bio_CDA.PhasicMax_z<- scale(clustering_agg_noflood$log_BIO_CDA.PhasicMax)
+
+clustering_agg_noflood$Bio_Mean_HR_dif_z<- scale(clustering_agg_noflood$Bio_Mean_HR_dif)
+
+clustering_agg_noflood$pup_basCor_z<- scale(clustering_agg_noflood$pup_basCor)
+
+clustering_agg_noflood<- subset(clustering_agg, stimDescription != "Flood")
+car::scatter3d(clustering_agg_noflood$log_Bio_CDA.PhasicMax_z, 
+          clustering_agg_noflood$Bio_Mean_HR_dif_z, 
+          clustering_agg_noflood$pup_basCor_z,
+          fit = "smooth",
+          point = FALSE,
+          ellipsoid = TRUE,
+          surface = FALSE,
+          groups = clustering_agg_noflood$y_kmeans,
+          point.col = clustering_agg_noflood$y_kmeans
+          )
+
+
+car::scatter3d(clustering_agg_noflood$log_Bio_CDA.PhasicMax_z, 
+          clustering_agg_noflood$Bio_Mean_HR_dif_z, 
+          clustering_agg_noflood$pup_basCor_z,
+          fit = "smooth",
+          point = FALSE,
+          # ellipsoid = TRUE,
+          surface = FALSE,
+          groups = clustering_agg_noflood$y_kmeans,
+          point.col = clustering_agg_noflood$y_kmeans
+          )
+
+
+# clustering_agg_JASP$clusters<- as.factor(clustering_agg_JASP$clusters)
+
+clustering_agg_JASPtest$HR<-clustering_agg_JASPtest$Bio_Mean_HR_dif
+clustering_agg_JASPtest$SCR<-clustering_agg_JASPtest$log_Bio_CDA.PhasicMax_z
+clustering_agg_JASPtest$Pupil<-clustering_agg_JASPtest$pup_basCor_z
+
+SCR<- clustering_agg_JASPtest$SCR
+HR<- clustering_agg_JASPtest$HR
+Pupil<- clustering_agg_JASPtest$Pupil
+Cluster<- clustering_agg_JASPtest$clusters
+
+car::scatter3d(SCR, 
+          HR, 
+          Pupil,
+          # fit = "smooth",
+          point = TRUE,
+          ellipsoid = TRUE,
+          surface = FALSE,
+          groups = Cluster,
+          point.col = Cluster
+          )
+
+car::scatter3d(clustering_agg_JASPtest$log_Bio_CDA.PhasicMax_z, 
+          clustering_agg_JASPtest$Bio_Mean_HR_dif, 
+          clustering_agg_JASPtest$pup_basCor,
+          fit = "smooth",
+          point = TRUE,
+          # ellipsoid = TRUE,
+          # surface = FALSE,
+          groups = Cluster,
+          point.col = Cluster
+          )
+
+
+
+car::scatter3d(SCR, 
+          HR, 
+          Pupil,
+          fit = "smooth",
+          point = TRUE,
+          ellipsoid = TRUE,
+          surface = FALSE,
+          groups = Cluster,
+          point.col = Cluster
+          )
+?car::scatter3d
+car::scatter3d(SCR, 
+          HR, 
+          Pupil,
+          fit = "smooth",
+          point = TRUE,
+          # ellipsoid = TRUE,
+          surface = FALSE,
+          groups = Cluster,
+          point.col = Cluster
+          )
 ```

@@ -94,7 +94,7 @@ db_345_355_stim$Age<- age_response_specific
 db_full4new_stim_screen_pupil_nopract<- bind_rows(db_full4new_stim_screen_pupil_nopract, db_345_355_stim)
 
 
-db_full4new_stim_screen_pupil_nopract%>%
+db_full4new_stim_screen_pupil_nopract %>%
   subset(Group == "NT")%>%
   group_by(ssid)%>%
   mutate(cor = cor(arousal, pup_basCor, use = "complete"))%>%
@@ -3927,6 +3927,8 @@ pupil_arousal_findings$BIO_CDA.PhasicMax <- lmer(log1p(BIO_CDA.PhasicMax+.1) ~ a
                         data = db_full4new_stim_screen_pupil_nopract_nt_304)
 
 summary(pupil_arousal_findings$BIO_CDA.PhasicMax)
+
+sjplot::tab_model(pupil_arousal_findings$BIO_CDA.PhasicMax)
 anova(pupil_arousal_findings$arousal_phas_max)
 interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred = arousal_c, modx = valence_c)
 
@@ -4647,6 +4649,8 @@ db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1.1 %>%
   mutate(BIO_CDA.AmpSum_z = scale(BIO_CDA.AmpSum, center = TRUE, scale = TRUE)[,1])%>%
   mutate(Bio_Mean_HR_dif_z = scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1])
 
+unique(db_full6new_hr_fix_stim_nt1.1$ssid)
+db_full6new_hr_fix_stim_nt1.1
 car::scatter3d(x = db_full6new_hr_fix_stim_nt1.1$pup_basCor, 
           y = db_full6new_hr_fix_stim_nt1.1$BIO_CDA.PhasicMax_z, 
           z = db_full6new_hr_fix_stim_nt1.1$Bio_Mean_HR_dif, 
@@ -5005,7 +5009,7 @@ clustering_agg<- subset(clustering_agg, !is.na(stimDescription))
 
 clustering_agg$AlexGroup<- if_else(clustering_agg$TAS> median(clustering_agg$TAS, na.rm = TRUE), "High", "Low")
 colnames(clustering_agg)
-clust_dataset = clustering_agg[c(25,24,20)]
+clust_dataset = clustering_agg_noflood[c(25,24,20)]
 
 
 # Feature Scaling
@@ -5024,7 +5028,7 @@ plot(1:10,
      ylab = 'WCSS')
 
 # Fitting K-Means to the dataset
-set.seed(1)
+set.seed(25)
 kmeans = kmeans(x = clust_dataset, centers = 3)
 y_kmeans = kmeans$cluster
 
@@ -5055,13 +5059,13 @@ test$Distances
 
 a few visualisations
 ```{r}
-clustering_agg$y_kmeans<- y_kmeans
+clustering_agg_noflood$y_kmeans<- y_kmeans
 
 
 
 ?car::scatter3d
 View(clustering_agg)
-clustering_agg$y_kmeans<- as.factor(as.character(clustering_agg$y_kmeans))
+clustering_agg_noflood$y_kmeans<- as.factor(as.character(clustering_agg_noflood$y_kmeans))
 
 clustering_agg2$y_kmeans<- as.factor(as.character(clustering_agg2$y_kmeans))
 
@@ -5069,9 +5073,9 @@ car::scatter3d(clustering_agg$log_Bio_CDA.PhasicMax_z,
           clustering_agg$Bio_Mean_HR_dif_z, 
           clustering_agg$pup_basCor_z,
           fit = "smooth",
-          point = FALSE,
+          point = TRUE,
           # ellipsoid = TRUE,
-          # surface = FALSE,
+          surface = FALSE,
           groups = clustering_agg$y_kmeans,
           point.col = clustering_agg$y_kmeans
           )
