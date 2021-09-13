@@ -235,13 +235,16 @@ table(is.na(tmp.df4_full_stim_downs_jun2021_60bins_no_na$mediansplit_sample_vale
 
 tmp.df4_full_stim_downs_jun2021_60bins_no_na$Arpisal_newlab<- if_else(tmp.df4_full_stim_downs_jun2021_60bins_no_na$mediansplit_sample_arousal2 == "High", "Agitated", "Calm")
 
+tmp.df4_full_stim_downs_jun2021_60bins_no_na$newlab<- paste0(tmp.df4_full_stim_downs_jun2021_60bins_no_na$Arpisal_newlab, paste0(tmp.df4_full_stim_downs_jun2021_60bins_no_na$mediansplit_sample_valence2))
+
+unique(tmp.df4_full_stim_downs_jun2021_60bins_no_na$newlab)
 plots_paper$pupil_course<- tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
   subset(is.na(mediansplit_sample_arousal2) == FALSE)%>%
   subset(Group == "NT")%>%
   subset(pp_arousal_outler == FALSE)%>%
   subset(pupil_outlier == FALSE)%>%
   
-  ggplot(aes(x = timerezero3, y = pup_basCor, color = Arpisal_newlab, linetype = mediansplit_sample_valence2)) +
+  ggplot(aes(x = timerezero3, y = pup_basCor, color = newlab, linetype = newlab)) +
   # aes(group = ssid),
   geom_smooth()+
   # stat_smooth(size=1.5, method = "loess", level = 0.95, 
@@ -251,10 +254,11 @@ plots_paper$pupil_course<- tmp.df4_full_stim_downs_jun2021_60bins_no_na %>%
   ylab("Pupil size (z)")+
   xlab("Time (s)")+
   p$graphstyle+
-   # scale_color_brewer(palette = "Dark2")+
+   scale_color_brewer(palette = "Dark2")+
   xlim(0,6)+
    labs(color  = "Subjective valence", linetype = "Subjective arousal")
   
+# newlab
 plots_paper$pupil_course<- plots_paper$pupil_course+
     guides(color=guide_legend(nrow=2, byrow=TRUE))
   
@@ -446,8 +450,8 @@ db_full6new_hr_fix_stim_nt1.11%>%
   
   xlab("Subjective valence (z)")+
   ylab(expression(Delta*" heart rate (bpm)"))+
-    # p$graphstyle+ylim(-4,1)+
-  ggpubr::stat_cor(label.y = -1)
+    p$graphstyle
+  # ggpubr::stat_cor(label.y = -1)
 
 plots_paper$bio_HR
   # scale_y_continuous(breaks = c(-4,-3,-2,1))
@@ -462,8 +466,7 @@ pacthwork
 ```{r}
 library(patchwork)
 
-plot_patch1<-
-(plots_paper$interaction_ar_vl +
+plot_patch1<- (plots_paper$interaction_ar_vl +
 plots_paper$pupil_correlation +
 plots_paper$pupil_course +
 plots_timecourse$eff_size_pup_amp+
@@ -592,6 +595,7 @@ clustering_new <- left_join(clustering, clust_stim2, by = c("stimIAPS2", "stimDe
 
 clustering_new$Cluster<- clustering_new$clusters
 
+library(ggpubr)
 unique(tmp.df4_full_stim_downs_jun2021_60bins_no_na1$ssid)
 plots_paper$arousal_clust<- clustering_new %>%
   subset(!is.na(Cluster))%>%
@@ -606,7 +610,8 @@ plots_paper$arousal_clust<- clustering_new %>%
     stat_summary(aes(group =ssid), geom =  'line', alpha = .2, size = .1)+
   xlab("Cluster")+
   ylab("Subjective arousal \n (calm - agitated)")+
-  p$graphstyle+ theme(legend.position = "none")
+  p$graphstyle+ theme(legend.position = "none")+
+  scale_y_continuous(breaks = c(-6, -4, 0, 4))
   # stat_compare_means(comparisons = my_comparisons)+ # Add pairwise comparisons p-value
   # stat_compare_means(label.y = 9)
 plots_paper$arousal_clust
@@ -1023,6 +1028,7 @@ ggsave("gaze_control.tiff",gaze_control, device = "tiff", width = 13, height = 6
 https://www.r-bloggers.com/2017/09/multi-dimensional-reduction-and-visualisation-with-t-sne/
   https://cran.r-project.org/web/packages/Rtsne/Rtsne.pdf
 https://uc-r.github.io/kmeans_clustering
+https://sciwheel.com/work/item/5365248/resources/12059185/pdf
 ```
 
 
