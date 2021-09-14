@@ -27,7 +27,7 @@ quick check that Lucys scoring are correct
 ```{r}
 # Traditional scoring
 
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/data_exp_11458-v9 (2)/Select")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport")
 
 library(readr)
 
@@ -102,19 +102,30 @@ also checked a few examples of TAS seem correct. but should note one inconsisten
 
 AQ_50
 
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
 ```{r}
 setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/AQ")
 # 345_356
 read_selfrep1 <- function(flnm) {
-    read_excel(flnm) %>%
+    read_csv(flnm) %>%
         mutate(filename = flnm)
 }
 
-db_AQ <- list.files(pattern = "*.xlsx", 
+
+# lvevkz = 356
+db_aq_356<- subset(db_AQ, `Participant Completion Code` == "lvevkz")
+
+db_AQ_backup<- db_AQ
+
+db_AQ <- list.files(pattern = "*.csv", 
                full.names = T) %>% 
     map_df(~read_selfrep1(.))
 
-db_AQ <- read_excel("data_exp_11458-v9_questionnaire-7uqw-4489770.xlsx")
+# db_AQ <- read_excel("data_exp_11458-v9_questionnaire-7uqw-4489770.xlsx")
+
+
+unique(db_AQ$`Participant Completion Code`)
+unique(db_AQ$`Participant Public ID`)
 
 db_AQ<- subset(db_AQ, db_AQ$`Event Index`== 1)
   
@@ -123,15 +134,26 @@ View(db_AQ)
 
 library(tidyverse)
 colnames(db_AQ)
+colnames(db_aq_356)
+
+db_AQ<- bind_rows(db_AQ, db_aq_356)
+
+
+colnames(db_AQ)
+
+db_AQ$completion_code<- db_AQ$`Participant Completion Code`
 
 db_AQ1<- db_AQ%>%
-  select(c(16,33:132))
+  select(c(18,34:133))
   
 
 colnames(db_AQ1)
 
+# selecting quqntised
 db_AQ2<- db_AQ1%>%
 select(seq(1, 101, 2))
+
+colnames(db_AQ2)
 
 # create a prefix for AQ items
 # https://it.unt.edu/sites/default/files/paste_jds_jun2013.pdf - some nice tips here
@@ -140,6 +162,7 @@ prefix<- "AQ_"
 AQ_counter<- seq(1,50)
 
 aq_labels<-paste(prefix, AQ_counter, sep = "")
+
 # generate odd numbers to match the columns we wnt to keep
 names<- c("completion_code", aq_labels)
 
@@ -180,16 +203,17 @@ db_AQ4<- db_AQ3 %>%
   select(c(completion_code, AQ))
   
 
-
+db_AQ4
 
 ```
 
 TAS-28
 
 ```{r}
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/TAS/356_557_611_616")
 
 read_selfrep <- function(flnm) {
-    readxl::read_xlsx(flnm) %>%
+    read_csv(flnm) %>%
         mutate(filename = flnm)
 }
 
@@ -197,9 +221,17 @@ db_TAS <- list.files(pattern = "*-pdlt.xlsx",
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
+db_TAS_backup<- db_TAS
+db_TAS_356<- subset(db_TAS, `Participant Completion Code` == "lvevkz")
+
+
+db_TAS <- list.files(pattern = "*.csv", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
 
 library(readxl)
-db_TAS <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/TAS/data_exp_11458-v9_questionnaire-pdlt-4489770.xlsx")
+# db_TAS <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/TAS/data_exp_11458-v9_questionnaire-pdlt-4489770.xlsx")
 
 db_TAS<- subset(db_TAS, db_TAS$`Event Index`== 1)
   
@@ -208,6 +240,8 @@ db_TAS<- subset(db_TAS, db_TAS$`Event Index`== 1)
 
 library(tidyverse)
 colnames(db_TAS)
+colnames(db_TAS_356)
+db_TAS<- bind_rows(db_TAS, db_TAS_356)
 
 db_TAS1<- db_TAS%>%
   select(c(16,32:71))
@@ -249,32 +283,50 @@ DASS: chif
 
 subscales need to be multiplied by 2
 
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
+
 ```{r}
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/DASS/356_357_611_616")
+
 read_selfrep <- function(flnm) {
     read_csv(flnm) %>%
         mutate(filename = flnm)
 }
+
+db_DASS_backup<- db_DASS
+unique(db_DASS$`Participant Completion Code`)
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
 
 db_DASS <- list.files(pattern = "*-chif.csv", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
 library(readr)
-db_DASS <- read_xlsx("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/DASS/data_exp_11458-v9_questionnaire-chif-4489770.xlsx")
 
-("Short format/DASS/data_exp_11458-v9_questionnaire-chif-4489770.xlsx")
+# db_DASS <- read_xlsx("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/DASS/data_exp_11458-v9_questionnaire-chif-4489770.xlsx")
+# 
+# ("Short format/DASS/data_exp_11458-v9_questionnaire-chif-4489770.xlsx")
 
 db_DASS<- subset(db_DASS, db_DASS$`Event Index`== 1)
 
-colnames(db_DASS)
-db_DASS1<- db_DASS%>%
-  select(c(12,13,16,32:74))
-  
-colnames(db_DASS1)
 
+db_DASS<-  bind_rows(db_DASS, db_DASS_356)
+
+colnames(db_DASS)
+
+db_DASS1<- db_DASS%>%
+  select(c(14,15,18,34:74))
+  
+
+colnames(db_DASS1)
+db_DASS1$`Repeat Key`<- NULL
+
+db_DASS1$completi
 
 db_DASS2<- db_DASS1%>%
 select(c(1:3,seq(4, 44, 2)))
+colnames(db_DASS2)
 
 db_DASS2$DASS_08<- db_DASS2$STAI_08
   
@@ -301,7 +353,7 @@ db_DASS3 <- db_DASS2 %>%
 colnames(db_DASS3)
 db_DASS3$completion_code<- db_DASS3$`Participant Completion Code`
 
-db_DASS4<- select(db_DASS3, c(1:2,29,25:28))
+db_DASS4<- select(db_DASS3, c(1:2,29,25:29))
 db_DASS4
 
 ```
@@ -309,6 +361,10 @@ db_DASS4
 IAS: jvi8
 working well om the app
 https://xavierrg.shinyapps.io/datacleaning/
+
+
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
 ```{r eval=FALSE, include=FALSE}
 library(readr)
 db_IAS <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IAS/345_346_IAS_2021-08-21.csv")
@@ -318,6 +374,14 @@ library(readr)
 db_IAS <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IAS/All_scores_IAS350_2021-08-23.csv")
 db_IAS
 
+db_TAS_backup$`Participant Private ID`[db_TAS_backup$`Participant Completion Code` == "lvevkz"]
+
+db_IAS_356<- subset(db_IAS, db_IAS$`Participant Private ID` == 4520106)
+db_IAS_backup<- db_IAS
+
+# library(readr)
+db_IAS <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IAS/356_357_611_616/356_357_611_616All_scores_ias_2021-09-13.csv")
+View(db_IAS)
 ```
 
 
@@ -327,8 +391,13 @@ BPQ: bbc4
 # Function that scores the Body Perception Questionnaire (BPQ) 
 # (Cabrera et al., 2018) and all subscales
 # Dependencies: 03_scoring_helpers.R, tidyverse
+
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
 ```{r}
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BPQ")
+# setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BPQ")
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BPQ/356_357_611_616")
 
 # read the files
 read_selfrep <- function(flnm) {
@@ -336,13 +405,15 @@ read_selfrep <- function(flnm) {
         mutate(filename = flnm)
 }
 library(readxl)
-db_BPQ <- read_excel("data_exp_11458-v9_questionnaire-bbc4.xlsx")
-View(data_exp_11458_v9_questionnaire_bbc4)
+# db_BPQ <- read_excel("data_exp_11458-v9_questionnaire-bbc4.xlsx")
+# View(data_exp_11458_v9_questionnaire_bbc4)
 
 
 library(readxl)
 # db_BPQ <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BPQ/data_exp_11458-v9_questionnaire-bbc4-4489770.xlsx")
 
+db_BPQ_backup<- db_BPQ
+db_BPQ_356<- subset(db_BPQ, db_BPQ$completion_code == "lvevkz")
 
 db_BPQ <- list.files(pattern = "*-bbc4.csv", 
                full.names = T) %>% 
@@ -352,6 +423,9 @@ db_BPQ <- list.files(pattern = "*-bbc4.csv",
 db_BPQ<- subset(db_BPQ, db_BPQ$`Event Index`== 1)
 
 db_BPQ$completion_code<- db_BPQ$`Participant Completion Code`
+
+db_BPQ_356$`Event Index`<- as.character(db_BPQ_356$`Event Index`)
+db_BPQ<- bind_rows(db_BPQ, db_BPQ_356)
 
 # store names for BPQ columns
 bpq_names<- names(db_BPQ %>%
@@ -421,14 +495,24 @@ BVAQ: 83b1
 https://www.psychologicabelgica.com/articles/10.5334/pb.302/print/
 sum ramnge 40-200
 
+
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
+
 ```{r}
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BVAQ_83b1")
+# setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BVAQ_83b1")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/BVAQ_83b1/356_357_611_616")
+
 read_selfrep <- function(flnm) {
-    readxl::read_xlsx(flnm) %>%
+    read_csv(flnm) %>%
         mutate(filename = flnm)
 }
 
-db_BVAQ <- list.files(pattern = "*-83b1.xlsx", 
+db_BVAQ_backup<- db_BVAQ
+
+db_BVAQ_356<- subset(db_BVAQ, db_BVAQ$completion_code == "lvevkz")
+
+db_BVAQ <- list.files(pattern = "*-83b1.csv", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
@@ -444,9 +528,13 @@ db_BVAQ$completion_code<- db_BVAQ$`Participant Completion Code`
 
 View(db_BVAQ)
 
+db_BVAQ<- bind_rows(db_BVAQ, db_BVAQ_356)
+
 db_BVAQ1<- db_BVAQ %>%
    select( -contains("quantised"))%>%
    select(c("Participant Private ID","completion_code",BVAQ_01:BVAQ_40))
+
+colnames(db_BVAQ1)
 
 db_BVAQ1<- db_BVAQ1%>%
    mutate(BVAQ = rowSums(.[ 3:42]))
@@ -461,6 +549,9 @@ demographics
 8nsp - vision
 v2gn = mental health
 
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
+
 ```{r}
 setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn")
 
@@ -469,25 +560,49 @@ read_selfrep <- function(flnm) {
         mutate(filename = flnm)
 }
 
-db_age <- list.files(pattern = "*-8zto.xlsx", 
+
+read_selfrep <- function(flnm) {
+    read_csv(flnm) %>%
+        mutate(filename = flnm)
+}
+
+db_age_backup<- db_age
+
+db_age_356<- subset(db_age, db_age$`Participant Completion Code` == "lvevkz")
+
+db_age <- list.files(pattern = "*-8zto.csv", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
+
+db_age<- bind_rows(db_age, db_age_356)
 
 
 # db_age <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/data_exp_11458-v9_questionnaire-8zto-4489770.xlsx")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/vision8nsp")
 
+db_vision_backup<- db_vision
+db_vision_356<- subset(db_vision, db_vision$`Participant Completion Code` == "lvevkz")
 
-db_vision <- list.files(pattern = "*-8nsp.xlsx", 
+db_vision <- list.files(pattern = "*-8nsp.csv", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
-library(readxl)
+db_vision<- bind_rows(db_vision, db_vision_356)
+
 
 # db_vision <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/data_exp_11458-v9_questionnaire-8nsp-4489770.xlsx")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/vision8nsp")
+db_mhealth_backup<- db_mhealth
 
-db_mhealth <- list.files(pattern = "*-v2gn.xlsx", 
+db_mhealth_356<- subset(db_mhealth,db_mhealth$`Participant Completion Code` == "lvevkz")
+
+db_mhealth <- list.files(pattern = "*-v2gn.csv", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
+
+db_mhealth$`mental_health-text`<- as.character(db_mhealth$`mental_health-text`)
+db_mhealth<- bind_rows(db_mhealth, db_mhealth_356)
+
 
 library(readxl)
 # db_mhealth <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/Demographics_8zto_8nsp_v2gn/data_exp_11458-v9_questionnaire-v2gn-4489770.xlsx")
@@ -503,6 +618,10 @@ db_age$gender_response
 db_age$`gender_response-quantised`
 # db_age$`AgeResponse-text`
 db_age1<- select(db_age, c(1,13,16,35,36))
+db_age1<- subset(db_age1, db_age1$`Event Index` == 1)
+db_vision1<- subset(db_vision, db_vision$`Event Index` == 1)
+db_mhealth1<- subset(db_mhealth, db_mhealth$`Event Index` == 1)
+
 
 colnames(db_mhealth)
 
@@ -514,18 +633,26 @@ db_mhealth$`mental_health-text`
 db_mhealth$medication
 db_mhealth1<- select(db_mhealth, c(1,13,16, 33,34,37:38,40))
 
+colnames(db_mhealth1)
+
 colnames(db_vision)
 db_vision$EyesightResponse
 db_vision1<- select(db_vision, c(1,13,16, 33,34,36:37))
 
+colnames(db_vision1)
+
+
+# db_age1<- select(db_age, c(1,13,16,35,36))
+db_age1<- subset(db_age1, db_age1$`Event Index` == 1)
+db_vision1<- subset(db_vision1, db_vision1$`Event Index` == 1)
+db_mhealth1<- subset(db_mhealth1, db_mhealth1$`Event Index` == 1)
 
 # note this is ignoring the last
-db_demog <- left_join(db_vision1, db_mhealth1,db_age1, by = c("Participant Private ID",
-                                                   "Participant Completion Code"))%>%
+db_demog <- left_join(db_vision1, db_mhealth1, by = c("Participant Private ID",
+                                                   "Participant Completion Code"))
   
-db_demog <- left_join(db_vision1, db_mhealth1,db_age1, by = c("Participant Private ID",
-                                                   "Participant Completion Code"))%>%
-  subset(!is.na(`Participant Private ID`))
+db_demog <- left_join(db_demog,db_age1, by = c("Participant Private ID",
+                                                   "Participant Completion Code"))
 
 db_demog$completion_code <- db_demog$`Participant Completion Code`
 
@@ -538,27 +665,34 @@ IQ: esh8
 345 to 356 need to be scores separatelly
 
 Lucy: https://docs.google.com/spreadsheets/d/1P9x7oHxpUTanb412czfgYqR_stPJ3fHzwYiItANpfO8/edit#gid=277478937
+
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
 ```{r}
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IQ_esh8")
+# setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IQ_esh8")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IQ_esh8/356_357_611_616")
 
 
 read_selfrep <- function(flnm) {
-    readxl::read_xlsx(flnm) %>%
+    read_csv(flnm) %>%
         mutate(filename = flnm)
 }
-
 
 library(readxl)
 # db_IQ <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/IQ_esh8/data_exp_60620-v2_task-esh8.xlsx")
 
+db_IQ_backup<- db_IQ
 
-db_IQ <- list.files(pattern = "*-esh8.xlsx", 
+db_IQ_356<- subset(db_IQ, db_IQ$`Participant Completion Code` =="lvevkz" )
+colnames(db_IQ1)
+db_IQ <- list.files(pattern = "*-esh8.csv", 
                full.names = T) %>% 
     map_df(~read_selfrep(.))
 
 colnames(db_IQ)
-
-db_IQ1<- select(db_IQ, c(1,13,16, 37,40:44))
+iqnames<- colnames(db_IQ1)
+# db_IQ1<- select(db_IQ, c(1,12,15, 35,38:44))
+db_IQ1<- select(db_IQ, iqnames)
 
 db_IQ2<- subset(db_IQ1, !is.na(Response))
 View(db_IQ2)
@@ -572,16 +706,17 @@ db_IQ3$Matrix_Total<- db_IQ3$Correct
 db_IQ3$completion_code<- db_IQ3$`Participant Completion Code`
 
 colnames(db_IQ3)
-db_IQ4<- select(db_IQ3,c(1,9,8))
+db_IQ4<- select(db_IQ3,c(1,7,6))
   
 ```
 
 Merge all into one self report
 
 ```{r}
-db_demog$`Participant Completion Code`<- NULL
 
-db_demog$completion_code<- db_demog$`Participant Completion Code`
+
+db_demog$completion_code <- db_demog$`Participant Completion Code`
+db_demog$`Participant Completion Code`<- NULL
 
 # left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS, by = "completion_code")
 
@@ -600,25 +735,51 @@ db_BPQ3
 # 
 # left_join(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3, by = "completion_code")
 
+db_self_rep_backup<- db_self_rep
 
-db_self_rep <- Reduce(merge, list(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS))
+db_AQ4
+# db_demog has priovate and code
+db_code_private<- select(db_demog, c(completion_code, `Participant Private ID`))
+db_IAS<- left_join(db_IAS,db_code_private, by = "completion_code")
+
+# merge all side by side based on a comoon column
+db_self_rep_temp<- left_join(db_demog, db_DASS4, by = "completion_code")
+db_self_rep_temp<- left_join(db_self_rep_temp, db_TAS4, by = "completion_code")
+db_self_rep_temp<- left_join(db_self_rep_temp, db_AQ4, by = "completion_code")
+db_self_rep_temp<- left_join(db_self_rep_temp, db_BVAQ3, by = "completion_code")
+
+db_self_rep_temp<- left_join(db_self_rep_temp, db_IQ4, by = "completion_code")
+
+db_self_rep_temp<- left_join(db_self_rep_temp, db_BPQ3, by = "completion_code")
+db_self_rep_temp<- left_join(db_self_rep_temp, db_IAS, by = "completion_code")
 
 
-db_self_rep <- cbind(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS)
+# db_self_rep <- Reduce(merge, list(db_demog$completion_code,db_DASS4,db_TAS4$completion_code, db_AQ4$completion_code, db_BVAQ3$completion_code, db_IQ4$completion_code, db_BPQ3,db_IAS$`Participant Private ID`))
+
+db_demog
+# db_self_rep <- cbind(db_demog,db_DASS4,db_TAS4, db_AQ4, db_BVAQ3, db_IQ4, db_BPQ3,db_IAS)
+db_self_rep_backup<- db_self_rep
+db_self_rep<- db_self_rep_temp
 
 db_self_rep
-write_csv(db_self_rep, "db_self_rep_345_356.csv")
+# write_csv(db_self_rep, "db_self_rep_345_356.csv")
 
-write_csv(db_self_rep, "db_self_rep_350.csv")
+# write_csv(db_self_rep, "db_self_rep_350.csv")
+
+write_csv(db_self_rep, "db_self_rep_356_367_611_616.csv")
 
 # db_IAS$
 ```
 
 
+
+hcqzar		mobile	Samsung SM-G950F	Android 9 are the same person = 357
+db_DASS_356<- subset(db_DASS, `Participant Completion Code`== "lvevkz")
 ```{r}
 # STAI_T:: 5nzr
 
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_T_5nzr")
+# setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_T_5nzr")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_T_5nzr/356_356_611_616")
 
 # STAIS: 8rfo
 
@@ -627,15 +788,27 @@ read_selfrep <- function(flnm) {
         mutate(filename = flnm)
 }
 
-library(readxl)
-db_STAI_S <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_S_8rfo/data_exp_11458-v9_questionnaire-8rfo_345_356.xlsx")
+read_selfrep <- function(flnm) {
+    read_csv(flnm) %>%
+        mutate(filename = flnm)
+}
 
 
 library(readxl)
 db_STAI_T <- read_excel("data_exp_11458-v9_questionnaire-5nzr_345_356.xlsx")
 
+db_STAI_T_backup<- db_STAI_T
 
-db_STAI_T
+db_STAI_T_356<- subset(db_STAI_T, db_STAI_T$completion_code == "lvevkz")
+
+
+db_STAI_T<- list.files(pattern = "*-5nzr.csv", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+db_STAI_T_356$`Event Index`<- as.character(db_STAI_T_356$`Event Index`)
+
+db_STAI_T<- bind_rows(db_STAI_T, db_STAI_T_356)
 
 # eliminate empty rows
 db_STAI_T<- subset(db_STAI_T, db_STAI_T$`Event Index`== 1)
@@ -662,12 +835,29 @@ colnames(db_STAI_T1)
 db_STAI_T2<- db_STAI_T1%>%
    mutate(STAIT = rowSums(.[ 3:22]))
     
-db_STAI_T2
+colnames(db_STAI_T2)
 db_STAI_T3<- select(db_STAI_T2, c(1:2, 23))
 db_STAI_T3
 
 
-db_STAI_S
+library(readxl)
+# db_STAI_S <- read_excel("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_S_8rfo/data_exp_11458-v9_questionnaire-8rfo_345_356.xlsx")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport/Short format/STAI_S_8rfo/356_357_611_616")
+
+db_STAI_S_backup<- db_STAI_S
+
+db_STAI_S_546<- subset(db_STAI_S, db_STAI_S$completion_code == "lvevkz")
+
+
+
+db_STAI_S<- list.files(pattern = "*-8rfo.csv", 
+               full.names = T) %>% 
+    map_df(~read_selfrep(.))
+
+
+db_STAI_S_546$`Event Index`<- as.character(db_STAI_S_546$`Event Index`)
+
+db_STAI_S<- bind_rows(db_STAI_S, db_STAI_S_546)
 
 # eliminate empty rows
 db_STAI_S <- subset(db_STAI_S, db_STAI_S$`Event Index`== 1)
@@ -678,6 +868,7 @@ db_STAI_S$completion_code<- db_STAI_S$`Participant Completion Code`
 # use the quantised columns as the response siunce they have a number rather than a string
 
 colnames(db_STAI_S)
+
 db_STAI_S1<- db_STAI_S %>%
     select("Participant Private ID","completion_code", 
            STAIS_01:STAIS_20)%>%
@@ -694,9 +885,10 @@ colnames(db_STAI_S1)
 db_STAI_S2<- db_STAI_S1%>%
    mutate(STAIS = rowSums(.[ 3:22]))
     
-db_STAI_S2
+colnames(db_STAI_S2)
+
 db_STAI_S3<- select(db_STAI_S2, c(1:2, 23))
-db_STAI_S3
+colnames(db_STAI_S3)
 
 db_STAI<- left_join(db_STAI_S3, db_STAI_T3)
 
@@ -707,7 +899,7 @@ merge
 ```{r}
 db_self_rep
 library(readr)
-db_self_rep_350_1 <- read_csv("db_self_rep_350.1.csv")
+# db_self_rep_350_1 <- read_csv("db_self_rep_350.1.csv")
 # View(db_self_rep_350_1)
 
 
@@ -715,23 +907,31 @@ db_self_rep$`Event Index.x`<- NULL
 db_self_rep$`Event Index.y`<-NULL
 db_self_rep_350_1$`Event Index.y`<- NULL
 
-db_self_rep_345_356<- bind_rows(db_self_rep,db_self_rep_350_1)
-colnames(db_self_rep_345_356)
+# db_self_rep_345_356<- bind_rows(db_self_rep,db_self_rep_350_1)
+colnames(db_self_rep)
 
-db_self_rep_345_356<- db_self_rep_345_356[,c(1:22)]
+db_self_rep_345_356<- db_self_rep[,c(1:25)]
 
 # library(readxl)
 Interoception_Study_Logbook <- read_excel("Interoception Study Logbook.xlsx")
+
+library(readxl)
+Interoception_Study_Logbook <- read_excel("Interoception Study Logbook _with456_357_611_616.xlsx")
+# View(Interoception_Study_Logbook_with456_357_611_616)
 View(Interoception_Study_Logbook)
 
 
 db_self_rep_345_356$completion_code
-Interoception_Study_Logbook$completion_code
-ssid<- select(Interoception_Study_Logbook, c(1:3))
 
+Interoception_Study_Logbook$completion_code
+
+ssid<- select(Interoception_Study_Logbook, c(1:3))
+ssid$completion_code<- ssid$`Completion Code`
 
 db_self_rep_345_356<- left_join(db_self_rep_345_356,ssid, by = "completion_code")
-write_csv(db_self_rep_345_356, "db_self_rep_345_356_final.csv")
+# write_csv(db_self_rep_345_356, "db_self_rep_345_356_final.csv")
+write_csv(db_self_rep_345_356, "db_self_rep_356_357_611_616_final.csv")
+```
 
 # - CHECK WASI M on the norms
 

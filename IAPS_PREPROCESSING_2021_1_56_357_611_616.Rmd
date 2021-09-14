@@ -58,7 +58,9 @@ note that starting from 322 we have gsr-v and hr-v, and pulse
 
 # hdf5FilesPath<- "D:/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking"
 
-hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021"
+hdf5FilesPath<- "~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021/346_357_611_616"
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/2021/346_357_611_616")
 
 gp.extractor = function(hdf5FilesPath) {
   
@@ -70,7 +72,7 @@ gp.extractor = function(hdf5FilesPath) {
     
     return(message('No HDF5 files found in the directory provided.'))
   }
-   f = 30
+   # f = 30
   for (f in 1:length(hdfFilesList)) {
     
     message(sprintf("Extracting file %i / %i - %s", f, length(hdfFilesList), hdfFilesList[f]))
@@ -402,7 +404,9 @@ Now cleaning gaze data and prepare data for ledalab and artifact
 ```{r, cleaning}
 # function to read all the csvs into one dataframe
 
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/Step1_GpExtractor_Output/346-355")
+# setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/Step1_GpExtractor_Output/346-355")
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/Step1_GpExtractor_Output/356_357_611_616")
 
 # rm(tmp_full)
 read_plus <- function(flnm) {
@@ -418,6 +422,10 @@ tmp.df2 <-
              full.names = T) %>% 
   map_df(~read_plus(.))
 
+unique(tmp.df2$ssid)
+
+tmp.df2$ssid[tmp.df2$ssid == 311] <- 611
+tmp.df2$ssid[tmp.df2$ssid == 312] <- 357
 unique(tmp.df2$ssid)
 
 table(is.na(tmp.df2$ssid))
@@ -573,7 +581,7 @@ table(tmp.df2$y_outside)
 137/(185406+137)
 0.0007383733*100
 
-range(tmp.df, na.rm = TRUE)
+# range(tmp.df, na.rm = TRUE)
 tmp.df2$y_outside<-NULL
 
 
@@ -612,7 +620,7 @@ tmp.df3<-tmp.df3%>%
 
 min(tmp.df3$timerezero, na.rm = TRUE)
 max(tmp.df3$timerezero, na.rm = TRUE) # max shoudl be around 120s for 2 mnutes
-natest<-subset(tmp.df3, is.na(tmp.df3$ssid) == TRUE)
+# natest<-subset(tmp.df3, is.na(tmp.df3$ssid) == TRUE)
 
 # let's check to see if it looks fine
 ggplot(subset(tmp.df3, tmp.df3$tNo == -1), aes(timerezero, gsr, colour = as.factor(ssid)))+
@@ -666,7 +674,7 @@ ggplot(subset(tmp.df3, tmp.df3$tNo == -4) , aes(x = timerezero2, y= gsr, colour 
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
 
-
+# rest
 ggplot(subset(tmp.df3, tmp.df3$tNo == -7) , aes(x = timerezero3, y= gsr, colour = as.factor(ssid)))+
   # geom_point()
       geom_line() +
@@ -735,10 +743,15 @@ unique(tmp.df3$ssid)
 max(tmp.df3$gsr_ms)
 min(tmp.df3$gsr_ms)
 
+tmp.df3$gsr_ms[tmp.df3$gsr_ms == "Inf"]<-NA
+
 # gsr for leda
 colnames(tmp.df3)
-db_GSR<- select(tmp.df3, c(3,  14, 17, 50, 49,51 ))
+db_GSR_backup<- db_GSR
+db_GSR<- select(tmp.df3, c(3,  14, 17, 50, 49,51,52 ))
 db_GSR$tNo<- NULL
+colnames(db_GSR_backup)
+# unique(db_GSR_backup$trigger)
 colnames(db_GSR)
 
 unique(db_GSR$Condition)
@@ -754,6 +767,8 @@ split_column<- unique(db_GSR$split_column)
 split_gsr = split(db_GSR, list(db_GSR$split_column))
 
 setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021")
+
+# setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/Step1_GpExtractor_Output/356_357_611_616")
 
     for (ssid in names(split_gsr)) {
       write_tsv(split_gsr[[ssid]][,c("time","gsr_ms", "trigger")], paste0("gpgsr_", paste0(ssid),".txt"), col_names = FALSE)
@@ -811,6 +826,7 @@ tmp.df3<- tmp.df3%>%
 tmp.df3$gsr_basCor<- if_else(tmp.df3$Condition == 'Rest', tmp.df3$gsr_ms- tmp.df3$gsr_restmedian, tmp.df3$gsr_basCor)
 
 # plot diagnosis
+# takes a bit - 
 ggplot(subset(tmp.df3, tmp.df3$Condition == 'IAPS') , aes(x = timerezero3, y= gsr_basCor, colour = as.factor(ssid)))+
   # stat_summary(geom = 'line', fun.data = 'mean')+
     geom_smooth()+
@@ -819,6 +835,7 @@ ggplot(subset(tmp.df3, tmp.df3$Condition == 'IAPS') , aes(x = timerezero3, y= gs
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2)
   
+# plotting rest
  ggplot(subset(tmp.df3, tmp.df3$Condition == 'Rest') , aes(x = timerezero3, y= gsr_basCor, colour = as.factor(ssid)))+
   # stat_summary(geom = 'line', fun.data = 'mean')+
     geom_smooth()+
@@ -828,6 +845,7 @@ ggplot(subset(tmp.df3, tmp.df3$Condition == 'IAPS') , aes(x = timerezero3, y= gs
     geom_vline(aes(xintercept = 6), colour = 'blue', linetype = 'dashed', size = 2) 
   # tmp.df_norest$tNo<- as.factor(tmp.df_norest$tNo)
     
+ # just stim
 ggplot(subset(tmp.df3, tmp.df3$screencontent == 'stim') , aes(x = timerezero3, y= gsr_basCor, olour = as.factor(ssid)))+
     geom_smooth(aes())+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
@@ -841,10 +859,15 @@ tmp.df3_backup<- tmp.df3
 tmp.df3$gsr_resp_Log<- if_else(tmp.df3$timerezero3 > 1,TRUE, FALSE)
 unique(tmp.df3$gsr_resp_Log)
 
+range(tmp.df3$gsr_basCor)
 tmp.df3 <- tmp.df3 %>%
     group_by(ssid, tNo, gsr_resp_Log )%>%
-    mutate(gsr_response =   max(gsr_basCor))
+    mutate(gsr_response = max(gsr_basCor, na.rm = TRUE))
 
+range(tmp.df3$gsr_response, na.rm = TRUE)
+unique(tmp.df3$gsr_response, na.rm = TRUE)
+
+tmp.df3$gsr_response[tmp.df3$gsr_response == "-Inf"]<- NA
 # gsr response for every bit
 unique(tmp.df3$screencontent)
 
@@ -891,7 +914,7 @@ tmp.df3$pupil<- if_else(tmp.df3$pupil< 45, tmp.df3$pupil, NULL)
 tmp.df3_backup <- tmp.df3
 
 
-# note that smothing and interpolating is order dependednt so order by ssid, trial and time
+# note that smothing and interpolating is order dependent so order by ssid, trial and time
 tmp.df3<- tmp.df3 %>%
   arrange(ssid, time,tNo)%>%
   group_by(ssid, trialUnq,tNo,screencontent) %>%
@@ -908,7 +931,7 @@ ggplot(subset(tmp.df3, tmp.df3$tNo == 3), aes(x = timerezero3, y= extendpupil , 
 
 # Smooth and Interpolate
 tmp.df3$subject<- tmp.df3$ssid
-tmp.df3$trial = tmp.df3$trialUnq
+tmp.df3$trial <- tmp.df3$trialUnq
 
 # min(pup_extend$pupil, na.rm = TRUE)
 tmp.df3$extendpupil
@@ -952,7 +975,7 @@ tmp.df3 <- gazer::smooth_interpolate_pupil(tmp.df3, pupil="pupil", extendpupil="
 min(tmp.df3$pup_interp, na.rm = TRUE)
 max(tmp.df3$pup_interp, na.rm = TRUE)
 
-subset(tmp.df3, tNo == 20 & ssid == 347)%>%
+subset(tmp.df3, tNo == 20 & ssid == 357)%>%
 ggplot(aes(x = timerezero3, y= pup_interp))+
   geom_line()+
    geom_line(aes(y = extendpupil), color = 'red')+
@@ -960,7 +983,7 @@ ggplot(aes(x = timerezero3, y= pup_interp))+
   # facet_grid(~Condition)
 
 
-subset(tmp.df3, tNo == -7 & ssid == 350)%>%
+subset(tmp.df3, tNo == -7 & ssid == 357)%>%
 ggplot(aes(x = timerezero3, y= pupil))+
   geom_line()
 
@@ -1025,6 +1048,11 @@ max_pup<-tmp.df3 %>%
   dplyr::mutate(MAD=calc_mad(speed))
   # dplyr::filter(speed < MAD)
 
+range(max_pup$MAD)
+range(max_pup$speed)
+table(is.infinite(max_pup$MAD))
+tmp.df3_backup<- tmp.df3
+
 tmp.df3<- max_pup
 
 # instead of deleting, nus put NA
@@ -1034,10 +1062,11 @@ tmp.df3$pup_interp_mad<- if_else(tmp.df3$speed< tmp.df3$MAD, tmp.df3$pup_interp,
 # tmp.df3$pup_basCor<- if_else(tmp.df3$speed< tmp.df3$MAD, tmp.df3$pup_basCor, NULL)
 
  
-  
-ggplot(subset(tmp.df3, tNo == 10 & tmp.df3$ssid == 354) , aes(x = timerezero3, y= pup_basCor))+
+  subset(tmp.df3,  tNo == 10 & ssid == 357)%>%
+ggplot(aes(x = timerezero3, y= pup_basCor))+
     # geom_smooth(se = F)+
   geom_line()+
+    geom_line(aes(y =pup_interp_mad), color = "red")+
     geom_vline(aes(xintercept = 0), colour = 'red', linetype = 'dashed', size = 2)+
     geom_vline(aes(xintercept = 4), colour = 'gray30', linetype = 'dotted', size = 2)+
     geom_vline(aes(xintercept = 8), colour = 'gray30', linetype = 'dotted', size = 2)+
@@ -1113,13 +1142,13 @@ tmp.df3<- tmp.df3%>%
 # tmp.df3$hr_interp = 
 
 tmp.df3<- tmp.df3%>%
-  # arrange(ssid, time, tNo)%>%
+  arrange(ssid, time, tNo)%>%
   group_by(ssid, tNo,screencontent)%>%
   mutate(hr_interp = na.approx(hr_clean, na.rm=FALSE, maxgap =400))
 
 
   min(tmp.df3$hr, na.rm = TRUE)
-ggplot(subset(tmp.df3, tmp.df3$tNo == -7 & tmp.df3$ssid == 352) , aes(x = timerezero3, y= hr_interp))+
+ggplot(subset(tmp.df3, tmp.df3$tNo == -7 & tmp.df3$ssid == 611) , aes(x = timerezero3, y= hr_interp))+
     # geom_smooth(se = F)+
   geom_line()+
   geom_line(aes(y = hr_clean), linetype = 'dashed', colour = 'green', size = 0.3)+
@@ -1173,20 +1202,22 @@ tmp.df4 <- tmp.df4 %>%
   mutate(hr_loss_prop = 1 - hr_valid_prop)
 
 # check to see this is right
-ggplot(subset(tmp.df4, tmp.df3$ssid == 353) , aes(x = tNo, y= hr_valid_prop))+
+ggplot(subset(tmp.df4, tmp.df3$ssid == 615) , aes(x = tNo, y= hr_valid_prop))+
     # geom_smooth(se = F)+
   geom_line()+
   geom_line(aes(y = hr_loss_prop), linetype = 'dashed', colour = 'green', size = 0.3)
    # geom_line(aes(y = hr), linetype = 'dotted', colour = 'blue', size = 0.4)
 
-ggplot(subset(tmp.df4, tmp.df3$ssid == 354) , aes(x = tNo, y= gaze_valid_prop))+
+ggplot(subset(tmp.df4, tmp.df3$ssid == 356) , aes(x = tNo, y= gaze_valid_prop))+
     # geom_smooth(se = F)+
   geom_line()+
   geom_line(aes(y = gaze_loss_prop), linetype = 'dashed', colour = 'green', size = 0.3)
    # geom_line(aes(y = hr), linetype = 'dotted', colour = 'blue', size = 0.4)
 
 colnames(tmp.df4)
-write_csv(tmp.df4, 'interodata_clean_gp_346_355.csv')
+# write_csv(tmp.df4, 'interodata_clean_gp_346_355.csv')
+
+write_csv(tmp.df4, 'interodata_clean_gp_356_357_611_616.csv')
 
 # tmp.df4<- read_csv('intero_tsdata_clean.csv')
 
@@ -1204,6 +1235,7 @@ tmp.df4$trigger2<- if_else(tmp.df4$trigger>99, tmp.df4$trigger, as.double(tmp.df
 unique(tmp.df4$trigger2)
 unique(tmp.df4$trigger)
 unique(tmp.df4$tNo)
+unique(tmp.df4$ssid)
 
 # \why?
 unique(tmp.df4$text)
@@ -1231,9 +1263,12 @@ unique(tmp.df4_sum$trigger)
 tmp.df4_sum<- tmp.df4_sum%>%
   arrange(time, tNo, ssid)
 
-write_csv(tmp.df4_sum, 'intero_aggdata_clean.csv')
+# write_csv(tmp.df4_sum, 'intero_aggdata_clean.csv')
 
-write_csv(tmp.df4_sum, 'intero_aggdata_clean_3046_355.csv')
+# write_csv(tmp.df4_sum, 'intero_aggdata_clean_3046_355.csv')
+write_csv(tmp.df4_sum, 'interodata_clean_gp_356_357_611_616.csv')
+
+# interodata_clean_gp_356_357_611_616.csv
 # 
 # head(tmp.df4_sum)
 # unique(tmp.df4_sum$tNo)
@@ -1245,6 +1280,8 @@ ggplot(tmp.df4_sum, aes(tNo, gaze_valid_prop, colour = as.factor(ssid)))+
 ggplot(subset(tmp.df4_sum, tmp.df4_sum$screencontent == 'stim'), aes(tNo, gaze_valid_prop, colour = as.factor(ssid)))+
   geom_point()+
   geom_line()
+
+# 616 seesm to have vey poor data fr eyetracking - exclude
 
 ggplot(subset(tmp.df4_sum, tmp.df4_sum$screencontent == 'stim'), aes(gaze_valid_prop, colour = as.factor(ssid)))+
 # geom_density()+
@@ -1266,11 +1303,15 @@ colnames(tmp.df4)
   
   for_gazepath<- select(tmp.df4, c(2:15,17:26, 39:40,42:43))
   
+  for_gazepath<- subset(for_gazepath, ssid!= 616)
+  
   for_gazepath$screencontent[for_gazepath$screencontent == 'rest1']<- 'fixation'
   for_gazepath<- for_gazepath%>%
     arrange(ssid, time, tNo)
   
   colnames(for_gazepath)
+  unique(for_gazepath$ssid)
+  
   
   for_gazepath<- subset(for_gazepath, is.na(for_gazepath$time) == FALSE)
    # View(for_gazepath)
@@ -1283,7 +1324,9 @@ colnames(tmp.df4)
   split_df = split(for_gazepath, list(for_gazepath$split_column))
   
   
-  setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/GP_IAPS_for_gazepath/346_355")
+  # setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/GP_IAPS_for_gazepath/346_355")
+  
+  setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/GP_IAPS_for_gazepath/356_357_611_615")
   
   (sprintf("writing for gazepath"))
   # ssid = split(for_gazepath, list(for_gazepath$ssid))
@@ -1307,8 +1350,8 @@ left eye y coord: left_gaze_y_cor_pix
 
 didtance: distance (mm)
 
-right eye x coord: right_gaze__cor_pix
-right eye y coord: right_gaze_x_cor_pix
+right eye x coord: right_gaze_x_cor_pix
+right eye y coord: right_gaze_y_cor_pix
 didtance: distance (mm)
 
 trial index: trialnq
@@ -1337,10 +1380,14 @@ GUI()
 
 read parsed data
 ```{r}
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/Eyetracking/GP_IAPS_for_gazepath/356_357_611_615")
+
 read_parsed <- function(flnm) {
     read_csv(flnm) %>%
         mutate(filename = flnm)
 }
+
+db_parsed_backup<- db_parsed
 
 db_parsed <- list.files(pattern = "*.csv", 
                full.names = T) %>% 
@@ -1364,6 +1411,7 @@ db_parsed$screencontent_no <- if_else(db_parsed$screencontent == 'fixation', 1,
 db_parsed$tNo<- as.numeric(substr(db_parsed$trialUnq, 1,2))
 unique(db_parsed$screencontent_no)
 db_parsed$ssid<- substr(db_parsed$Participant, 4,6)
+unique(db_parsed$ssid)
 
 db_parsed<- db_parsed%>%
   arrange(ssid, tNo, screencontent_no)
@@ -1383,8 +1431,9 @@ db_parsed<-db_parsed%>%
   mutate(sac_count = sum(Value == 's'))
 
 # this might be needed for tempoal analisys
-write_csv(db_parsed, 'db_parsed.csv')
-write_csv(db_parsed, 'db_parsed_346_355.csv')
+# write_csv(db_parsed, 'db_parsed.csv')
+# write_csv(db_parsed, 'db_parsed_346_355.csv')
+write_csv(db_parsed, 'db_parsed_356_357_611_615.csv')
 
 db_parsed_summarised<- db_parsed%>%
   group_by(ssid, tNo,screencontent, trialUnq, screencontent_no, Value)%>%
@@ -1411,7 +1460,7 @@ db_parsed_summarised_sac$Value<- NULL
 db_parsed_summarised_fix$Value<- NULL
 db_parsed_summarised_sac$RMS<- NULL
 
-View(db_parsed)
+# View(db_parsed)
 
 colnames(db_parsed_summarised_fix)
 colnames(db_parsed_summarised_sac)
@@ -1422,8 +1471,9 @@ db_parsed_summarised2<- left_join(db_parsed_summarised_fix,db_parsed_summarised_
 db_parsed_summarised2<- db_parsed_summarised2%>%
   arrange(ssid, tNo, screencontent_no)
 # View(db_parsed_summarised2)
-write_csv(db_parsed_summarised2, 'db_parsed_summarised.csv')
-write_csv(db_parsed_summarised2, 'db_parsed_summarised_346_355.csv')
+# write_csv(db_parsed_summarised2, 'db_parsed_summarised.csv')
+# write_csv(db_parsed_summarised2, 'db_parsed_summarised_346_355.csv')
+write_csv(db_parsed_summarised2, 'db_parsed_summarised_356_357_611_615.csv')
 
 db_parsed_summarised2$ssid<- as.numeric(db_parsed_summarised2$ssid)
 db_parsed_summarised2
@@ -1432,6 +1482,9 @@ db_parsed_summarised2
 # merge parsed with eyetracking data
 # tmp.df4_sum_full<- left_join(tmp.df4_sum_full,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent")) #original
 
+unique(tmp.df4_sum$ssid)
+tmp.df4_sum_full_backup<- tmp.df4_sum_full
+
 tmp.df4_sum_full<- left_join(tmp.df4_sum,db_parsed_summarised2, by = c("ssid", "trialUnq", "tNo", "screencontent"))
 
 # rm(tmp.df4_sum_fullt)
@@ -1439,6 +1492,10 @@ tmp.df4_sum_full<- left_join(tmp.df4_sum,db_parsed_summarised2, by = c("ssid", "
 # 
 # tmp.df4_sum_fullt
 
+tmp.df4_sum_full
+
+tmp.df4_sum_full<- tmp.df4_sum_full%>%
+  arrange(ssid, tNo, screencontent_no)
 tmp.df4_sum_full
 ```
 
@@ -1451,6 +1508,9 @@ Behavioral data
 library(data.table) 
 library(purrr)
 
+# setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/IAPSBehav/346_355")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/IAPSBehav/356_357_611_616")
+
 read_plus_beh <- function(flnm, select = c("condition", "stimIAPS","stimDescription", "ValenceMean","ArousalMean","trigger",
                                      "trialsPract.thisTrialN","trialIAPS.thisTrialN", "self_valence_4.response","self_valence_2.response","Self_intensity_2.response","Self_intensity_3.response", "self_valence_4.rt", "self_valence_2.rt", "Self_intensity_2.rt", "Self_intensity_3.rt")) {
   read.csv(flnm) %>% 
@@ -1458,20 +1518,29 @@ read_plus_beh <- function(flnm, select = c("condition", "stimIAPS","stimDescript
 }
 
 
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/IAPSBehav/346_355")
+
 # now read them
+db_beh_backup<- db_beh
+
 db_beh <-
   list.files(pattern = "*.csv",
              full.names = T) %>%
   map_df(~read_plus_beh(.))
 
+unique(db_beh$filename)
+
+```
+
 # problem file
+
+
 # db328$condition<-db328$ï..condition
 
 db328 <-select(db328, c("condition", "stimIAPS","stimDescription", "ValenceMean","ArousalMean","trigger",
                                      "trialsPract.thisTrialN","trialIAPS.thisTrialN", "self_valence_4.response","self_valence_2.response","Self_intensity_2.response","Self_intensity_3.response", "self_valence_4.rt", "self_valence_2.rt", "Self_intensity_2.rt", "Self_intensity_3.rt"))
 
 db328$ssid<- 328
+
 
 
 db328$filename<- db328$ssid
@@ -1490,14 +1559,14 @@ db_beh <- rbindlist(sapply(files, fread, simplify = FALSE),
                 use.names = TRUE, idcol = "filename")
 db_beh$condition <- db_beh$ï..condition
 
+```{r}
+
 db_beh<- select(db_beh, c("filename", "condition", "stimIAPS","stimDescription", "ValenceMean","ArousalMean","trigger",
                                      "trialsPract.thisTrialN","trialIAPS.thisTrialN", "self_valence_4.response","self_valence_2.response","Self_intensity_2.response","Self_intensity_3.response", "self_valence_4.rt", "self_valence_2.rt", "Self_intensity_2.rt", "Self_intensity_3.rt"))
 
-db328<- select(db328, c("filename", "condition", "stimIAPS","stimDescription", "ValenceMean","ArousalMean","trigger",
-                                     "trialsPract.thisTrialN","trialIAPS.thisTrialN", "self_valence_4.response","self_valence_2.response","Self_intensity_2.response","Self_intensity_3.response", "self_valence_4.rt", "self_valence_2.rt", "Self_intensity_2.rt", "Self_intensity_3.rt"))
+# db328<- select(db328, c("filename", "condition", "stimIAPS","stimDescription", "ValenceMean","ArousalMean","trigger",
+#                                      "trialsPract.thisTrialN","trialIAPS.thisTrialN", "self_valence_4.response","self_valence_2.response","Self_intensity_2.response","Self_intensity_3.response", "self_valence_4.rt", "self_valence_2.rt", "Self_intensity_2.rt", "Self_intensity_3.rt"))
 
-
-# 
 # db304<- rbindlist(sapply(files, fread, simplify = FALSE),
 #                 use.names = TRUE, idcol = "filename")
 # 
@@ -1519,13 +1588,17 @@ colnames(db_beh)
 
 db_beh2<- db_beh
 
-# problem
+```
+
+# problem file
 db328$filename<- as.character(db328$filename)
 db328$ssid<- as.character(db328$ssid)
 
 db328$ssid <- 328
 
 db_beh2<- bind_rows(db_beh2, db328)
+
+```{r}
 
 unique(db_beh2$ssid)
 
@@ -1552,6 +1625,7 @@ db_beh2$trialsPract.thisTrialN<- db_beh2$trialsPract.thisTrialN - 6
 db_beh2$trialIAPS.thisTrialN<-db_beh2$trialIAPS.thisTrialN +1 
 db_beh2$tNo<- if_else(is.na(db_beh2$Self_intensity_2.response) == FALSE, db_beh2$trialsPract.thisTrialN, db_beh2$trialIAPS.thisTrialN)
 unique(db_beh2$tNo)
+
 db_beh2<- subset(db_beh2, is.na(db_beh2$tNo) == FALSE)
 
 db_beh2<- db_beh2%>%
@@ -1565,6 +1639,8 @@ ggplot(db_beh2, aes(x = tNo, y = valence_rt))+
   geom_point()+
   geom_line()
 
+
+
 ggplot(db_beh2, aes(x = valence, y = ValenceMean))+
   geom_point()+
   geom_smooth(method = lm, se = T)
@@ -1572,6 +1648,7 @@ ggplot(db_beh2, aes(x = valence, y = ValenceMean))+
 ggplot(db_beh2, aes(x = arousal, y = ArousalMean))+
   geom_point()+
   geom_smooth(method = lm, se = T)
+
 
 colnames(db_beh2)
 
@@ -1584,30 +1661,36 @@ db_beh3<- select(db_beh2, c(2:7, 18:23))
 
 colnames(db_beh3)
 
-colnames(db_beh3_301_309)
+# colnames(db_beh3_301_309)
 
 db_beh3$trigger<-NULL
-db_beh3_301_309$triggeracq<- NULL
+# db_beh3_301_309$triggeracq<- NULL
 
 
-db_beh3_301_309$condition[db_beh3_301_309$condition == "Example Stimuli"]<- "Practice"
+# db_beh3_301_309$condition[db_beh3_301_309$condition == "Example Stimuli"]<- "Practice"
 
 db_beh3$condition[db_beh3$condition == "Example Stimuli"]<- "Practice"
 
 
+```
+Probem file
 # db_beh3$triggeracq<- NULL
 
 library(readr)
-db_beh300 <-  read_csv("300-309 beh/tmp.df4300_sum_full.csv")
-View(tmp_df4300_sum_full)
 
-db_beh300 <- subset(db_beh300, db_beh300$condition != "Rest")
-colnames(db_beh300)
+# db_beh300 <-  read_csv("300-309 beh/tmp.df4300_sum_full.csv")
+# View(tmp_df4300_sum_full)
+
+# db_beh300 <- subset(db_beh300, db_beh300$condition != "Rest")
+# colnames(db_beh300)
 
 db_beh300$ssid<- 300
 
 
 db_beh300<- select(db_beh300, c("condition", "stimIAPS","stimDescription","ValenceMean", "ArousalMean", "ssid", "valence","arousal","valence_rt","arousal_rt", "tNo"))
+
+
+```{r}
 
 db_beh3$ssid<- as.numeric(db_beh3$ssid)
 db_beh_all<- bind_rows(db_beh3, db_beh300)
@@ -1620,17 +1703,27 @@ str(tmp.df4_sum)
 str(db_beh_all)
 tmp.df4_sum$ssid<- as.numeric(tmp.df4_sum$ssid)
 
-db_beh3$ssid <- as.numeric(db_beh3$ssid)
+
 # rm(tmp.df4_sum_full_t)
 
 tmp.df4_sum_full<- left_join(tmp.df4_sum, db_beh_all, by = c('ssid', 'tNo'))
 tmp.df4_sum_full$ssid<- as.numeric(tmp.df4_sum_full$ssid)
+
+```
+
+```{r}
+db_beh3$ssid <- as.numeric(db_beh3$ssid)
+
+tmp.df4_sum_full_backup_before_beh<- tmp.df4_sum_full
 
 tmp.df4_sum_full<- left_join(tmp.df4_sum_full, db_beh3, by = c('ssid', 'tNo'))
 
 tmp.df4_sum_full<- tmp.df4_sum_full%>%
   arrange(ssid, tNo, time)
 
+unique(tmp.df4_sum_full$ssid)
+
+tmp.df4_sum_full
 ```
 
 
@@ -1643,7 +1736,7 @@ gorilla codes
 
 
 STAI:: 5nzr
-AQ:7uqw
+AQ:
 STAIS: 8rfo
 Demog: 8zto
 BVAQ: 83b1
@@ -1661,12 +1754,24 @@ consent: 8nsp
 
 db_selfrep <- read_csv("intero_selrep.csv")
 library(readxl)
+db_selfrep_backup<- db_selfrep
 db_selfrep <- read_excel("db_self_rep_345_356_final.xlsx")
-# View(db_self_rep_345_356_final)
 
+library(readr)
+
+db_selfrep <- read_csv("db_self_rep_356_357_611_616_final.csv")
+View(db_selfrep)
+# View(db_self_rep_345_356_final)
+colnames(db_selfrep)
 
 db_selfrep$ssid <- as.character(db_selfrep$`Participant No`)
+
 tmp.df4_sum_full$ssid <- as.character(tmp.df4_sum_full$ssid)
+
+unique(db_selfrep$ssid )
+
+tmp.df4_sum_full_backup_before_selfrep<- tmp.df4_sum_full
+db_selfrep$`Participant Private ID.x.x`<- NULL
 
 tmp.df4_sum_full<- left_join(tmp.df4_sum_full, db_selfrep, by = 'ssid')
 
@@ -1685,11 +1790,13 @@ unique(tmp.df4_sum_full$ssid)
 
 View(tmp.df4_sum_full)
 write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_345_356.csv')
-
+write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_356_357_611_616.csv')
 # tmp.df4_sum_full<- tmp.df4_sum_full%>%
 #   arrange(ssid, tNo, screencontent_no)
-
+unique(tmp.df4_sum_full$ssid)
 colnames(tmp.df4_sum_full)
+
+db_selfrep
 ```
 
 
@@ -1712,8 +1819,19 @@ sampling rate 150hz
 346, 351 - GP gsr data is messed up
 - Note triggers need to be recreated here, never figured out why the digital events don't translate to ledalab
 
+
+>> Ledalab('/Users/heliocuve/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021/3052_356/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 6 .01 2])
+
+>> Ledalab('/Users/heliocuve/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/356_457_611_616/', 'open','text3','downsample', 15, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 6 .01 2])
+
+
+>> Ledalab('/Users/heliocuve/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/ledalab-349/', 'open','biopac','downsample', 200, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 6 .01 2]
+
 ```{r}
 setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/346-355_2021/Processed")
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/GP_gsr_forLeda/356_457_611_616/Processed")
+
 
 read_leda <- function(flnm) {
   data.table::fread(flnm) %>% 
@@ -1721,6 +1839,9 @@ read_leda <- function(flnm) {
 }
 
 # now read them
+
+db_leda_backup<- db_leda
+
 db_leda <-
   list.files(pattern = "*.txt", 
              full.names = T) %>% 
@@ -1730,7 +1851,7 @@ db_leda$trigger<- as.numeric(db_leda$Event.NID)
 unique(db_leda$trigger)
 
 db_leda$ssid<- as.numeric(substr(db_leda$filename, 13,15))
-
+unique(db_leda$ssid)
 colnames(tmp.df4_sum)
 colnames(db_leda)
 
@@ -1739,12 +1860,16 @@ nrow(db_leda)
 
 colnames(tmp.df4_sum)
 
+tmp.df4_sum2_backup<- tmp.df4_sum2
+
 tmp.df4_sum2<- subset(tmp.df4_sum,tmp.df4_sum$tNo != -7)
 
 tmp.df4_sum2<- tmp.df4_sum2%>%
   arrange(ssid, time, tNo)%>%
   group_by(ssid)%>%
   mutate(order = 1:n())
+
+db_leda2_backup<- db_leda2
 
 db_leda2<- subset(db_leda, db_leda$trigger != -7)
 
@@ -1760,9 +1885,11 @@ range(db_leda2$order, na.rm = TRUE)
 # tmp.df4_sum_fullt<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
 # tmp.df4_sum_full_backup<- tmp.df4_sum_full
 
+nrow(tmp.df4_sum2)
 tmp.df4_sum_full<- left_join(tmp.df4_sum2, db_leda2, by = c("order", "trigger", "ssid"))
-
+nrow(tmp.df4_sum_full)
 # tmp.df4_sum_full<- bind_cols(tmp.df4_sum, db_leda)
+unique(tmp.df4_sum_full$ssid)
 
 tmp.df4_sum_full<- tmp.df4_sum_full%>%
   arrange(ssid, tNo)
@@ -1770,9 +1897,9 @@ tmp.df4_sum_full<- tmp.df4_sum_full%>%
 View(tmp.df4_sum_full)
 
 
-trigger<- db_leda2 %>%
-  subset(ssid == 348)%>%
-  select(order, Event.NID, trigger,Event.Nr)
+# trigger<- db_leda2 %>%
+#   subset(ssid == 348)%>%
+#   select(order, Event.NID, trigger,Event.Nr)
 ```
 
 
@@ -1782,6 +1909,8 @@ check
 View(tmp.df4_sum_full)
 
 # check stiom screen
+tmp.df4_sum_full_stim_baclup<- tmp.df4_sum_full_stim
+
 tmp.df4_sum_full_stim<- subset(tmp.df4_sum_full,  tmp.df4_sum_full$screencontent == 'stim')
 
 # levels(as.factor(tmp.df4_sum_full_stim$Event.Name))
@@ -1799,6 +1928,7 @@ colnames(tmp.df4_sum_full)
 ```{r eval=FALSE, include=FALSE}
 
 # is objective arousal and self report arousal correated
+tmp.df4_sum_full_stim
 tmp.df4_sum_full_stim$ValenceMean_cat<- if_else(tmp.df4_sum_full_stim$ValenceMean > 4, 'pos', 'neg')
 
 ggplot(tmp.df4_sum_full_stim, aes(arousal, log1p(TTP.AmpSum)), color = as.factor(ssid))+
@@ -2033,8 +2163,10 @@ ggplot(tmp.df4_sum_full_stim, aes(arousal_c, log1p(mean_fix_dur)))+
 
 IMPORT BIOPAC
 
+>> Ledalab('/Users/heliocuve/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/ledalab-349/', 'open','biopac','downsample', 200, 'smooth',{'adapt'}, 'analyze','CDA', 'optimize',3, 'export_era', [1 6 .01 2]
+
 ```{r}
-setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/IAPS/processed/345_456/CDA")
+setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/PhysioLedalab/IAPS/processed/356_357_611_616/CDABIO")
 
 
 
@@ -2047,13 +2179,19 @@ read_leda_bio <- function(flnm) {
 }
 
 # now read them
+
+db_leda_bio_backup<- db_leda_bio
+
 db_leda_bio <-
   list.files(pattern = "*.txt", 
              full.names = T) %>% 
   map_df(~read_leda_bio(.))
 
+view(db_leda_bio)
+
 write_csv(db_leda_bio, 'db_leda_bio.csv')
 write_csv(db_leda_bio, 'db_leda_bio_345_355_CDA.csv')
+write_csv(db_leda_bio, 'db_leda_bio_356_357_611_616 CDA.csv')
 
 # db_leda_bio <- read_csv("db_leda_bio.csv")
 
@@ -2102,10 +2240,15 @@ trigger<- db_345_355 %>%
   group_by(order,trigger, tNo)%>%
   summarise_at(c('ssid'), mean, na.rm = TRUE)
   # select(db_345_355, c(trigger, tNo, order))
-  
+
+View(trigger)
 
   trigger$ssid<- NULL
 
+  nrow(db_leda_bio)
+  
+  db_leda_bio_beforetrig<- db_leda_bio
+  
   db_leda_bio<- left_join(db_leda_bio, trigger)
 
 
@@ -2118,7 +2261,7 @@ newnames<- c("Event.Nr", paste0("BIO_", paste(leda_bioames[2:16])),"BIO_Event.NI
 
 newnames
 
-db_leda_bio_backup<- db_leda_bio
+db_leda_bio_backup_beforename<- db_leda_bio
 
 colnames(db_leda_bio_backup)
 
@@ -2139,8 +2282,14 @@ db_leda_bio$ssid<- as.character(db_leda_bio$ssid)
 
 unique(tmp.df4_sum_full$Event.Nr)
 
-db_leda_bio$BIO_Event.NID<- NULL
-db_leda_bio$BIO_filename<- NULL
+db_leda_bio$BIO_Event.NID <- NULL
+db_leda_bio$BIO_filename <- NULL
+
+nrow(tmp.df4_sum_full)
+nrow(db_leda_bio)
+
+tmp.df4_sum_full_bio_backup<- tmp.df4_sum_full_bio
+tmp.df4_sum_full$ssid<- as.character(tmp.df4_sum_full$ssid)
 
 tmp.df4_sum_full_bio<- left_join(tmp.df4_sum_full,  db_leda_bio, by = c("ssid", "order"))
 
@@ -2280,6 +2429,8 @@ db_biohr$ssid<- as.factor(as.character(db_biohr$ssid))
 
 ```{r}
 setwd("~/OneDrive - Nexus365/InteroStudy2020/Data Collection 2019- 2020/2020/InteroStudyBIOPAC/IAPS/Processed/HR/345_355")
+
+setwd("~/OneDrive - Nexus365/InteroStudy2020/Data Collection 2019- 2020/2020/InteroStudyBIOPAC/IAPS/Processed/HR/356_357_611_616")
 library(readxl)
 library(dplyr)
 # db_HR_bio <- read_excel("310_IAPS_Physio_HR.xls")
@@ -2298,22 +2449,28 @@ read_biohr <- function(flnm) {
 }
 
 # now read them
+db_HR_bionew_backup<- db_HR_bionew
+
 db_HR_bionew <-
   list.files(pattern = "*.xls", 
              full.names = T) %>% 
   map_df(~read_biohr(.))
 
-db_HR_bio<- db_HR_bionew
+db_HR_bio_backup<- db_HR_bio
+
+
 
 unique(db_HR_bionew$filename)
 nrow(db_HR_bionew)
 
+# db_HR_bionew<- subset(db_HR_bionew,db_HR_bionew$`Stim-Response Analysis`!= "Stimulus 100")
+db_HR_bio<- db_HR_bionew
 # test<- subset(db_HR_bio, db_HR_bio$filename == "./607_IAPS_Physio_HR.xls")
 
 levels(as.factor(db_HR_bio$filename))
 
 db_HR_bio$ssid<- substr(db_HR_bio $filename, 3,5)
-
+unique(db_HR_bio$ssid)
 db_HR_bio$filename<- NULL
 
 
@@ -2334,7 +2491,7 @@ db_HR_bio
 levels(as.factor(db_HR_bio$ssid))
 
 #  remove na in the mean heart rate
-
+# db_HR_bio$
 db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$...2))
 
 
@@ -2348,7 +2505,7 @@ View(db_HR_bio)
 
 db_HR_bio<- subset(db_HR_bio, !grepl('Interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
 
-
+unique(db_HR_bio$ssid)
 # test<- subset(db_HR_bio, grepl('Interval ', db_HR_bio$`Stim-Response Analysis`) == TRUE)
 # levels(as.factor(db_HR_biotest$ssid))
 
@@ -2370,12 +2527,13 @@ db_HR_bio$...4<- NULL
 db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$...2))
 
 db_HR_bio<- subset(db_HR_bio, db_HR_bio$...2 != 'Mean(CH 40)')
+
 db_HR_bio$timestart<- db_HR_bio$`Stim-Response Analysis`
 
 db_HR_bio$Mean_HR<- db_HR_bio$...2
 
 db_HR_bio<- db_HR_bio%>%
-  arrange((as.numeric(timestart)), ssid)
+  arrange(ssid,(as.numeric(timestart)))
 
 db_HR_bio<- subset(db_HR_bio, !is.na(db_HR_bio$stim))
 
@@ -2386,6 +2544,7 @@ db_HR_bio$trigger <- substr(db_HR_bio$stim, 10,13)
 unique((as.numeric(db_HR_bio$trigger)-128))
 
 db_HR_bio$trigger_200<- if_else(db_HR_bio$trigger> 103, TRUE, FALSE)
+table(db_HR_bio$trigger_200)
 
 db_HR_bio$trigger2 <- if_else(db_HR_bio$trigger_200 == TRUE, as.numeric(db_HR_bio$trigger)-128, as.numeric(db_HR_bio$trigger))
 
@@ -2393,9 +2552,9 @@ db_HR_bio$trigger2 <- if_else(db_HR_bio$trigger_200 == TRUE, as.numeric(db_HR_bi
 unique((as.numeric(db_HR_bio$trigger2)))
 
 
-#subset(db_HR_bio, db_HR_bio$ssid!= 328)%>%
+# subset(db_HR_bio, db_HR_bio$ssid== 357)%>%
 #  group_by(timestart, ssid)%>%
- # mutate(EventNR= 1:225)
+# mutate(EventNR= 1:224)
 
 # this will delete fixation and stuff so no
 db_HR_bio1<- subset(db_HR_bio,db_HR_bio$trigger2> 15)
@@ -2412,14 +2571,17 @@ table(is.na(db_HR_bio1$ssid))
 # db_HR_bio1<- db_HR_bio1%>%
 #   arrange(as.numeric(timestart), ssid)
 
+
+
 # use this
-table(db_HR_bio1$ssid!= 328)
+# table(db_HR_bio1$ssid!= 328)
 db_HR_bio1no328<-subset(db_HR_bio1, db_HR_bio1$ssid!= 328)
 
 db_HR_bio1no328$trigger2
 db_HR_bio1no328<- subset(db_HR_bio1no328, trigger2> 15 & trigger2<106)
 
-db_HR_bio1no328$trigger<- db_HR_bio1no328$tNo
+unique(db_HR_bio1no328$tNo)
+# db_HR_bio1no328$trigger<- db_HR_bio1no328$tNo
 # db_HR_bio1no328
 
 # db_HR_bio1no328<- db_HR_bio1no328 %>%
@@ -2427,15 +2589,18 @@ db_HR_bio1no328$trigger<- db_HR_bio1no328$tNo
 #   filter(!duplicated(trigger2))
 
 View(trigger)
-db_HR_bio1no328<- db_HR_bio1no328$t %>%
+
+db_HR_bio1no328<- db_HR_bio1no328 %>%
   group_by(ssid)%>%
   mutate(tNo =  -6:(n()-7)) #56 trials
+
+```
 
 unique(db_HR_bio1no328$tNo)
 
 range(db_HR_bio1no328$tNo)
 
-
+View(db_HR_bio1no328)
 table(db_HR_bio1no328$tNo)
 
 # test<- subset(db_HR_bio1no328, tNo>49)
@@ -2444,11 +2609,15 @@ table(db_HR_bio1no328$tNo)
 # 
 # subset(db_HR_bio328, trigger> 15 & trigger<72)
 
+```{r}
+
 
 db_HR_bio1no328<- db_HR_bio1no328%>%
   arrange(ssid,as.numeric(timestart))
 
 ```
+
+
 
 
 ```{r}
@@ -2461,6 +2630,10 @@ db_HR_bio1no328<- db_HR_bio1no328 %>%
   mutate(tNo = -6:(n()-7))
 
 unique(db_HR_bio1no328$tNo)
+
+# unique(db_HR_bio2$tNo)
+
+
 ```
 
 
@@ -2471,6 +2644,8 @@ View(db_HR_bio1no328)
 unique(db_HR_bio1no328$ssid)
 unique(db_HR_bio328$ssid)
 # db_HR_bio2<- bind_rows(db_HR_bio1no328,db_HR_bio328)
+db_HR_bio2_backup <- db_HR_bio2
+
 db_HR_bio2<-db_HR_bio1no328
 
 colnames(db_HR_bio2)
@@ -2497,6 +2672,7 @@ levels(as.factor(db_HR_bio1no328$ssid))
 # left_join(db_HR_bio2, db_biohr)
 
 colnames(db_HR_bio2)
+
 db_HR_bio2<- select(db_HR_bio2, c(timestart,Mean_HR, tNo, ssid,trigger2,trigger_200, trigger,stim,mhrtext))
 
 # store only fixation screens
@@ -2514,18 +2690,33 @@ db_HR_bio2$screen_content<- if_else(db_HR_bio2$trigger == 100, "Rest",
 unique(db_HR_bio2$trigger)
 
 db_HR_bio2$timestart<- as.numeric(db_HR_bio2$timestart)
+
+
+db_HR_bio2.1_backup<- db_HR_bio2.1
+
 db_HR_bio2.1<- db_HR_bio2 %>%
   group_by(ssid)%>%
   arrange(ssid, timestart)%>%
   group_by(ssid,screen_content)%>%
   # arrange(ssid, timestart)%>%
   mutate(tNo =  1:n())
-   arrange(timestart,ssid)
+   # arrange(timestart,ssid)
   # subset(trigger == 100)
   
 unique(db_HR_bio2.1$tNo)
 
-unique(db_HR_bio2.1$tNo-8)
+unique(db_HR_bio2.1_backup$tNo)
+
+table(db_HR_bio2.1$ssid)
+# 
+# test<- subset(db_HR_bio2.1, ssid == "357")
+# 
+# test$timestart
+# sort(as.numeric(substr(test$stim, 10,12)))
+# 
+# arrange(as.numeric(unique(test$stim)))
+# 
+# unique(db_HR_bio2.1$tNo-8)
 table(db_HR_bio2.1$tNo)
 
 db_HR_bio2.1$tNo2<- if_else(db_HR_bio2.1$screen_content == "Rest", -7,
@@ -2535,7 +2726,9 @@ db_HR_bio2.1$tNo3<- if_else(db_HR_bio2.1$tNo2 >0 &  db_HR_bio2.1$tNo2< 7, db_HR_
                           if_else(db_HR_bio2.1$tNo2  >6, db_HR_bio2.1$tNo2-6, db_HR_bio2.1$tNo2))
 
 table(db_HR_bio2.1$tNo3)
-test352<- subset(db_HR_bio2.1, ssid == 352)
+table(db_HR_bio2.1_backup$tNo3)
+
+test352<- subset(db_HR_bio2.1, ssid == 356)
 test353<- subset(db_HR_bio2.1, ssid == 353)
 table(test352$tNo3)
 
@@ -2549,6 +2742,11 @@ write_csv(test353, "test353.csv")
 # export 352 and 353 and corect manually, they seems ot have an extra trigger
 
 
+```
+
+
+
+```{r}
 db_352 <- read_csv("352_Biohr_fixed.csv")
 db_353 <- read_csv("353_Biohr_fixed.csv")
 unique(db_352$ssid)
@@ -2577,8 +2775,11 @@ nrow(db_HR_bio2.2)
 
 nrow(db_352_353)
 
-db_HR_bio2.3<- bind_rows(db_HR_bio2.2,db_352_353)
-nrow(db_HR_bio2.3)
+# db_HR_bio2.3<- bind_rows(db_HR_bio2.2,db_352_353)
+# nrow(db_HR_bio2.3)
+
+db_HR_bio2.3<- db_HR_bio2.2
+
 # order
 
 db_HR_bio2.3.1<- db_HR_bio2.3 %>%
@@ -2591,7 +2792,7 @@ db_HR_bio2.3.1<- db_HR_bio2.3 %>%
   # subset(ssid == 353)
 
 table(db_HR_bio2.3.1$tNo)
-
+table(db_HR_bio2.3.1$ssid)
 # test<- subset(db_HR_bio2.3.1, ssid == "353")
 
 unique(db_HR_bio2.3.1$tNo)
@@ -2611,6 +2812,8 @@ unique(db_HR_bio2.3.1$screen_content)
 table(is.na(db_HR_bio2.3.1$screen_content))
 
 str((db_HR_bio2.3.1))
+
+
 # str(db_biohrold2)
 db_biohr$tNo<- db_biohr$tno
 db_biohrold2<- db_biohr
@@ -2658,7 +2861,10 @@ db_HR_bio2$timestart<- as.numeric(db_HR_bio2$timestart)
 
 db_biohrold2test$timestart<- as.numeric(db_biohrold2test$timestart)
 
+```
 
+
+```{r}
 # final
 colnames(db_HR_bio_final)
 db_HR_bio2.3.1
@@ -2684,18 +2890,20 @@ write_csv(db_HR_bio_final, 'db_HR_bio_final_mar5.csv')
 
 write_csv(db_HR_bio_final, 'db_HR_bio_final_346_355_withfix.csv')
 
+write_csv(db_HR_bio_final, 'db_HR_bio_final_356_357_611_616_withfix.csv')
+
+
+
 db_HR_bio_final$tNo
 
 db_HR_bio_final$tNo
 
+# db_HR_bio1$tNo<- -6:49
 
-
-
-db_HR_bio1$tNo<- -6:49
-
-db_HR_bio_final$tNo<- if_else(as.numeric(db_HR_bio_final$tNo) < 0, as.numeric(db_HR_bio_final$tNo), as.numeric(db_HR_bio_final$tNo)+1)
-
-db_HR_bio_final$BIO
+# db_HR_bio_final$tNo<- if_else(as.numeric(db_HR_bio_final$tNo) < 0, as.numeric(db_HR_bio_final$tNo), as.numeric(db_HR_bio_final$tNo)+1)
+# 
+# View(db_HR_bio_final)
+# db_HR_bio_final$BIO
 
 ```
 
@@ -2711,6 +2919,9 @@ colnames(tmp.df4_sum_full_bio)
 
 unique(tmp.df4_sum_full_bio$tNo)
 tmp.df4_sum_full_bio$tNo3<- tmp.df4_sum_full_bio$tNo
+
+tmp.df4_sum_full_bio1_backup<- tmp.df4_sum_full_bio1
+
 tmp.df4_sum_full_bio1<- tmp.df4_sum_full_bio
 tmp.df4_sum_full_bio1$tNo<-NULL
 
@@ -2725,9 +2936,9 @@ tmp.df4_sum_full_bio$screen_content<- if_else(tmp.df4_sum_full_bio$screencontent
 
 db_HR_bio_final
 
-table(is.na(tmp.df4_sum_full_bio_hr$Mean_HR))
-
-test<- subset(tmp.df4_sum_full_bio_hr, is.na(Mean_HR))
+# table(is.na(tmp.df4_sum_full_bio_hr$Mean_HR))
+# 
+# test<- subset(tmp.df4_sum_full_bio_hr, is.na(Mean_HR))
 
 db_HR_bio_final_norest<- subset(db_HR_bio_final, screen_content!= "Rest")
 
@@ -2737,11 +2948,15 @@ unique(tmp.df4_sum_full_bio$tNo)
 unique(db_HR_bio_final_norest$tNo)
 
 # remeber to do this otherwise tno will be matchjing wrong data
-db_HR_bio_final_norest$tNo<- db_HR_bio_final_norest$tNo3
+db_HR_bio_final_norest$tNo <- db_HR_bio_final_norest$tNo3
 
+tmp.df4_sum_full_bio_hr_backlup<- tmp.df4_sum_full_bio_hr
+
+nrow(tmp.df4_sum_full_bio)
 tmp.df4_sum_full_bio_hr <- left_join(tmp.df4_sum_full_bio, db_HR_bio_final_norest, by = c('ssid', 'tNo', 'screen_content'))
   
 unique(tmp.df4_sum_full_bio_hr$tNo)
+unique(tmp.df4_sum_full_bio_hr$ssid)
 
 table(is.na(tmp.df4_sum_full_bio_hr$Mean_HR))
 
@@ -2758,7 +2973,13 @@ library(readxl)
 setwd("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/selfreport")
 
 View(db_selfrep)
-db_selfrep <- read_excel("db_self_rep_345_356_final.xlsx")
+db_selfrep_backup<- db_selfrep
+
+# db_selfrep <- read_excel("db_self_rep_345_356_final.xlsx")
+
+db_selfrep <- read_csv("db_self_rep_356_357_611_616_final.csv")
+
+
 
 
 
@@ -2769,19 +2990,27 @@ tmp.df4_sum_full_bio_hr$ssid <- as.character(tmp.df4_sum_full_bio_hr$ssid)
 unique(tmp.df4_sum_full_bio_hr_self$ssid)
 table(is.na(tmp.df4_sum_full_bio_hr$Mean_HR))
 
+tmp.df4_sum_full_bio_hr_backlup
+tmp.df4_sum_full_bio_hr_self_backup<- tmp.df4_sum_full_bio_hr_self
+
 tmp.df4_sum_full_bio_hr_self <- left_join(tmp.df4_sum_full_bio_hr, db_selfrep, by = 'ssid')
 table(is.na(tmp.df4_sum_full_bio_hr_self$Mean_HR))
 write_csv(tmp.df4_sum_full, 'tmp.df4_sum_full_bio_hr_self_345_356.csv')
-
+write_csv(tmp.df4_sum_full_bio_hr_self, 'tmp.df4_sum_full_bio_hr_self_356_357_611_616.csv')
 
 ```
 
 merge parsed data
 ```{r}
 tmp.df4_sum_full_bio_hr_self
-db_parsed_summarised2$ssid<- as.character(db_parsed_summarised2$ssid)
+unique(db_parsed_summarised2$ssid)
 
-tmp.df4_sum_full_bio_hr_self_parsed <- left_join(tmp.df4_sum_full_bio_hr_self, db_parsed_summarised2, 
+
+db_parsed_summarised2$ssid<- as.character(db_parsed_summarised2$ssid)
+tmp.df4_sum_full_bio_hr_self_parsed_backup<- tmp.df4_sum_full_bio_hr_self_parsed
+
+tmp.df4_sum_full_bio_hr_self_parsed <- left_join(tmp.df4_sum_full_bio_hr_self, 
+                                                 db_parsed_summarised2, 
                              by = c("ssid", "trialUnq", "tNo", "screencontent"))
 
 
@@ -2794,16 +3023,22 @@ tmp.df4_sum_full_bio_hr_self_parsed
 # merge behavioural data
 db_beh3$ssid<- as.character(db_beh3$ssid)
 db_beh3$tNo <- as.character(db_beh3$tNo)
+
 tmp.df4_sum_full_bio_hr_self_parsed$tNo<- as.character(tmp.df4_sum_full_bio_hr_self_parsed$tNo)
 # tmp.df4_sum_full<- 
   
 tmp.df4_sum_full_bio_hr_self_parsed
 table(is.na(tmp.df4_sum_full_bio_hr_self_parsed$Mean_HR))
 
+tmp.df4_sum_full_bio_hr_self_parsed_beforebehav_backup<- tmp.df4_sum_full_bio_hr_self_parsed
+
+unique(db_beh3$ssid)
+
 tmp.df4_sum_full_bio_hr_self_parsed<- left_join(tmp.df4_sum_full_bio_hr_self_parsed, db_beh3, by = c('ssid', 'tNo'))
 
 
 View(db_beh3)
+
 tmp.df4_sum_full<- tmp.df4_sum_full%>%
   arrange(ssid, tNo, time)
 
@@ -2843,15 +3078,20 @@ tmp.df4_sum_full_bio_hr_self_parsed$filename.y<- NULL
 
 tmp.df4_sum_full_bio_hr_self_parsed
 
-tmp.df4_sum_full_bio_hr_self_parsed<- tmp.df4_sum_full_bio_hr_self_parsed%>%
-  rename(IAS = IAS_score)%>%
-  rename(ASD_self = ASD)
+tmp.df4_sum_full_bio_hr_self_parsed<- tmp.df4_sum_full_bio_hr_self_parsed %>%
+  # rename(IAS = IAS_score)%>%
+  rename(ASD_self = `ASD-text`)
 
 
 # tmp.df4_sum_full_bio_hr_self_parsed1<- select(tmp.df4_sum_full_bio_hr_self_parsed,)
 
 write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv')
 write_csv(tmp.df4, 'tmp.df4_timeseries_345_356.csv')
+
+
+
+write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_356_357_611_616.csv')
+write_csv(tmp.df4, 'tmp.df4_timeseries_356_357_611_616.csv')
 ```
 
 
