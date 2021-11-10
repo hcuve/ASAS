@@ -917,7 +917,7 @@ polyyrelation1 <- lmer(arousal_c ~ valence_c + (1|ssid) + (1|stimIAPS),
 
 polyyrelation3 <- lmer(arousal_c ~ valence_c_sq+ (1|ssid) + (1|stimIAPS),
                      REML = FALSE,
-                     data = subset(db_full4new_stim_screen_pupil_nopract, )
+                     data = subset(db_full4new_stim_screen_pupil_nopract ))
 
 summary(polyyrelation)
 summary(polyyrelation)
@@ -3936,8 +3936,6 @@ anova(pupil_arousal_findings$arousal_phas_max)
 interactions::interact_plot(pupil_arousal_findings$BIO_CDA.PhasicMax, pred = arousal_c, modx = valence_c)
 
 
-# macthed test
-
 ```
 
 ```{r}
@@ -4448,7 +4446,7 @@ db_full6new_hr_fix_stim_nt1.1%>%
 
 
 
-```
+
 
 ```{r}
 db_full6new_hr_fix_stim_nt1.1%>%
@@ -4844,9 +4842,9 @@ option one, use a clustering algorithm that receives 3 inputs: pupil, heart rate
 
 and then we can compare these clusters on ground truth arousal and valence
 - decisions to make: do we average the responses per participant and cluster at a trial level - this ignores individual variability
-- what do we do with teh nested nature of teh data, one participant has multiple trials, if we don't accout for this, the cluster will treat data from different participants the same way.
+- what do we do with the nested nature of teh data, one participant has multiple trials, if we don't accout for this, the cluster will treat data from different participants the same way.
 
-If create cluster on a ndividual level- then the issue is different participants will end up with different clusters and clusters for one person are not translaable.
+If we create cluster on a individual level- then the issue is different participants will end up with different clusters and clusters for one person are not translatable.
 
 
 The PCA type we did in newyork - barycentric?
@@ -4987,7 +4985,6 @@ left_join(clustering_agg_JASP, stomdescr)%>%
   facet_grid(~ as.factor(clusters))
 
 
-```
 
 
 Kmeans random initialisation trap
@@ -5388,7 +5385,7 @@ cluster_lmers$hrdif_clust2 <- lmer(Bio_Mean_HR_dif ~ y_kmeans +
 emmeans::emmeans(cluster_lmers$hrdif_clust2, pairwise~y_kmeans, adjust = "bonf")
 summary(cluster_lmers$hrdif_clust2)
 
-clustering3$
+View(clustering3)
 cluster_lmers$scr_clust2 <- lmer(log_BIO_CDA.PhasicMax ~ y_kmeans + 
                                (1 | ssid)+
                                (1|stimIAPS),
@@ -5412,12 +5409,14 @@ Let's do on the unnagregated data
 colnames(clustering_agg)
 colnames(clustering)
 
+
+View(clustering)
 clustering2<- subset(clustering, !is.na(stimDescription))
 
 
 # K-Means Clustering
 
-
+View(clustering2)
 colnames(clustering2)
 clust2_dataset = clustering2[c(24,2,1,7:11,18,19)]
 
@@ -5523,5 +5522,14 @@ ggplot(plot_data, aes(x = PC1, y = PC2, colour = labels)) +
 
 
 summary(pca_res2)
+```
+
+
+PCA and barycentric
+
+```{r}
+
+
+
 ```
 
