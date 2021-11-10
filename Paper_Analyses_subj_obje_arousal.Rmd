@@ -708,6 +708,7 @@ car::scatter3d(db_full4new_stim_screen_pupil_nopract_nt$arousal_c,
 quick check of TAS
 
 ```{r}
+unique(db_full4new_stim_screen_pupil_nopract$ssid)
 
 db_full4new_stim_screen_pupil_nopract$TASc<- scale(db_full4new_stim_screen_pupil_nopract$TAS, center = TRUE, scale = TRUE)[,1]
 
@@ -959,6 +960,8 @@ unique(tmp.df4_full_stim_downs_jun2021$timebin)
 library(readr)
 
 tmp_df4_timeseries_345_356 <- read_csv("tmp.df4_timeseries_345_356.csv")
+
+unique(tmp_df4_timeseries_345_356$ssid)
 View(tmp_df4_timeseries_345_356)
 
 colnames(tmp.df4_full_stim_downs_jun2021)
@@ -4059,6 +4062,8 @@ library(readr)
  # read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
 View(tmp_df4_sum_full_bio_hr_self_parsed_345_356)
 
+colnames(db_HR_bio_final_346_355_withfix)
+
 # tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv
 db_HR_bio_final_346_355_withfix <-  read_csv("tmp.df4_sum_full_bio_hr_self_parsed_345_356.csv")
 View(db_HR_bio_final_346_355_withfix)
@@ -4221,6 +4226,7 @@ unique(test$ssid)
 
 # 348 to 355 are missing pratice
 table(is.na(db_full6new_hr_fix_stim_nt1$BIO_CDA.nSCR))
+
 db_full6new_hr_fix_stim_nt1.1<- db_full6new_hr_fix_stim_nt1 %>%
   # mutate()
   group_by(as.numeric(ssid_num), as.numeric(tNo)) %>%
@@ -4351,26 +4357,29 @@ db_full6new_hr_fix_stim_nt1.1 %>%
   geom_point()+
   geom_smooth(method = 'lm', se = F)+
   ggpubr::stat_cor()
+
+
+```
   
-  
+```{r}
 
 db_full6new_hr_fix_stim_nt1.1 %>%
     subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
   # subset(ssid_num<500)%>%
   # group_by(ssid)%>%
-  mutate(Bio_Mean_HR_dif = abs(Bio_Mean_HR_dif))%>%
+  # mutate(Bio_Mean_HR_dif = abs(Bio_Mean_HR_dif))%>%
   group_by(ssid, stimIAPS)%>%
-  mutate(Bio_Mean_HR_dif_stim = abs(Bio_Mean_HR_dif))%>%
+  # mutate(Bio_Mean_HR_dif_stim = abs(Bio_Mean_HR_dif))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
   ggplot(aes(TASc, Bio_Mean_HR_dif))+
   
   # geom_point()
   
-  geom_smooth(aes(group = stimIAPS, y =Bio_Mean_HR_dif_stim), method=lm, se=FALSE, colour = "gray40", alpha = .01,linetype="dashed", size = .2 )+
+  geom_smooth(aes(group = stimIAPS, y =Bio_Mean_HR_dif), method=lm, se=FALSE, colour = "gray40", alpha = .01,linetype="dashed", size = .2 )+
   geom_smooth( method=lm, se=FALSE, linetype="dashed",
              color="darkred", size = 2)+
   stat_summary(geom = 'pointrange', pch = 1)+
-    ggpubr::stat_cor()+
+    # ggpubr::stat_cor()+
   
   
   
@@ -4381,6 +4390,9 @@ db_full6new_hr_fix_stim_nt1.1 %>%
   xlab("Alexithymia (Z)")+
   ylab("HR difference")+
 p$graphstyle
+
+
+```
 
 
 db_full6new_hr_fix_stim_nt1$TASc<- scale(db_full6new_hr_fix_stim_nt1$TAS, center = TRUE, scale = TRUE)

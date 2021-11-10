@@ -3092,6 +3092,8 @@ write_csv(tmp.df4, 'tmp.df4_timeseries_345_356.csv')
 
 write_csv(tmp.df4_sum_full_bio_hr_self_parsed, 'tmp.df4_sum_full_bio_hr_self_parsed_356_357_611_616.csv')
 write_csv(tmp.df4, 'tmp.df4_timeseries_356_357_611_616.csv')
+
+save.image("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/356_357_611_616_preprocessing.RData")
 ```
 
 
