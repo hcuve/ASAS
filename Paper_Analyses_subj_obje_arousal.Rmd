@@ -4862,6 +4862,8 @@ clustering<- db_full6new_hr_fix_stim_nt1.1%>%
                       BIO_CDA.SCR, arousal, valence, ArousalMean, ValenceMean, stimIAPS, tNo, TAS, AQ, Age,
                       gender, ssid, stimDescription))
 
+View(clustering)
+
 
 clustering$stimIAPS2<- substr(clustering$stimIAPS, 1,4)
 unique(clustering$stimIAPS)
@@ -4925,6 +4927,7 @@ write_csv(clustering_agg, "clustering_agg.csv")
 
 ```{r}
 library(readr)
+View(clustering_agg_JASP)
 clustering_agg_JASP <- read_csv("clustering_agg_JASP.csv")
 View(clustering_agg_JASP)
 
@@ -5293,12 +5296,14 @@ table(is.na(clustering2$stimDescription))
 clustering2
 
 clustering3<- left_join(clustering2, cluster_stim)
+nrow(clustering2)
+nrow(clustering3)
 
 cluster_lmers<- list()
 clustering_new$stimIAPS2<- as.factor(as.character(clustering_new$stimIAPS2))
 
 clustering_new$ssid<- as.factor(as.character(clustering_new$ssid))
-clustering3
+View(clustering_new)
 
 library(lmerTest)
 
@@ -5529,6 +5534,37 @@ PCA and barycentric
 
 ```{r}
 
+clustering
+clustering_agg
+clustering_agg_JASP
+clustering_agg2
+clustering
+
+clustering_new
+# clustering3 has problems
+
+# 1 dcast stim to columns 
+
+colnames(clustering_new)
+colnames(clustering)
+
+db_forBADA1<- data.table::dcast(setDT(db_full6new_hr_fix_stim_select2_NT_no_outl_5), 
+                    ssid + TAS+AQ+Group ~ stimIAPS2, value.var = c('pup_basCor',
+                'Bio_Mean_HR_dif', 'log1p_BIO_CDA.PhasicMax', 'arousal', 'valence'))
+
+
+library(data.table)
+colnames(clustering_new)
+library(tidyverse)
+
+
+clustering_new_pre_PCA<- select(clustering_new, c(ssid, TAS, AQ, stimIAPS2, 
+                                                  pup_basCor,Bio_Mean_HR_dif,
+                                                  log_BIO_CDA.PhasicMax, arousal,
+                                                  valence))
+db_forPCA<- data.table::dcast(setDT(clustering_new_pre_PCA), 
+                    ssid + TAS+AQ ~ stimIAPS2, value.var = c('pup_basCor',
+                'Bio_Mean_HR_dif', 'log_BIO_CDA.PhasicMax', 'arousal', 'valence'))
 
 
 ```
