@@ -4854,13 +4854,15 @@ Let's start with an aggregated case, ignore subjects
 
 
 ```{r}
+library(tidyverse)
+db_full6new_hr_fix_stim_nt1.1
 
 clustering<- db_full6new_hr_fix_stim_nt1.1%>%
   subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
   select(
                     c(Bio_Mean_HR_dif, pup_basCor, BIO_CDA.PhasicMax, BIO_CDA.ISCR, BIO_TTP.AmpSum,
                       BIO_CDA.SCR, arousal, valence, ArousalMean, ValenceMean, stimIAPS, tNo, TAS, AQ, Age,
-                      gender, ssid, stimDescription))
+                      gender, ssid, stimDescription, fix_count, mean_fix_dur))
 
 View(clustering)
 
@@ -5558,13 +5560,80 @@ colnames(clustering_new)
 library(tidyverse)
 
 
-clustering_new_pre_PCA<- select(clustering_new, c(ssid, TAS, AQ, stimIAPS2, 
+# clustering_new$=
+# clustering
+clustering_new_pre_PCA<- select(clustering, c(ssid, TAS, AQ, stimIAPS2,
+                                              stimDescription, 
                                                   pup_basCor,Bio_Mean_HR_dif,
                                                   log_BIO_CDA.PhasicMax, arousal,
-                                                  valence))
+                                                  valence, fix_count, mean_fix_dur))
+
+clustering_new_pre_PCA
+
+clustering_new_pre_PCA$stim_descr<- paste0(clustering_new_pre_PCA$stimIAPS2, 
+                                           paste0(clustering_new_pre_PCA$stimDescription))
+
+clustering_new_pre_PCA$stim_descr
+
+clustering_new_pre_PCA
 db_forPCA<- data.table::dcast(setDT(clustering_new_pre_PCA), 
-                    ssid + TAS+AQ ~ stimIAPS2, value.var = c('pup_basCor',
-                'Bio_Mean_HR_dif', 'log_BIO_CDA.PhasicMax', 'arousal', 'valence'))
+                    ssid + TAS+AQ ~ stim_descr, value.var = c('pup_basCor',
+                'Bio_Mean_HR_dif', 'log_BIO_CDA.PhasicMax', 'arousal', 'valence', 
+                'fix_count', 'mean_fix_dur'))
+
+View(db_forPCA)
+colnames(db_forPCA)
+
+# 
+# start with just physio stuff
+
+
+all.data<- db_forPCA
+
+# count NAS on the important variables
+# pupufirst(
+
+colnames(all.data[,61: (61+56)])
+all.data$per_ssid_pupil_loss_perc <- (rowSums(is.na(all.data[,4:60]))/56)*100 # pupil
+# rowSums(is.na(all.data[,4:60]))
+all.data$per_ssid_hr_loss_perc<-  (rowSums(is.na(all.data[,61: (61+56)]))/56)*100 # heart rate
+all.data$per_ssid_scr_loss_perc<- (rowSums(is.na(all.data[,(61+56):(61+56+56)]))/56)*100 # scr
+
+# columns
+
+
+cols_belowmissingthresh <- which(colSums(is.na(all.data))/nrow(all.data) < .8)
+  # all.data%>%
+colSums(is.na(all.data))/nrow(all.data)
+
+ncol(all.data)
+# select columsn that don't have a a lot of missingness
+all.data1<- all.data%>%
+  select(cols_belowmissingthresh)
+
+
+all.data$TAS_mediansplit<- if_else(all.data$TAS> median(all.data$TAS), "High", "Low")
+all.data$AQ_mediansplit<- if_else(all.data$AQ> median(all.data$AQ), "High", "Low")
+ # design
+var.design_asd <- as.factor(all.data$Group)
+var.design_aq <- as.factor(all.data$AQ_mediansplit)
+var.design_tas <- as.factor(all.data$TAS_mediansplit)
+colnames(all.data)
+
+var.data <- all.data[,c(6:172)]
+
+
+
+var.PCA.inf_asd <-InPosition::epPCA.inference.battery(var.data, 
+                                       scale = FALSE, 
+                                       center = FALSE, 
+                                       DESIGN = var.design_asd, 
+                                       make_design_nominal = TRUE, 
+                                       graphs = TRUE, k = 0, 
+                                       test.iters = 1000, 
+                                       constrained = FALSE, 
+                                       critical.value = 2)
+
 
 
 ```
