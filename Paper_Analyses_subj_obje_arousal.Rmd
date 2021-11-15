@@ -5611,24 +5611,114 @@ ncol(all.data)
 all.data1<- all.data%>%
   select(cols_belowmissingthresh)
 
+View(all.data1)
 
-all.data$TAS_mediansplit<- if_else(all.data$TAS> median(all.data$TAS), "High", "Low")
-all.data$AQ_mediansplit<- if_else(all.data$AQ> median(all.data$AQ), "High", "Low")
+# exclude peope with more han 50% missign data
+
+all.data1$per_ssid_pupil_loss_perc
+
+all.data2<- subset(all.data1,
+                   per_ssid_pupil_loss_perc< 24)
+
+# now mean wise inputation based on each variable
+all.data2
+
+colnames(all.data2)
+# pupil row-wise inputation
+k <- which(is.na(all.data2[, c(1,4:59)]), arr.ind=TRUE)
+k
+all.data3<- all.data2
+all.data3pup<- all.data2[, c(1,4:59)]
+
+all.data3pup[k] <- rowMeans(all.data3pup[, 2:57], na.rm=TRUE)[k[,1]]
+
+# HR
+all.data3_hr<- all.data3[,c(1,60:115)]
+k <- which(is.na(all.data3_hr[, 1:57]), arr.ind=TRUE)
+k
+
+all.data3_hr[k] <- rowMeans(all.data3_hr[, 2:57], na.rm=TRUE)[k[,1]]
+
+# SCR
+colnames(all.data3)
+all.data3_scr<- all.data3[,c(1,116:171)]
+k_scr <- which(is.na(all.data3_scr[, 1:57]), arr.ind=TRUE)
+k_scr
+
+all.data3_scr[k_scr] <- rowMeans(all.data3_scr[, 2:57], na.rm=TRUE)[k_scr[,1]]
+
+# merge()
+all.data3_forPCA<- all.data3[,1:3]
+
+all.data3_forPCA<- left_join(all.data3_forPCA, all.data3pup)
+all.data3_forPCA<- left_join(all.data3_forPCA, all.data3_hr)
+all.data3_forPCA<- left_join(all.data3_forPCA, all.data3_scr)
+
+
+
  # design
-var.design_asd <- as.factor(all.data$Group)
-var.design_aq <- as.factor(all.data$AQ_mediansplit)
-var.design_tas <- as.factor(all.data$TAS_mediansplit)
-colnames(all.data)
+# var.design_asd <- as.factor(all.data$Group)
 
-var.data <- all.data[,c(6:172)]
+colnames(all.data3_forPCA)
+
+var.data <- all.data3_forPCA[,c(4:171)]
+
+library(TInPosition)
+library(prettyGraphs)
+
+# inferential PCA
+var.PCA.scr_hr_pup <-InPosition::epPCA.inference.battery(var.data, 
+                                       scale = TRUE, 
+                                       center = TRUE, 
+                                       # DESIGN = var.design_asd, 
+                                       # make_design_nominal = TRUE, 
+                                       graphs = TRUE, k = 0, 
+                                       test.iters = 1000, 
+                                       constrained = FALSE, 
+                                       critical.value = 2)
+
+# includValenceMean_median_split
+colnames(all.data3)
+
+all.data3_val<- all.data3[,c(1,228:283)]
+
+all.data3_val
+k_val <- which(is.na(all.data3_val[, c(1:57)]), arr.ind=TRUE)
+k_val
+all.data3_val[k_val] <- rowMeans(all.data3_val[, 2:57], na.rm=TRUE)[k_val[,1]]
+
+all.data3_forPCA_withval<- left_join(all.data3_forPCA, all.data3_val)
+
+# subjective arousal
+
+all.data3_ar<- all.data3[,c(1,172:227)]
+
+all.data3_ar
+k_ar <- which(is.na(all.data3_ar[, c(1:57)]), arr.ind=TRUE)
+k_ar
+all.data3_ar[k_ar] <- rowMeans(all.data3_ar[, 2:57], na.rm=TRUE)[k_ar[,1]]
+
+all.data3_forPCA_withar<- left_join(all.data3_forPCA, all.data3_ar)
 
 
+library(InPosition)
+var.PCA.scr_hr_pup_val <-InPosition::epPCA.inference.battery(all.data3_forPCA_withval[,4:226], 
+                                       scale = TRUE, 
+                                       center = TRUE, 
+                                       # DESIGN = var.design_asd, 
+                                       # make_design_nominal = TRUE, 
+                                       graphs = TRUE, k = 0, 
+                                       test.iters = 1000, 
+                                       constrained = FALSE, 
+                                       critical.value = 2)
 
-var.PCA.inf_asd <-InPosition::epPCA.inference.battery(var.data, 
-                                       scale = FALSE, 
-                                       center = FALSE, 
-                                       DESIGN = var.design_asd, 
-                                       make_design_nominal = TRUE, 
+
+# with self arousal
+var.PCA.scr_hr_pup_ar <-InPosition::epPCA.inference.battery(all.data3_forPCA_withar[,4:227], 
+                                       scale = TRUE, 
+                                       center = TRUE, 
+                                       # DESIGN = var.design_asd, 
+                                       # make_design_nominal = TRUE, 
                                        graphs = TRUE, k = 0, 
                                        test.iters = 1000, 
                                        constrained = FALSE, 
