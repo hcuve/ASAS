@@ -5550,6 +5550,7 @@ clustering_new
 colnames(clustering_new)
 colnames(clustering)
 
+View(db_full6new_hr_fix_stim_select2_NT_no_outl_5)
 db_forBADA1<- data.table::dcast(setDT(db_full6new_hr_fix_stim_select2_NT_no_outl_5), 
                     ssid + TAS+AQ+Group ~ stimIAPS2, value.var = c('pup_basCor',
                 'Bio_Mean_HR_dif', 'log1p_BIO_CDA.PhasicMax', 'arousal', 'valence'))
@@ -5562,11 +5563,13 @@ library(tidyverse)
 
 # clustering_new$=
 # clustering
+View(clustering)
 clustering_new_pre_PCA<- select(clustering, c(ssid, TAS, AQ, stimIAPS2,
                                               stimDescription, 
                                                   pup_basCor,Bio_Mean_HR_dif,
                                                   log_BIO_CDA.PhasicMax, arousal,
                                                   valence, fix_count, mean_fix_dur))
+View(clustering_new_pre_PCA)
 
 clustering_new_pre_PCA
 
@@ -5725,6 +5728,1066 @@ var.PCA.scr_hr_pup_ar <-InPosition::epPCA.inference.battery(all.data3_forPCA_wit
                                        critical.value = 2)
 
 
+View(all.data3_forPCA_withar)
+
+View(clustering_new_pre_PCA)
+```
+
+Multiple factor analysys
+
+- consider aggregating  (average per stim)
+- PCA on arousal arousal and valence
+
+
+```{r}
+
+library(factoextra)
+library(FactoMineR)
+
+clustering_new_pre_PCA
+colnames(clustering_new_pre_PCA)
+
+clustering_new_pre_PCA_2<- clustering_new_pre_PCA[, c(1,5:10,12)]
+colnames(clustering_new_pre_PCA_2)
+
+MFA(base, group, type = rep("s",length(group)), ind.sup = NULL, 
+    name.group = NULL, num.group.sup = NULL, graph = TRUE)
+
+
+res.mfa <- MFA(wine, 
+               group = c(2, 5, 3, 10, 9, 2), 
+               type = c("n", "s", "s", "s", "s", "s"),
+               name.group = c("origin","odor","visual",
+                              "odor.after.shaking", "taste","overall"),
+               num.group.sup = c(1, 6),
+               graph = FALSE)
+
+clustering_new_pre_PCA_2
+
+View(clustering_new_pre_PCA_2)
+
+clustering_new_pre_PCA_2$ssid<- as.factor(clustering_new_pre_PCA_2$ssid)
+?MFA
+
+clustering_new_pre_PCA_2$stimDescription
+res.mfa <- MFA(clustering_new_pre_PCA_2, 
+               group = c(2, 1, 1, 1, 2, 1), 
+               type = c("n", "s", "s", "s", "s", "s"),
+               name.group = c("pp_stim","pupil","HR","SCR", "ar_val","fix"),
+               num.group.sup = c(1,2),
+               graph = TRUE)
+
+print(res.mfa)
+
+
+clustering_new_pre_PCA_2print(res.mfa)
+
+```
+```{r}
+library("factoextra")
+eig.val <- get_eigenvalue(res.mfa)
+head(eig.val)
+
+install.packages("MExPosition")
+# ExPosition::FA
+
+TExPosition::
+# InPosition::
+# TExPosition::
 
 ```
 
+the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
+```{r}
+fviz_screeplot(res.mfa)
+
+```
+
+The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
+
+```{r}
+
+group <- get_mfa_var(res.mfa, "group")
+group
+
+```
+
+The different components can be accessed as follow:
+```{r}
+# Coordinates of groups
+head(group$coord)
+# Cos2: quality of representation on the factore map
+head(group$cos2)
+# Contributions to the  dimensions
+head(group$contrib)
+
+```
+
+To plot the groups of variables, type this:
+
+```{r}
+fviz_mfa_var(res.mfa, "group")
+
+```
+
+
+red color = active groups of variables
+green color = supplementary groups of variables
+The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
+
+To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
+```{r}
+# Contribution to the first dimension
+fviz_contrib(res.mfa, "group", axes = 1)
+# Contribution to the second dimension
+fviz_contrib(res.mfa, "group", axes = 2)
+
+```
+Quantitative variables
+The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
+```{r}
+quanti.var <- get_mfa_var(res.mfa, "quanti.var")
+quanti.var 
+
+```
+```{r}
+# Coordinates
+head(quanti.var$coord)
+# Cos2: quality on the factore map
+head(quanti.var$cos2)
+# Contributions to the dimensions
+head(quanti.var$contrib)
+
+```
+Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
+
+```{r}
+fviz_mfa_var(res.mfa, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE)
+
+```
+
+To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
+```{r}
+fviz_mfa_var(res.mfa, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE,
+             geom = c("point", "text"), legend = "bottom")
+
+```
+
+
+```{r}
+fviz_contrib(res.mfa, choice = "quanti.var", axes = 1, top = 20,
+             palette = "jco")
+
+
+```
+Graph of individuals
+
+```{r}
+# To get the results for individuals, type this:
+
+ind <- get_mfa_ind(res.mfa)
+ind
+
+```
+To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
+
+```{r}
+fviz_mfa_ind(res.mfa, col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = FALSE)
+
+fviz_mfa_ind(res.mfa, 
+             habillage = "Label", # color by groups 
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+```
+```{r}
+
+clustering_new_pre_PCA_2
+
+fviz_mfa_ind(res.mfa, 
+             habillage = "stimDescription", # color by groups 
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+
+fviz_mfa_ind(res.mfa, 
+             habillage = "ssid", # color by groups 
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+```
+
+
+Aggregate one average per stim
+
+
+```{r}
+
+library(factoextra)
+library(FactoMineR)
+
+
+colnames(clustering_agg_JASPtest)
+
+clustering_agg_JASP_PCA_2<- clustering_agg_JASPtest [, c(1,27, 2:4)]
+colnames(clustering_agg_JASP_PCA_2)
+
+clustering_agg_JASP_PCA_2$stimIAPS2<- as.factor(clustering_agg_JASP_PCA_2$stimIAPS2)
+
+clustering_agg_JASP_PCA_2$stimDescription<- as.factor(clustering_agg_JASP_PCA_2$stimDescription)
+
+
+
+
+res.mfa_agg <- MFA(wine, 
+               group = c(2, 5, 3, 10, 9, 2), 
+               type = c("n", "s", "s", "s", "s", "s"),
+               name.group = c("origin","odor","visual",
+                              "odor.after.shaking", "taste","overall"),
+               num.group.sup = c(1, 6),
+               graph = FALSE)
+
+
+colnames(clustering_agg_JASP_PCA_2)
+res.mfa_agg <- MFA(clustering_agg_JASP_PCA_2, 
+               group = c(2, 1, 1, 1), 
+               type = c("n", "s", "s", "s"),
+               name.group = c("stim_desc","HR","pupil","SCR"),
+               num.group.sup = c(1,2),
+               graph = TRUE)
+
+print(res.mfa_agg)
+
+
+
+
+```
+```{r}
+library("factoextra")
+eig.val_agg <- get_eigenvalue(res.mfa_agg)
+head(eig.val_agg)
+
+
+```
+
+the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
+```{r}
+fviz_screeplot(res.mfa_agg)
+
+```
+
+The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
+
+```{r}
+
+group_agg <- get_mfa_var(res.mfa_agg, "group")
+group_agg
+
+```
+
+The different components can be accessed as follow:
+```{r}
+# Coordinates of groups
+head(group_agg$coord)
+# Cos2: quality of representation on the factore map
+head(group_agg$cos2)
+# Contributions to the  dimensions
+head(group_agg$contrib)
+
+```
+
+To plot the groups of variables, type this:
+
+```{r}
+fviz_mfa_var(res.mfa_agg, "group")
+
+```
+
+
+red color = active groups of variables
+green color = supplementary groups of variables
+The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
+
+To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
+```{r}
+# Contribution to the first dimension
+fviz_contrib(res.mfa_agg, "group", axes = 1)
+# Contribution to the second dimension
+fviz_contrib(res.mfa_agg, "group", axes = 2)
+
+```
+Quantitative variables
+The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
+```{r}
+quanti.var_agg <- get_mfa_var(res.mfa_agg, "quanti.var")
+quanti.var_agg
+
+```
+
+```{r}
+# Coordinates
+head(quanti.var_agg$coord)
+# Cos2: quality on the factore map
+head(quanti.var_agg$cos2)
+# Contributions to the dimensions
+head(quanti.var_agg$contrib)
+
+```
+Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
+
+```{r}
+fviz_mfa_var(res.mfa_agg, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE)
+
+```
+
+To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
+```{r}
+fviz_mfa_var(res.mfa_agg, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE,
+             geom = c("point", "text"), legend = "bottom")
+
+```
+
+
+```{r}
+fviz_contrib(res.mfa_agg, choice = "quanti.var", axes = 1, top = 20,
+             palette = "jco")
+fviz_contrib(res.mfa_agg, choice = "quanti.var", axes = 2, top = 20,
+             palette = "jco")
+
+```
+Graph of individuals
+
+```{r}
+# To get the results for individuals, type this:
+
+ind_agg <- get_mfa_ind(res.mfa_agg)
+ind_agg
+
+```
+To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
+
+```{r}
+fviz_mfa_ind(res.mfa_agg, col.ind = "cos2", 
+             # gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+clust2_dataset$stimDescription
+pp_stim
+fviz_mfa_ind(res.mfa_agg, 
+             habillage = "stimDescription", # color by groups 
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+```
+
+
+```{r}
+
+clustering_new_pre_PCA_2
+
+fviz_mfa_ind(res.mfa_agg, 
+             habillage = "stimIAPS2", # color by groups 
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+
+
+```
+
+Graph of partial individuals
+The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
+
+In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
+
+For a given individual, there are as many partial points as groups of variables.
+
+The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
+
+```{r}
+fviz_mfa_ind(res.mfa_agg, partial = "all") 
+# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
+
+fviz_mfa_ind(res.mfa, partial = c("1DAM", "1VAU", "2ING")) 
+
+```
+
+
+Graph of partial axes
+The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
+
+```{r}
+fviz_mfa_axes(res.mfa_agg)
+
+```
+
+
+```{r}
+data(wine)
+View(wine)
+
+View(clustering_new_pre_PCA_2)
+
+```
+
+
+colnames
+
+```{r}
+db_forPCA
+colnames(db_forPCA)
+library(tidyverse)
+data3_forPCA_withar
+all.data3_forPCA_withar$TAS_split<- if_else(all.data3_forPCA_withar$TAS > 
+                                          median(all.data3_forPCA_withar$TAS, na.rm = TRUE), "High", "Low")
+colnames(all.data3_forPCA_withar)
+db_forPCA_MFA<- all.data3_forPCA_withar[, c(1,228, 4:171)]
+
+colnames(db_forPCA_MFA)
+
+
+db_forPCA_MFA
+
+db_forPCA_MFA$ssid<- as.factor(db_forPCA_MFA$ssid)
+
+
+colnames(db_forPCA_MFA)
+
+db_forPCA_MFA$arousal_9561SickKitty<- NULL
+res.mfa_dcast <- MFA(db_forPCA_MFA, 
+               group = c(2, 56, 56, 56), 
+               type = c("n", "s", "s", "s"),
+               name.group = c("pp_gr","pupil","HR","SCR"),
+               num.group.sup = c(1,2),
+               graph = TRUE)
+
+print(res.mfa_dcast)
+
+
+
+
+```
+
+
+
+
+here
+
+
+
+```{r}
+library("factoextra")
+# res.mfa_dcast <- get_eigenvalue(res.mfa_dcast)
+# head(res.mfa_dcast)
+
+
+```
+
+the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
+```{r}
+fviz_screeplot(res.mfa_dcast)
+
+```
+
+The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
+
+```{r}
+
+group_dcast <- get_mfa_var(res.mfa_dcast, "group")
+group_dcast
+
+```
+
+The different components can be accessed as follow:
+```{r}
+# Coordinates of groups
+head(group_dcast$coord)
+# Cos2: quality of representation on the factore map
+head(group_dcast$cos2)
+# Contributions to the  dimensions
+head(group_dcast$contrib)
+
+```
+
+To plot the groups of variables, type this:
+
+```{r}
+fviz_mfa_var(res.mfa_dcast, "group")
+
+```
+
+
+red color = active groups of variables
+green color = supplementary groups of variables
+The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
+
+To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
+```{r}
+# Contribution to the first dimension
+fviz_contrib(res.mfa_dcast, "group", axes = 1)
+# Contribution to the second dimension
+fviz_contrib(res.mfa_dcast, "group", axes = 2)
+
+```
+Quantitative variables
+The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
+```{r}
+quanti.var_dcast <- get_mfa_var(res.mfa_dcast, "quanti.var")
+quanti.var_dcast
+
+```
+
+```{r}
+# Coordinates
+head(quanti.var_dcast$coord)
+# Cos2: quality on the factore map
+head(quanti.var_dcast$cos2)
+# Contributions to the dimensions
+head(quanti.var_dcast$contrib)
+
+```
+Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
+
+```{r}
+fviz_mfa_var(res.mfa_dcast, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE)
+
+```
+
+To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
+```{r}
+fviz_mfa_var(res.mfa_dcast, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE,
+             geom = c("point", "text"), legend = "bottom")
+
+```
+
+
+```{r}
+fviz_contrib(res.mfa_dcast, choice = "quanti.var", axes = 1, top = 20,
+             palette = "jco")
+fviz_contrib(res.mfa_agg, choice = "quanti.var", axes = 2, top = 20,
+             palette = "jco")
+
+```
+Graph of individuals
+
+```{r}
+# To get the results for individuals, type this:
+
+ind_dcast <- get_mfa_ind(res.mfa_dcast)
+ind_dcast
+
+```
+To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
+
+```{r}
+fviz_mfa_ind(res.mfa_dcast, col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+clust2_dataset$stimDescription
+pp_stim
+fviz_mfa_ind(res.mfa_dcast, 
+             habillage = "TAS_split", # color by groups 
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+```
+
+
+```{r}
+
+clustering_new_pre_PCA_2
+
+fviz_mfa_ind(res.mfa_dcast, 
+             habillage = "stimIAPS2", # color by groups 
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+
+
+```
+
+Graph of partial individuals
+The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
+
+In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
+
+For a given individual, there are as many partial points as groups of variables.
+
+The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
+
+```{r}
+fviz_mfa_ind(res.mfa_dcast, partial = "all") 
+# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
+
+
+```
+
+
+Graph of partial axes
+The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
+
+```{r}
+fviz_mfa_axes(res.mfa_dcast)
+
+```
+
+<!-- neg, neutra positive -->
+
+
+
+
+
+```{r}
+data(wine)
+View(wine)
+
+View(clustering_new_pre_PCA_2)
+?cut
+clustering_new_pre_PCA_2$valence_split<- cut(clustering_new_pre_PCA_2$valence, 3,
+                                             labels = c("neg", "mid", "positive"))
+
+
+
+clustering_new_pre_PCA_2_agg_by_val<- clustering_new_pre_PCA_2%>%
+  group_by(ssid,valence_split)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+
+View(clustering_new_pre_PCA_2_agg_by_val)
+
+colnames(clustering_new_pre_PCA_2_agg_by_val)
+clustering_new_pre_PCA_2_agg_by_val_sel<- clustering_new_pre_PCA_2_agg_by_val[, c(1:7)]
+
+# dcast
+library(data.table)
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast<- data.table::dcast(setDT(clustering_new_pre_PCA_2_agg_by_val_sel), 
+                    ssid ~ valence_split, value.var = c('pup_basCor',
+                'Bio_Mean_HR_dif', 'log_BIO_CDA.PhasicMax', "arousal", "valence"))
+
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast
+
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast$pup_basCor_NA<- NULL
+
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast$Bio_Mean_HR_dif_NA<- NULL
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast$log_BIO_CDA.PhasicMax_NA<- NULL
+
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast$valence_NA<- NULL
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast$arousal_NA<- NULL
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast
+View(clustering_new_pre_PCA_2_agg_by_val_sel_dcast)
+
+namesrepl<- colnames(clustering_new_pre_PCA_2_agg_by_val_sel_dcast)
+
+namesrepl<- c("ssid", "p_neg", "p_mid" ,"p_pos", "HR_neg" , "HR_mid",
+                  "HR_pos","SCR_neg", "SCR_mid", "SCR_pos")
+
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast2<- clustering_new_pre_PCA_2_agg_by_val_sel_dcast
+names(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2)<- namesrepl
+
+
+```
+
+MFA agg by val
+
+
+```{r}
+colnames(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2)
+res.mfa_agg_byval <- MFA(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2, 
+               group = c(1, 3, 3, 3), 
+               type = c("n", "s", "s", "s"),
+               name.group = c("ssid","pupil","HR","SCR"),
+               num.group.sup = c(1),
+               graph = TRUE)
+
+print(res.mfa_agg_byval)
+
+
+```
+
+
+
+```{r}
+library("factoextra")
+eif_vyval <- get_eigenvalue(res.mfa_agg_byval)
+head(eif_vyval)
+
+
+```
+
+the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
+```{r}
+fviz_screeplot(res.mfa_agg_byval)
+
+```
+
+The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
+
+```{r}
+
+group_vybal <- get_mfa_var(res.mfa_agg_byval, "group")
+group_vybal
+
+```
+
+The different components can be accessed as follow:
+```{r}
+# Coordinates of groups
+head(group_vybal$coord)
+# Cos2: quality of representation on the factore map
+head(group_vybal$cos2)
+# Contributions to the  dimensions
+head(group_vybal$contrib)
+
+```
+
+To plot the groups of variables, type this:
+
+```{r}
+fviz_mfa_var(res.mfa_agg_byval, "group")
+
+```
+
+
+red color = active groups of variables
+green color = supplementary groups of variables
+The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
+
+To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
+```{r}
+# Contribution to the first dimension
+fviz_contrib(res.mfa_agg_byval, "group", axes = 1)
+# Contribution to the second dimension
+fviz_contrib(res.mfa_agg_byval, "group", axes = 2)
+
+```
+Quantitative variables
+The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
+```{r}
+quanti.var_agg_by_val <- get_mfa_var(res.mfa_agg_byval, "quanti.var")
+quanti.var_agg_by_val
+
+```
+
+```{r}
+# Coordinates
+head(quanti.var_agg_by_val$coord)
+# Cos2: quality on the factore map
+head(quanti.var_agg_by_val$cos2)
+# Contributions to the dimensions
+head(quanti.var_agg_by_val$contrib)
+
+```
+Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
+
+```{r}
+fviz_mfa_var(res.mfa_agg_byval, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE)
+
+
+```
+
+
+
+Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
+
+```{r}
+fviz_mfa_var(res.mfa_dcast, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE)
+
+```
+
+To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
+```{r}
+fviz_mfa_var(res.mfa_agg_byval, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE,
+             geom = c("point", "text"), legend = "bottom")
+
+```
+
+
+```{r}
+fviz_contrib(res.mfa_agg_byval, choice = "quanti.var", axes = 1, top = 20,
+             palette = "jco")
+fviz_contrib(res.mfa_agg_byval, choice = "quanti.var", axes = 2, top = 20,
+             palette = "jco")
+
+```
+Graph of individuals
+
+```{r}
+# To get the results for individuals, type this:
+
+ind_agg_byval <- get_mfa_ind(res.mfa_agg_byval)
+ind_agg_byval
+
+```
+To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
+
+```{r}
+fviz_mfa_ind(res.mfa_agg_byval, col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+
+fviz_mfa_ind(res.mfa_agg_byval, 
+             habillage = "ssid", # color by groups
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+```
+
+
+```{r}
+
+clustering_new_pre_PCA_2
+
+fviz_mfa_ind(res.mfa_agg_byval, 
+             # habillage = "stimIAPS2", # color by groups 
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+
+
+```
+
+Graph of partial individuals
+The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
+
+In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
+
+For a given individual, there are as many partial points as groups of variables.
+
+The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
+
+```{r}
+fviz_mfa_ind(res.mfa_agg_byval, partial = "all") 
+# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
+
+
+```
+
+
+Graph of partial axes
+The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
+
+```{r}
+fviz_mfa_axes(res.mfa_agg_byval)
+
+```
+
+
+with valence
+clustering_new_pre_PCA_2_agg_by_val_sel_dcast
+
+
+
+```{r}
+colnames(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2)
+res.mfa_agg_byval <- MFA(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2, 
+               group = c(1, 3, 3, 3), 
+               type = c("n", "s", "s", "s"),
+               name.group = c("ssid","pupil","HR","SCR"),
+               num.group.sup = c(1),
+               graph = TRUE)
+
+print(res.mfa_agg_byval)
+
+
+```
+
+
+
+```{r}
+library("factoextra")
+eif_vyval <- get_eigenvalue(res.mfa_agg_byval)
+head(eif_vyval)
+
+
+```
+
+the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
+```{r}
+fviz_screeplot(res.mfa_agg_byval)
+
+```
+
+The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
+
+```{r}
+
+group_vybal <- get_mfa_var(res.mfa_agg_byval, "group")
+group_vybal
+
+```
+
+The different components can be accessed as follow:
+```{r}
+# Coordinates of groups
+head(group_vybal$coord)
+# Cos2: quality of representation on the factore map
+head(group_vybal$cos2)
+# Contributions to the  dimensions
+head(group_vybal$contrib)
+
+```
+
+To plot the groups of variables, type this:
+
+```{r}
+fviz_mfa_var(res.mfa_agg_byval, "group")
+
+```
+
+
+red color = active groups of variables
+green color = supplementary groups of variables
+The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
+
+To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
+```{r}
+# Contribution to the first dimension
+fviz_contrib(res.mfa_agg_byval, "group", axes = 1)
+# Contribution to the second dimension
+fviz_contrib(res.mfa_agg_byval, "group", axes = 2)
+
+```
+Quantitative variables
+The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
+```{r}
+quanti.var_agg_by_val <- get_mfa_var(res.mfa_agg_byval, "quanti.var")
+quanti.var_agg_by_val
+
+```
+
+```{r}
+# Coordinates
+head(quanti.var_agg_by_val$coord)
+# Cos2: quality on the factore map
+head(quanti.var_agg_by_val$cos2)
+# Contributions to the dimensions
+head(quanti.var_agg_by_val$contrib)
+
+```
+Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
+
+```{r}
+fviz_mfa_var(res.mfa_agg_byval, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE)
+
+
+```
+
+
+
+Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
+
+```{r}
+fviz_mfa_var(res.mfa_dcast, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE)
+
+```
+
+To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
+```{r}
+fviz_mfa_var(res.mfa_agg_byval, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE,
+             geom = c("point", "text"), legend = "bottom")
+
+```
+
+
+```{r}
+fviz_contrib(res.mfa_agg_byval, choice = "quanti.var", axes = 1, top = 20,
+             palette = "jco")
+fviz_contrib(res.mfa_agg_byval, choice = "quanti.var", axes = 2, top = 20,
+             palette = "jco")
+
+```
+Graph of individuals
+
+```{r}
+# To get the results for individuals, type this:
+
+ind_agg_byval <- get_mfa_ind(res.mfa_agg_byval)
+ind_agg_byval
+
+```
+To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
+
+```{r}
+fviz_mfa_ind(res.mfa_agg_byval, col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+
+fviz_mfa_ind(res.mfa_agg_byval, 
+             habillage = "ssid", # color by groups
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+```
+
+
+```{r}
+
+clustering_new_pre_PCA_2
+
+fviz_mfa_ind(res.mfa_agg_byval, 
+             # habillage = "stimIAPS2", # color by groups 
+             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence", 
+             repel = TRUE # Avoid text overlapping
+             ) 
+
+
+
+```
+
+Graph of partial individuals
+The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
+
+In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
+
+For a given individual, there are as many partial points as groups of variables.
+
+The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
+
+```{r}
+fviz_mfa_ind(res.mfa_agg_byval, partial = "all") 
+# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
+
+
+```
+
+
+Graph of partial axes
+The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
+
+```{r}
+fviz_mfa_axes(res.mfa_agg_byval)
+
+```
