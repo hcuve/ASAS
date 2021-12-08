@@ -6799,5 +6799,23 @@ The graph of partial axes shows the relationship between the principal axes of t
 
 ```{r}
 fviz_mfa_axes(res.mfa_agg_byval2)
+fviz_mfa_axes()
 
+```
+
+
+Mutual information
+
+```{r}
+install.packages("infotheo")
+library(infotheo)
+
+mutinformation(X, Y, method="emp")
+?mutinformation
+mutinformation(clustering_new_pre_PCA_2$arousal, clustering_new_pre_PCA_2$pup_basCor, 
+               method="mm")
+
+install.packages("entropy")
+
+entropy::mi.plugin(clustering_new_pre_PCA_2[,c(3,6)])
 ```
