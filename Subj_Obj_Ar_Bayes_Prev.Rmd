@@ -1,0 +1,39 @@
+---
+title: "Subj_Arousal_bayes_prevalence"
+author: "Helio"
+date: "02/02/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+
+
+Subj_Arousal_bayes_prevalence
+pupil_arousal_findings$pupil_from_ar_slope_vale <- lmer(pup_basCor ~ (valence_c* arousal_c) +
+                                                    Mean_gray_z  +
+                                                    (1  | ssid)+
+                                                    (0+ arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE))
+
+
+summary(pupil_arousal_findings$pupil_from_ar_slope_vale)
+
+```
+
+
+```{r cars}
+summary(cars)
+```
+
+
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
