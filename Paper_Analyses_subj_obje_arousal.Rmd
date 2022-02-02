@@ -374,6 +374,29 @@ pupil_arousal_findings$pupil_from_ar_vale <- lmer(pup_basCor ~ (valence_c* arous
                         subset(pupil_outlier == FALSE)%>%
                         subset(arousal_outler == FALSE))
 
+
+
+
+
+# fit pupil response froma arousal slope
+
+table(is.na(db_full4new_stim_screen_pupil_nopract$valence_c))
+library(lmerTest)
+library(tidyverse)
+pupil_arousal_findings$pupil_from_ar_slope_vale <- lmer(pup_basCor ~ (valence_c* arousal_c) +
+                                                    Mean_gray_z  +
+                                                    (1  | ssid)+
+                                                    (0+ arousal_c | ssid),
+                                                  REML = FALSE,
+                      data = db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE))
+
+
+summary(pupil_arousal_findings$pupil_from_ar_slope_vale)
+
+
 # unique(db_full4new_stim_screen_pupil_nopract$tNo)
 # 
 # unique(db_full4new_stim_screen_pupil_nopract$ssid)

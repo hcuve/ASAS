@@ -127,10 +127,6 @@ for(si in 1:Nsub ){
   colnames(p)<- c("Intercept", "valence_c", "arousal_c", "Mean_gray_z", "valence:arousal", "sid")
   # names(matrix(t(t[["coefficients"]])))
   View(p)
-  
-  
-  
-
 ```
 
 
@@ -335,7 +331,7 @@ lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
 
 ```
 
-
+Now Level 2 test
 
 ```{r}
 #    Load the nonlinear equation solver
@@ -407,15 +403,6 @@ source("bayesprev.R")
 ```
 
 
-valence
-```{r}
-
-
-
-
-```
-
-
 ```{r}
 
 
@@ -456,36 +443,392 @@ db_full4new_stim_screen_pupil_nopract_no_outl%>%
 install.packages('scales')
 
 scales::rescale(0)
+
+bind_bayes1 <- left_join(as.data.frame(p), as.data.frame(estimate), by = "sid")
+bind_bayes2 <- left_join(as.data.frame(bind_bayes1), as.data.frame(se), by = "sid")
+bind_bayes2
+
+bind_test<- bind_cols(p, estimate, se)
+
+
+
 db_full4new_stim_screen_pupil_nopract_no_outl%>%
   group_by(ssid)%>%
   mutate(pup_basCor_mean = mean(pup_basCor, na.rm = TRUE))%>%
   summarise_if(is.numeric, mean, na.rm = TRUE)%>%
   mutate(rescaled_y = scales::rescale_max(testdensity_y, to = c(0,.4)))%>%
   ggplot(aes(x = pup_basCor))+
-  stat_function(fun=dgamma, args=list(shape=1, scale=.5))+
-  # geom_density()+
+  # stat_function(fun=dgamma, args=list(shape=1, scale=.5))+
   geom_jitter(aes( x = pup_basCor_mean, y = rescaled_y),
               width = .1, height = 0)
-  # stat_function(fun=dgamma, args=list(shape=1, scale=.5))
-  geom_jitter()
-  stat_summary(geom = "pointrange")
-  
-  
-testdensity$data.name
-  
- c(density(db_full4new_stim_screen_pupil_nopract_no_outl$ssid,n=n)$x, density(bar,n=n)$x)
+
+
+
+
+bind_bayes2$xdensity<- testdensity[["x"]]
+bind_bayes2$ydensity<- testdensity[["y"]]
+
+testgensity
+
+bind_bayes2 %>%
+
+  group_by(sid)%>%
+  # mutate(testdensity_x = density(arousal_c.x, n = 2)$x,
+  #        testdensity_y = density(arousal_c.x, n = 2)$y)%>%
+
+  ggplot(aes(x = arousal_c.x))+
+   # stat_function(fun=dgamma, args=list(shape=1))
+  geom_density() +
+  geom_point(aes(x = xdensity, y =ydensity))
+
+
+bind_bayes2%>%
+  ggplot(aes(as.numeric(as.factor(as.integer(sid))), arousal_c.y, color = arousal_c.x<.05))+
+  geom_point()+
+  geom_pointrange(aes(ymin = arousal_c.y- arousal_c, ymax = arousal_c.y+ arousal_c ))
+
+
+bind_bayes2%>%
+  ggplot(aes(as.numeric(as.factor(as.integer(sid))), valence_c.y, color = valence_c.x<.05))+
+  geom_point()+
+  geom_pointrange(aes(ymin = valence_c.y- valence_c, ymax = valence_c.y+ valence_c ))
+
+
+bind_bayes2%>%
+  ggplot(aes(as.numeric(as.factor(as.integer(sid))), `valence:arousal.y` , 
+             color = `valence:arousal.x` <.05))+
+  geom_point()+
+  geom_pointrange(aes(ymin = `valence:arousal.y` - `valence:arousal`, 
+                      ymax = `valence:arousal.y` + `valence:arousal` ))
+
 
 ```
 
 
-```{r cars}
-summary(cars)
+
+Try with the timecourse now.
+start with only one predictor - arousal
+
+then plot the effect size in terms of a heatmap
+
+```{r}
+
+tmp.df4_full_stim_downs_jun2021_60bins_NT<- subset(tmp.df4_full_stim_downs_jun2021_60bins,
+                                    Group == "NT")
+
+b = 1
+
+subject_id2<- unique(tmp.df4_full_stim_downs_jun2021_60bins_NT$ssid)
+s = 1
+
+b = 1
+
+testtimecourseforbayprev<-   subset(tmp.df4_full_stim_downs_jun2021_60bins_NT,
+                                    ssid =  subject_id[s],
+                                    timebin_no == nbins[b])
+
+unique(testtimecourseforbayprev$timebin_no)
+
+
+tmp.df4_full_stim_downs_jun2021_60bins_NT%>%
+  group_by(ssid, timebin_no)%>%
+  summarise_at(c("pup_basCor"), mean, na.rm = TRUE)
+
+
+# try and figure out how many timebins per participant we need to cerate to hold data
+tmp.df4_full_stim_downs_jun2021_60bins_NT%>%
+  subset(timebin_no<56)%>%
+  group_by(ssid, timebin_no)%>%
+  summarise_at(c("pup_basCor"), mean, na.rm = TRUE) %>%
+    group_by(ssid)%>%
+  mutate(n_timebin = n())
+  # total of 3025 rows
+  #  summarise_at(c("pup_basCor", "n_timebin"), mean, na.rm = TRUE)
+
+
+
+tmp.df4_full_stim_downs_jun2021_60bins_NT_55<- tmp.df4_full_stim_downs_jun2021_60bins_NT%>%
+  subset(timebin_no<56)
+
+# create the dataset to hold participant, timebin code, statistics for each timebin
+# seems like the majority have 55
+
+nsubj_2 = 55
+n_bins_2 = 55
+
+timecourse_60bin_result_df_for_bp <-timecourse_60bin_result_df <- data.frame(
+  ssid = rep(NA, nsubj_2*n_bins_2),
+  timebins= rep(NA, nsubj_2*n_bins_2), 
+                                       Estimate_ar= rep(NA, nsubj_2*n_bins_2), 
+                                       se_ar= rep(NA, nsubj_2*n_bins_2), 
+                                       t_ar=rep(NA, nsubj_2*n_bins_2), 
+                                       p_ar=rep(NA, nsubj_2*n_bins_2)
+                                       # Estimate_vl= rep(NA, nsubj_2*n_bins_2), 
+                                       # t_vl=rep(NA, nsubj_2*n_bins_2), 
+                                       # p_vl=rep(NA, nsubj_2*n_bins_2),
+                                       # Estimate_br= rep(NA, nsubj_2*n_bins_2), 
+                                       # t_br= rep(NA, nsubj_2*n_bins_2), 
+                                       # p_br= rep(NA, nsubj_2*n_bins_2),
+                                       # Estimate_ar_vl= rep(NA, nsubj_2*n_bins_2), 
+                                       # t_ar_vl= rep(NA, nsubj_2*n_bins_2), 
+                                       # p_ar_vl= rep(NA, nsubj_2*n_bins_2),
+                                       # cov= as.character(rep(NA, nsubj_2*n_bins_2)
+                                                         )
+timecourse_60bin_result_df_for_bp
+
+# now fit level 1 within individual tests
+0 = 1 # remember to always rezero it
+s=2
+b = 3
+# nbins
+
+n_bins_3<- unique(tmp.df4_full_stim_downs_jun2021_60bins_NT_55$timebin_no)
+subject_id_3<- unique(tmp.df4_full_stim_downs_jun2021_60bins_NT_55$ssid)
+
+s = 1
+b = 2
+
+for (s in 1:length(subject_id2)) {
+  for (b in 1:length(n_bins_3)) {
+
+    
+    message(sprintf("$$$$$RUNING ssid %s timebin %i", subject_id2[s], n_bins_3[b]))
+        lm_bin_pup  <- lm(pup_basCor ~ arousal_c,
+                      data = subset(tmp.df4_full_stim_downs_jun2021_60bins_NT_55,
+                                    ssid ==  subject_id2[s] &
+                                    timebin_no == n_bins_3[b]))
+        # save the summary    
+        lm_bin_pup_summary<- summary(lm_bin_pup)
+        
+        # store statistics for particiapnt and timebin
+        timecourse_60bin_result_df_for_bp[i,1]<- subject_id[s] #ssid 
+        timecourse_60bin_result_df_for_bp[i,2]<- n_bins_3[b] #timebin
+          # timecourse_60bin_result_df[b,1]<- tmp.df4_full_stim_downs_jun2021_60bins$timerezero3[b] 
+            timecourse_60bin_result_df_for_bp[i,3] <- lm_bin_pup_summary$coefficients[2] #estimate, note to avoid intercept start on 2 for estimate, then 4 for se, the 6 for t and so on
+            timecourse_60bin_result_df_for_bp[i,4] <- lm_bin_pup_summary$coefficients[4] #se
+            timecourse_60bin_result_df_for_bp[i,5] <- lm_bin_pup_summary$coefficients[6] #t
+             timecourse_60bin_result_df_for_bp[i,6] <- lm_bin_pup_summary$coefficients[8] #p
+
+       i = i+1
+     # b = b+1
+  }
+
+
+  }
+
+
+timecourse_60bin_result_df_for_bp<- timecourse_60bin_result_df_for_bp[442:nrow(timecourse_60bin_result_df_for_bp),]
+
+# heatmap
+
+library(viridis)
+install.packages('hrbrthemes')
+
+library(hrbrthemes)
+timecourse_60bin_result_df_for_bp%>%
+  ggplot(aes(y = as.factor(as.numeric(ssid)), x = timebins))+
+  geom_tile(aes(fill = Estimate_ar))+
+  scale_fill_viridis(discrete=FALSE) 
+  theme_ipsum()
+  theme_classic()
+  
+  
+  
+  ?p.adjust
+  timecourse_60bin_result_df_for_bp$p_ar_adjust<- p.adjust(timecourse_60bin_result_df_for_bp$p_ar,
+                                                           method = "bonferroni", n = 55)
+  
+  
+  
+timecourse_60bin_result_df_for_bp<-  timecourse_60bin_result_df_for_bp%>%
+    group_by(ssid)%>%
+    mutate(p_adjusted = p.adjust(p_ar, method = "bonferroni", n = n()))
+  
+timecourse_60bin_result_df_for_bp %>%
+  ggplot(aes(y = as.factor(as.numeric(ssid)), x = timebins))+
+  geom_tile(aes(fill = p_adjusted))+
+  scale_fill_viridis(discrete=FALSE) +
+  # theme_ipsum()
+  theme_classic()
+
+
+timecourse_60bin_result_df_for_bp %>%
+  ggplot(aes(x = timebins/10, y = t_ar))+
+  stat_summary(geom = "line", size = 2)+
+  stat_summary( geom = "errorbar", mult = 1) 
+  stat_summary()
+  
+  geom_tile(aes(fill = p_adjusted))+
+  scale_fill_viridis(discrete=FALSE) +
+  # theme_ipsum()
+  theme_classic()
+  
+  timecourse_60bin_result_df_for_bp %>%
+  ggplot(aes(x = timebins/10, y = t_ar))+
+  stat_summary(geom = "line", size = 2)+
+  stat_summary( geom = "errorbar", mult = 1) 
+  stat_summary()
+  
+  geom_tile(aes(fill = p_adjusted))+
+  scale_fill_viridis(discrete=FALSE) +
+  # theme_ipsum()
+  theme_classic()
+  
+  
+  # count
+  alpha
+  timecourse_60bin_result_df_for_bp$p_adjusted_count<- 
+    timecourse_60bin_result_df_for_bp$p_adjusted< alpha
+  
+   timecourse_60bin_result_df_for_bp$p_count<- 
+    timecourse_60bin_result_df_for_bp$p_ar< alpha
+  
+  
+  table(  timecourse_60bin_result_df_for_bp$p_adjusted_count)
+  
+    
+  
+  table(  timecourse_60bin_result_df_for_bp$p_count)
+  
+# flag max
+  timecourse_60bin_result_df_for_bp<- timecourse_60bin_result_df_for_bp%>%
+    group_by(ssid)%>%
+    # mutate(max_T = if_else(p_adjusted_count == TRUE, max(t_ar), NULL))
+   mutate(max_T =  max(t_ar))
+  
+  
+p.adjust(.05, method = "bonferroni", 55)
+
+.05/55
+# 0.0009
+
+# new t = 4.5
+
+timecourse_60bin_result_df_for_bp%>%
+  group_by(ssid)%>%
+  summarize_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(x = as.factor(as.numeric(ssid)), y = t_ar))+
+  geom_point(size = 2, color = "blue")+
+  geom_segment( aes(x=as.factor(as.numeric(ssid)), xend=as.factor(as.numeric(ssid)), 
+                    y=0, yend=t_ar),color = "blue")+
+  geom_hline(yintercept = 3.5, linetype = "dashed")+
+  coord_flip()+
+  theme_bw()
+  geom_line()
+  
+  # just p value
+  
+  timecourse_60bin_result_df_for_bp%>%
+  group_by(ssid)%>%
+  summarize_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(x = as.factor(as.numeric(ssid)), y = p_ar))+
+  geom_point(size = 2, color = "blue")+
+  geom_segment( aes(x=as.factor(as.numeric(ssid)), xend=as.factor(as.numeric(ssid)), 
+                    y=0, yend=p_ar),color = "blue")+
+  geom_hline(yintercept = .05, linetype = "dashed")+
+  coord_flip()+
+  theme_bw()
+  geom_line()
+  
+  
+  # lets for a minute assume the regukar o is fine
+  timecourse_60bin_result_df_for_bp%>%
+    group_by(ssid)
+  
+  
+  
+  # alpha, the false positive rate
+n <- Nsub
+
+indsig_ts = timecourse_60bin_result_df_for_bp$p_ar <alpha
+# table(indsig)
+
+# lets start with valence
+k_ar_ts <- sum(indsig_ts)
+table(indsig_ts)
+
+timecourse_60bin_result_df_for_bp%>%
+  group_by(ssid)%>%
+  mutate(p_count_sum_sidsum(p_count))%>%
+  mutate(= k_ar_ts_sid = )
+  
+
+?binom.test
+binom.test(k_ar_ts, 3025, 0.05, alternative="two.sided",  ) 
+
+# plot posterior distribution of population prevalence
+# install.packages("HDInterval")
+library(HDInterval) # this package is needed
+xvals <- seq(0, 1, .01)
+bayesprev_posterior()
+pdf_2 <- bayesprev_posterior(xvals, k_2, n) # function needed
+pdf_2
+
+
+plot(xvals, pdf_2, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_2, n)
+pmap = bayesprev_posterior(xmap, k_2, n)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_2, n)
+pbound = bayesprev_posterior(xbound, k_2, n)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_2, n)
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_2, n)
+h2 = bayesprev_posterior(i2, k_2, n)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+
 ```
 
 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+ #save the exact value of time bin
+            # store arousal (2,parameter)            # first number is term(row), second is column
+            timecourse_60bin_result_df[i,2]<-
+            lmer_bin_pup_summary[["coefficients"]][2,1] #estimate
+            timecourse_60bin_result_df[i,3]<-
+              lmer_bin_pup_summary[["coefficients"]][2,4] # t statistic
+            timecourse_60bin_result_df[i,4]<-
+            lmer_bin_pup_summary[["coefficients"]][2,5] # p value
+            
+            # valence
+            
+            timecourse_60bin_result_df[i,5]<-
+            lmer_bin_pup_summary[["coefficients"]][3,1] #estimate
+            timecourse_60bin_result_df[i,6]<-
+              lmer_bin_pup_summary[["coefficients"]][3,4] # t statistic
+            timecourse_60bin_result_df[i,7]<-
+              lmer_bin_pup_summary[["coefficients"]][3,5] # p value
+            
+            # brighteness
+            
+            timecourse_60bin_result_df[i,8]<-
+            lmer_bin_pup_summary[["coefficients"]][4,1] #estimate
+            timecourse_60bin_result_df[i,9]<-
+              lmer_bin_pup_summary[["coefficients"]][4,4] # t statistic
+            timecourse_60bin_result_df[i,10]<-
+              lmer_bin_pup_summary[["coefficients"]][4,5] # p value
+            
+            # interaction arousal x brighteness
+            
+            timecourse_60bin_result_df[i,11]<-
+            lmer_bin_pup_summary[["coefficients"]][5,1] #estimate
+            timecourse_60bin_result_df[i,12]<-
+              lmer_bin_pup_summary[["coefficients"]][5,4] # t statistic
+            timecourse_60bin_result_df[i,13]<-
+              lmer_bin_pup_summary[["coefficients"]][5,5] # p value
