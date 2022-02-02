@@ -20,8 +20,460 @@ pupil_arousal_findings$pupil_from_ar_slope_vale <- lmer(pup_basCor ~ (valence_c*
                         subset(pupil_outlier == FALSE)%>%
                         subset(arousal_outler == FALSE))
 
+# remeber this does contain pratice, juts a leftover of an old name not to break code
+# db_full4new_stim_screen_pupil_nopract_no_outl$tNo
 
-summary(pupil_arousal_findings$pupil_from_ar_slope_vale)
+# 1st we need to conduct the test within each participant and store the p value
+
+# let's do lm or lmer
+# stoe just the data we need
+db_full4new_stim_screen_pupil_nopract_no_outl<- db_full4new_stim_screen_pupil_nopract%>%
+                         subset(Group == "NT")%>%
+                        subset(pupil_outlier == FALSE)%>%
+                        subset(arousal_outler == FALSE)
+
+
+
+# 2.  LEVEL 1
+#
+
+# 2.1. Within-participant statistical test
+# This loop performs within-participant statistical test. Here, a t-test for
+# non-zero mean which is the simplest statistical test. In general, any
+# statistical test can be used at Level 1.
+Nsub = length(unique(db_full4new_stim_screen_pupil_nopract_no_outl$subject))
+
+subject_id<- unique(db_full4new_stim_screen_pupil_nopract_no_outl$subject)
+
+# p <- vector(mode="numeric",length=Nsub) #original
+# instead for our case create a matrix
+p <- matrix(data = NA, nrow = Nsub, ncol = 6) #
+
+
+
+# t
+# si = 1
+# rm(si)
+
+# p <- vector(mode="numeric",length=Nsub) # 
+# for( si in 1:Nsub ){
+#   t = t.test(rawdat[,si], mu=0)
+#   p[si] = t[3]
+# }
+
+
+# test
+# lmoutputtest<- summary(lm(pup_basCor ~ (valence_c* arousal_c) + Mean_gray_z,
+#    data = subset(db_full4new_stim_screen_pupil_nopract_no_outl,subject == 320)))
+# 
+# lmoutputtest
+# lmoutputtest[["coefficients"]][,4]
+
+# this fucntion fits a multiple regression per individual and returns the summary
+# then we stoe the p valus for each term in a matrix yo ue in level 2
+
+db_full4new_stim_screen_pupil_nopract_no_outl$pup_resid
+
+estimate <- matrix(data = NA, nrow = Nsub, ncol = 6) #
+
+for(si in 1:Nsub ){
+  t = summary(lm(pup_basCor ~ (valence_c* arousal_c) + Mean_gray_z,
+  data = subset(db_full4new_stim_screen_pupil_nopract_no_outl,
+                subject == subject_id[si])))
+  estimate[si,1:5] = t(matrix(t[["coefficients"]][,1])) 
+  estimate[si,6] = subject_id[si]  
+  # the first t transposes the data, not we need to change si to row
+  }
+
+  colnames(estimate)<- c("Intercept", "valence_c", "arousal_c", "Mean_gray_z", "valence:arousal", "sid")
+  # names(matrix(t(t[["coefficients"]])))
+  View(estimate)
+
+
+# save estimates and se
+
+# instead for our case create a matrix
+se <- matrix(data = NA, nrow = Nsub, ncol = 6) #
+
+
+for(si in 1:Nsub ){
+  t = summary(lm(pup_basCor ~ (valence_c* arousal_c) + Mean_gray_z,
+  data = subset(db_full4new_stim_screen_pupil_nopract_no_outl,
+                subject == subject_id[si])))
+  se[si,1:5] = t(matrix(t[["coefficients"]][,2])) 
+  se[si,6] = subject_id[si]  
+  # the first t transposes the data, not we need to change si to row
+  }
+
+  colnames(se)<- c("Intercept", "valence_c", "arousal_c", "Mean_gray_z", "valence:arousal", "sid")
+  
+View(se)
+
+t$coefficients[,4]
+
+# now p values
+p <- matrix(data = NA, nrow = Nsub, ncol = 6) #
+
+
+for(si in 1:Nsub ){
+  t = summary(lm(pup_basCor ~ (valence_c* arousal_c) + Mean_gray_z,
+  data = subset(db_full4new_stim_screen_pupil_nopract_no_outl,
+                subject == subject_id[si])))
+  p[si,1:5] = t(matrix(t[["coefficients"]][,4])) 
+    p[si,6] = subject_id[si]  
+  # the first t transposes the data, not we need to change si to row
+  }
+
+  colnames(p)<- c("Intercept", "valence_c", "arousal_c", "Mean_gray_z", "valence:arousal", "sid")
+  # names(matrix(t(t[["coefficients"]])))
+  View(p)
+  
+  
+  
+
+```
+
+
+```{r}
+
+# p holds p-values of test for each participant
+alpha = 0.05  
+indsig = p<alpha
+
+# the binary variable indsig indicates whether the within-participant
+# t-test is, or not, significant for each participant (1 entry for each
+# participant)
+
+# 2.2. Loading within-participant statistical test.
+# You can also load your own within-participant statistical test results here.
+# Load binary results into binary indsig vector with one entry per participant. 
+# See also example_csv.R for an example.
+
+#
+# 3.  LEVEL 2
+#
+
+# Bayesian prevalence inference is performed with three numbers: 
+# k, the number of significant participants (e.g. sum of binary indicator
+# variable)
+# n, the number of participants in the sample
+# alpha, the false positive rate
+n <- Nsub
+# table(indsig)
+
+# lets start with valence
+k_2 <- sum(indsig[,2])
+table(indsig[,2])
+
+?binom.test
+binom.test(k_2, 55, 0.05, alternative="two.sided",  ) 
+
+# plot posterior distribution of population prevalence
+# install.packages("HDInterval")
+library(HDInterval) # this package is needed
+xvals <- seq(0, 1, .01)
+bayesprev_posterior()
+pdf_2 <- bayesprev_posterior(xvals, k_2, n) # function needed
+pdf_2
+
+
+plot(xvals, pdf_2, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_2, n)
+pmap = bayesprev_posterior(xmap, k_2, n)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_2, n)
+pbound = bayesprev_posterior(xbound, k_2, n)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_2, n)
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_2, n)
+h2 = bayesprev_posterior(i2, k_2, n)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+# try arosual
+
+
+
+
+
+
+
+```
+
+```{r}
+k_3 <- sum(indsig[,3])
+k_3
+# k_3/55 (20%)
+12/55
+
+binom.test(k_3, 55, 0.05, alternative="two.sided") 
+# plot posterior distribution of population prevalence
+# install.packages("HDInterval")
+library(HDInterval) # this package is needed
+xvals <- seq(0, 1, .01)
+pdf_3 <- bayesprev_posterior(xvals, k_3, n) # function needed
+pdf_3
+
+
+plot(xvals, pdf_3, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_3, n)
+pmap = bayesprev_posterior(xmap, k_3, n)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_3, n)
+pbound = bayesprev_posterior(xbound, k_3, n)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_3, n)
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_3, n)
+h2 = bayesprev_posterior(i2, k_3, n)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+
+```
+
+brighteness
+```{r}
+k_4 <- sum(indsig[,4])
+k_4/55
+
+# plot posterior distribution of population prevalence
+
+xvals <- seq(0, 1, .01)
+pdf_4 <- bayesprev_posterior(xvals, k_4, n) # function needed
+pdf_4
+
+
+plot(xvals, pdf_4, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_4, n)
+pmap = bayesprev_posterior(xmap, k_4, n)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_4, n)
+pbound = bayesprev_posterior(xbound, k_4, n)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_4, n)
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_4, n)
+h2 = bayesprev_posterior(i2, k_4, n)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+
+# is the p value just a bonomial test on the counts of significants and non significant results?
+```
+
+<!-- interaction -->
+
+<!-- arousal valence-->
+
+
+```{r}
+k_5 <- sum(indsig[,5])
+
+# plot posterior distribution of population prevalence
+
+xvals <- seq(0, 1, .01)
+pdf_5 <- bayesprev_posterior(xvals, k_5, n) # function needed
+pdf_5
+
+
+plot(xvals, pdf_5, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_5, n)
+pmap = bayesprev_posterior(xmap, k_5, n)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_5, n)
+pbound = bayesprev_posterior(xbound, k_5, n)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_5, n)
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_5, n)
+h2 = bayesprev_posterior(i2, k_5, n)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+
+```
+
+
+
+```{r}
+#    Load the nonlinear equation solver
+   library(nleqslv)
+ #  Load the required functions from the current working directory
+source("bayesprev.R")
+   
+  # load the data
+  sigdat = p
+    # read.csv("example_data.csv", header =FALSE);
+
+  alpha = 0.05                       #   this specifies the alpha value used for the within-unit tests
+  Ntests = nrow(sigdat);        #   number of tests (e.g. participants)
+  Nsigtests_3 = sum(sigdat[,3]);    #   number of significant tests
+  
+  # Plot the posterior  pdf for the population prevalence proportion
+  
+  xvals <- seq(0, 1, .01)
+  pdf_3.1 <- bayesprev_posterior(xvals, Nsigtests_3, Ntests)
+  plot(xvals, pdf_3.1, type ="l", xlab = expression(gamma), ylab ="Posterior density", lwd=3)
+  
+  # 0.95 lower bound for the population prevalence proportion
+  
+  b = bayesprev_bound(0.05, Nsigtests_3, Ntests)
+  print(b)
+  
+  # MAP maximum a posteriori [MAP estimate of the population prevalence proportion
+  
+  m = bayesprev_map(Nsigtests_3, Ntests)
+  print(m)
+  
+  # 96% HPDI for the population prevalence proportion highest posterior density intervals (HPDIs)
+  
+  int = bayesprev_hpdi(0.96, Nsigtests_3, Ntests)
+  print(int)
+  
+  
+  
+  # Example of possible Bayesian prevalence analyses on a common plot.
+  
+
+  xvals <- seq(0, 1, .01)
+  pdf_3.1 <- bayesprev_posterior(xvals, Nsigtests_3, Ntests)
+  plot(xvals, pdf_3.1, type ="l", xlab = expression(gamma), ylab ="Posterior density", lwd=3)
+
+  
+  # Add the MAP estimate as a point
+  
+  xmap = bayesprev_map(Nsigtests_3, Ntests)
+  pmap = bayesprev_posterior(xmap, Nsigtests_3, Ntests)
+  points(xmap, pmap, cex =2, col= "red", pch=16)
+  
+  # Add the .95 lower bound as a vertical line
+  
+  xbound = bayesprev_bound(0.05, Nsigtests_3, Ntests)
+  pbound = bayesprev_posterior(xbound, Nsigtests_3, Ntests)
+  lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+  
+  
+  # Add the 0.96 HPDI
+  
+  int = bayesprev_hpdi(0.96, Nsigtests_3, Ntests)
+  i1 = int[1]
+  i2 = int[2]
+  h1 = bayesprev_posterior(i1, Nsigtests_3, Ntests)
+  h2 = bayesprev_posterior(i2, Nsigtests_3, Ntests)
+  lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+  
+```
+
+
+valence
+```{r}
+
+
+
+
+```
+
+
+```{r}
+
+
+range(db_full4new_stim_screen_pupil_nopract_no_outl$pup_basCor)
+?plot()
+  plot(db_full4new_stim_screen_pupil_nopract_no_outl$pup_basCor, 
+       type ="l", xlab = expression(gamma), ylab ="Posterior density", lwd=3)
+
+  
+  
+testdensity<-density(db_full4new_stim_screen_pupil_nopract_no_outl$pup_basCor, n = 55)
+
+
+db_full4new_stim_screen_pupil_nopract_no_outl<- db_full4new_stim_screen_pupil_nopract_no_outl%>%
+  group_by(ssid)%>%
+  mutate(testdensity_x = density(pup_basCor, n = 1)$x,
+         testdensity_y = density(pup_basCor, n = 1)$y)
+
+
+
+db_full4new_stim_screen_pupil_nopract_no_outl%>%
+  subset(ssid == 300)%>%
+  # group_by(ssid)%>%
+  mutate(testdensity_x = density(pup_basCor)$x,
+         testdensity_y = density(pup_basCor)$y)
+testdensity$x
+testdensity$y
+
+?density
+testdensity
+nrow(db_full4new_stim_screen_pupil_nopract_no_outl)
+
+db_full4new_stim_screen_pupil_nopract_no_outl%>%
+    subset(subject>303)%>%
+    group_by(ssid)%>%
+    mutate(density_1= density(pup_basCor))
+
+install.packages('scales')
+
+scales::rescale(0)
+db_full4new_stim_screen_pupil_nopract_no_outl%>%
+  group_by(ssid)%>%
+  mutate(pup_basCor_mean = mean(pup_basCor, na.rm = TRUE))%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  mutate(rescaled_y = scales::rescale_max(testdensity_y, to = c(0,.4)))%>%
+  ggplot(aes(x = pup_basCor))+
+  stat_function(fun=dgamma, args=list(shape=1, scale=.5))+
+  # geom_density()+
+  geom_jitter(aes( x = pup_basCor_mean, y = rescaled_y),
+              width = .1, height = 0)
+  # stat_function(fun=dgamma, args=list(shape=1, scale=.5))
+  geom_jitter()
+  stat_summary(geom = "pointrange")
+  
+  
+testdensity$data.name
+  
+ c(density(db_full4new_stim_screen_pupil_nopract_no_outl$ssid,n=n)$x, density(bar,n=n)$x)
 
 ```
 
