@@ -1340,27 +1340,6 @@ theme_classic()+
 ```
 
 
-table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$mediansplit_sample_arousal2))
-
-mediansplit_sample_arousal2
-
-table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$Group))
-
-tmp.df4_full_stim_downs_jun2021_60bins %>%
-  subset(Group == "NT")%>%
-  # subset(!is.na(mediansplit_sample_arousal2))%>%
-  ggplot(aes(x = timerezero3, y = pup_basCor))+
-  stat_smooth(aes(group= mediansplit_sample_arousal2, color = mediansplit_sample_arousal2), fun = mean,geom = "line",
-               se = F, alpha = .1, size = 1.5)+
-  stat_smooth(aes(group=mediansplit_sample_arousal2, color = mediansplit_sample_arousal2), size = 3)+  
-theme_classic()+
-  ylab("Pupil size (z)")+
-  xlab("Time (s)")+
-  # p$graphstyle+
-  scale_color_brewer(palette = "Dark2")+
-  xlim(0,6)+
-   facet_grid(~mediansplit_sample_valence2)
-
 
 
 ```{r}
@@ -2264,6 +2243,9 @@ i = 0 # remember to always rezero it
 
 # i =1
 # unique(tmp.df4_full_stim_downs_jun2021_60bins$)
+
+
+
 table(is.na(tmp.df4_full_stim_downs_jun2021_60bins$arousal_c))
 for (b in 1:length(nbins)) {
   # for (s in 1:length(nsim)) {
