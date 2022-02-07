@@ -962,10 +962,6 @@ h1 = bayesprev_posterior(i1, k_2, n)
 h2 = bayesprev_posterior(i2, k_2, n)
 lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
   
-  
-```
-  
-  
 
 
 
@@ -1364,5 +1360,374 @@ h1 = bayesprev_posterior(i1, k_3, n)
 h2 = bayesprev_posterior(i2, k_3, n)
 lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
 
+
+```
+
+
+limited coherence
+```{r}
+View(db_full6new_hr_fix_stim_nt1.1)
+db_full6new_hr_fix_stim_nt1.1
+
+# check the proximal distal problem
+# maybe coherecne increases with increasing action potential
+# use norm first and keep stim with high intensity
+
+# use 4.5
+db_full6new_hr_fix_stim_nt1.1 %>%
+  # subset(ArousalMean>6)%>%
+  subset(arousal > 2)%>%
+   mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+  subset(ssid!= "347")%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+  group_by(ssid)%>%
+  mutate(Bio_Mean_HR_dif = scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1],
+         pup_basCor = scale(pup_basCor, center = TRUE, scale = TRUE)[,1],
+         log_BIO_CDA.PhasicMax = scale(log_BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])%>%
+  group_by(ssid)%>%
+  mutate(cor_hr_pup = cor(Bio_Mean_HR_dif, pup_basCor, use = "complete"))%>%
+  mutate(cor_hr_scr = cor(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  mutate(cor_pup_scr = cor(pup_basCor, log_BIO_CDA.PhasicMax, use = "complete"))%>%
+  select(c(ssid, mediansplit_ground_valence,cor_hr_pup, cor_hr_scr, cor_pup_scr))%>%
+  gather(key, value, -ssid,-mediansplit_ground_valence)%>%
+  group_by(ssid, key, value)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(key, value, color = key))+
+  geom_hline(yintercept = 0, size = 1.5, linetype = "dashed", alpha = .5)+
+  geom_line(aes(group = ssid), se = F, color = "black", alpha = .2)+
+  geom_jitter(width = .1, alpha = .5)+
+  stat_summary(geom = 'pointrange', color = "black")+
+    # facet_grid(~mediansplit_ground_valence)+
+  geom_hline(yintercept = .2)
+  
+  p$graphstyle
+  
+  # ggplot(aes(ArousalMean))+
+  # geom_histogram()
+  # geom_density()
+
+
+  # intensity thing doesnt work but what abotu bayesian prevalence
+  
+  db_full6new_hr_fix_stim_nt1.1_bp<-
+db_full6new_hr_fix_stim_nt1.1 %>%
+   mutate(log_BIO_CDA.PhasicMax = log1p(BIO_CDA.PhasicMax+.1))%>%
+  subset(ssid!= "347")%>%
+  subset(!is.na(mediansplit_ground_valence))%>%
+  subset(Bio_Mean_HR_dif_outl!= "outlier")%>%
+    
+  mutate(Bio_Mean_HR_dif = scale(Bio_Mean_HR_dif, center = TRUE, scale = TRUE)[,1],
+         pup_basCor = scale(pup_basCor, center = TRUE, scale = TRUE)[,1],
+         log_BIO_CDA.PhasicMax = scale(log_BIO_CDA.PhasicMax, center = TRUE, scale = TRUE)[,1])
+  
+  
+  # store correlation and ps
+  
+  cor.test(db_full6new_hr_fix_stim_nt1.1_bp$pup_basCor, db_full6new_hr_fix_stim_nt1.1_bp$CDA.PhasicMax, use = "complete")$p.value
+  
+  
+db_full6new_hr_fix_stim_nt1.1_bp<-  db_full6new_hr_fix_stim_nt1.1_bp%>%
+  group_by(ssid)%>%
+  mutate(cor_hr_pup = cor(Bio_Mean_HR_dif, pup_basCor, use = "complete"),
+         cor_hr_pup_pval = cor.test(Bio_Mean_HR_dif, pup_basCor, use = "complete")$p.value)%>%
+  mutate(cor_hr_scr = cor(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax, use = "complete"),
+         cor_hr_scr_pval = cor.test(Bio_Mean_HR_dif, log_BIO_CDA.PhasicMax, use = "complete")$p.value)%>%
+  mutate(cor_pup_scr = cor(pup_basCor, log_BIO_CDA.PhasicMax, use = "complete"),
+         cor_pup_scr_pval = cor.test(pup_basCor, log_BIO_CDA.PhasicMax, use = "complete")$p.value)
+
+
+View(db_full6new_hr_fix_stim_nt1.1_bp)
+
+
+db_full6new_hr_fix_stim_nt1.1_bp2 <- db_full6new_hr_fix_stim_nt1.1_bp %>%
+  group_by(ssid, subject)%>%
+  summarise_at(c("cor_hr_pup", "cor_hr_pup_pval", "cor_hr_scr","cor_hr_scr_pval",
+                 "cor_pup_scr", "cor_pup_scr_pval"), mean, na.rm = TRUE)
+
+
+?cor
+db_full6new_hr_fix_stim_nt1.1_bp2<- db_full6new_hr_fix_stim_nt1.1_bp2 %>%
+  mutate(indsig_hr_pup = cor_hr_pup_pval<alpha,
+         indsig_hr_scr = cor_hr_scr_pval<alpha,
+         indsig_pup_scr = cor_pup_scr_pval<alpha,
+         # onetailed
+         indsig_hr_pup_1t = (cor_hr_pup_pval/2)<alpha,
+         indsig_hr_scr_1t = (cor_hr_scr_pval)/2<alpha,
+         indsig_pup_scr_1t = (cor_pup_scr_pval)/2<alpha)
+  
+
+sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_pup)
+sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_scr)
+sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_pup_scr)
+
+
+sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_pup_1t)
+sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_scr_1t)
+sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_pup_scr_1t)
+
+
+# do bayesian prevalence n the regular
+
+# two-tailed
+k_hr_pup <- sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_pup)
+k_hr_pup/50
+
+# plot posterior distribution of population prevalence
+
+t.test(db_full6new_hr_fix_stim_nt1.1_bp2$cor_hr_pup, 
+       alternative = c("two.sided"))
+# t = 0.94557, df = 49, p-value = 0.349
+
+binom.test(k_hr_pup, 50)
+# number of successes = 6, number of trials = 50, p-value = 0.00000003244
+
+xvals <- seq(0, 1, .01)
+pdf_hr_pup <- bayesprev_posterior(xvals, k_hr_pup, 50) # function needed
+pdf_hr_pup
+
+
+plot(xvals, pdf_hr_pup, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_hr_pup, 50)
+# 0.07368421
+pmap = bayesprev_posterior(xmap, k_hr_pup, 50)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_hr_pup, 50)
+pbound = bayesprev_posterior(xbound, k_hr_pup, 50)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_hr_pup, 50)
+# 0.08783098 0.34143456
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_hr_pup, 50)
+h2 = bayesprev_posterior(i2, k_hr_pup, 50)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+```
+
+
+# hr scr - 2t
+
+````{r}
+
+# plot posterior distribution of population prevalence
+
+xvals <- seq(0, 1, .01)
+k_hr_scr <- sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_scr)
+# k_hr_pup/50
+
+t.test(db_full6new_hr_fix_stim_nt1.1_bp2$cor_hr_scr, 
+       alternative = c("two.sided"))
+
+binom.test(k_hr_pup, 50)
+binom.test(k_hr_scr, 50, p = 0)
+# number of successes = 7, number of trials = 50, p-value < 0.00000000000000022
+
+
+
+pdf_hr_scr <- bayesprev_posterior(xvals, k_hr_scr, 50) # function needed
+pdf_hr_scr
+
+
+plot(xvals, pdf_hr_scr, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_hr_scr, 50)
+pmap = bayesprev_posterior(xmap, k_hr_scr, 50)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_hr_scr, 50)
+pbound = bayesprev_posterior(xbound, k_hr_scr, 50)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_hr_scr, 50)
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_hr_scr, 50)
+h2 = bayesprev_posterior(i2, k_hr_scr, 50)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+# scr pup 22t
+# plot posterior distribution of population prevalence
+
+xvals <- seq(0, 1, .01)
+k_pup_scr <- sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_pup_scr)
+# k_pup_pup/50
+binom.test(k_pup_scr, 50, p = 0.5)
+# number of successes = 7, number of trials = 50, p-value < 0.00000000000000022
+# number of successes = 6, number of trials = 50, p-value = 0.00000003244
+
+
+
+pdf_pup_scr <- bayesprev_posterior(xvals, k_pup_scr, 50) # function needed
+pdf_pup_scr
+
+
+plot(xvals, pdf_pup_scr, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_pup_scr, 50)
+pmap = bayesprev_posterior(xmap, k_pup_scr, 50)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_pup_scr, 50)
+pbound = bayesprev_posterior(xbound, k_pup_scr, 50)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_pup_scr, 50)
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_pup_scr, 50)
+h2 = bayesprev_posterior(i2, k_pup_scr, 50)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+
+
+# one tailed 
+# hr_pup
+
+k_hr_pup_1t <- sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_pup_1t)
+k_hr_pup_1t/50
+
+# plot posterior distribution of population prevalence
+
+xvals <- seq(0, 1, .01)
+pdf_hr_pup_1t <- bayesprev_posterior(xvals, k_hr_pup_1t, 50) # function needed
+pdf_hr_pup_1t
+
+
+plot(xvals, pdf_hr_pup_1t, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_hr_pup_1t, 50)
+pmap = bayesprev_posterior(xmap, k_hr_pup_1t, 50)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_hr_pup_1t, 50)
+pbound = bayesprev_posterior(xbound, k_hr_pup_1t, 50)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_hr_pup_1t, 50) #0.02561301 0.24410451
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_hr_pup_1t, 50)
+h2 = bayesprev_posterior(i2, k_hr_pup_1t, 50)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+
+
+# hr scr_1t - 1t
+
+# plot posterior distribution of population prevalence
+
+xvals <- seq(0, 1, .01)
+k_hr_scr_1t <- sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_hr_scr_1t)
+# k_hr_pup/50
+binom.test(k_hr_scr_1t, 50, p = 0)
+# number of successes = 7, number of trials = 50, p-value < 0.00000000000000022
+
+
+
+pdf_hr_scr_1t <- bayesprev_posterior(xvals, k_hr_scr_1t, 50) # function needed
+pdf_hr_scr_1t
+
+
+plot(xvals, pdf_hr_scr_1t, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_hr_scr_1t, 50)
+pmap = bayesprev_posterior(xmap, k_hr_scr_1t, 50)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_hr_scr_1t, 50)
+pbound = bayesprev_posterior(xbound, k_hr_scr_1t, 50)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_hr_scr_1t, 50) #0.1214375 0.3875048
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_hr_scr_1t, 50)
+h2 = bayesprev_posterior(i2, k_hr_scr_1t, 50)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
+
+
+
+# scr pup 1t
+# plot posterior distribution of population prevalence
+?t.test
+t.test(db_full6new_hr_fix_stim_nt1.1_bp2$cor_pup_scr, 
+       alternative = c("greater"))
+
+xvals <- seq(0, 1, .01)
+k_pup_scr_1t <- sum(db_full6new_hr_fix_stim_nt1.1_bp2$indsig_pup_scr_1t)
+# number of successes = 12, number of trials = 50, p-value = 0.0003059
+# k_pup_pup/50
+binom.test(k_pup_scr_1t, 50, p = 0.5)
+# number of successes = 7, number of trials = 50, p-value < 0.00000000000000022
+# number of successes = 6, number of trials = 50, p-value = 0.00000003244
+
+
+
+pdf_pup_scr_1t <- bayesprev_posterior(xvals, k_pup_scr_1t, 50) # function needed
+pdf_pup_scr_1t
+
+
+plot(xvals, pdf_pup_scr_1t, type ="l", xlab = expression(gamma), 
+     ylab ="Posterior density", lwd=3)
+
+# Add the MAP estimate as a point
+# MAP = Maximum 
+
+xmap = bayesprev_map(k_pup_scr_1t, 50)
+pmap = bayesprev_posterior(xmap, k_pup_scr_1t, 50)
+points(xmap, pmap, cex =2, col= "red", pch=16)
+
+
+# Add the .95 lower bound as a vertical line
+xbound = bayesprev_bound(0.95, k_pup_scr_1t, 50)
+pbound = bayesprev_posterior(xbound, k_pup_scr_1t, 50)
+lines(c(xbound, xbound), c(0, pbound+0.5), col="blue", lwd=3)
+
+# Add the 0.96 HPDI
+int = bayesprev_hpdi(0.96, k_pup_scr_1t, 50) #0.08783098 0.34143456
+i1 = int[1]
+i2 = int[2]
+h1 = bayesprev_posterior(i1, k_pup_scr_1t, 50)
+h2 = bayesprev_posterior(i2, k_pup_scr_1t, 50)
+lines(c(i1, i2), c(h1, h2), col ="green", lwd=3)
 
 ```

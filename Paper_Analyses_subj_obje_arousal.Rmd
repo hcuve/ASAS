@@ -2218,6 +2218,9 @@ unique(tmp.df4_full_stim_downs_jun2021_60bins$timebin_no)
 # nbins = 60 # number of bins
 
 # create and empty dataframe for the timecourse analyses
+
+timecourse_60bin_result_df_bp<- timecourse_60bin_result_df
+
 timecourse_60bin_result_df <- data.frame(timebins= rep(NA, 60), 
                                        Estimate_ar= rep(NA, 60), 
                                        t_ar=rep(NA, 60), 
@@ -4861,7 +4864,7 @@ Let's start with an aggregated case, ignore subjects
 ```{r}
 library(tidyverse)
 db_full6new_hr_fix_stim_nt1.1
-
+View(clustering)
 clustering<- db_full6new_hr_fix_stim_nt1.1%>%
   subset(Bio_Mean_HR_dif_outl == "not outlier")%>%
   select(
@@ -5556,9 +5559,12 @@ colnames(clustering_new)
 colnames(clustering)
 
 View(db_full6new_hr_fix_stim_select2_NT_no_outl_5)
+View(db_forBADA1)
 db_forBADA1<- data.table::dcast(setDT(db_full6new_hr_fix_stim_select2_NT_no_outl_5), 
                     ssid + TAS+AQ+Group ~ stimIAPS2, value.var = c('pup_basCor',
                 'Bio_Mean_HR_dif', 'log1p_BIO_CDA.PhasicMax', 'arousal', 'valence'))
+
+View(db_forBADA)
 
 
 library(data.table)
@@ -5669,11 +5675,13 @@ all.data3_forPCA<- left_join(all.data3_forPCA, all.data3_scr)
 
 colnames(all.data3_forPCA)
 
+View(all.data3_forPCA)
 var.data <- all.data3_forPCA[,c(4:171)]
 
 library(TInPosition)
 library(prettyGraphs)
 
+View(var.data)
 # inferential PCA
 var.PCA.scr_hr_pup <-InPosition::epPCA.inference.battery(var.data, 
                                        scale = TRUE, 
@@ -5688,7 +5696,50 @@ var.PCA.scr_hr_pup <-InPosition::epPCA.inference.battery(var.data,
 # includValenceMean_median_split
 colnames(all.data3)
 
+
+# mySpca <- spca(obj, ask=FALSE, type=1, scannf=FALSE)
+# install.packages("adegenet")
+library(adegenet)
+# install.packages('spdep')
+install.packages("sf")
+library(spdep)
+
+mySpca <- spca(obj, ask=FALSE, type=1, scannf=FALSE)
+?spca
+mySpca <- spca(var.data, ask=FALSE, type=1, scannf=FALSE)
+
+
+install.packages("cpca")
+
+?cpca::cpc()
+
+
+
+
+
+
+var.data$sid <- all.data3_forPCA$ssid
+require("plyr")
+require("abind")
+
+daply(var.data, "sid", function(x) cov(x[, -ncol(x)]))
+C <- aperm(C, c(2, 3, 1)) # put the 1st dimension to the end
+dim(C)
+dimnames(C)
+
+mod <- cpc(C)
+str(mod)
+
+round(mod$CPC, 2)
+
+pca::cpc(var.data, method = "stepwise", k = 2)
+
+```
+
+
+
 all.data3_val<- all.data3[,c(1,228:283)]
+
 
 all.data3_val
 k_val <- which(is.na(all.data3_val[, c(1:57)]), arr.ind=TRUE)
@@ -5710,6 +5761,8 @@ all.data3_forPCA_withar<- left_join(all.data3_forPCA, all.data3_ar)
 
 
 library(InPosition)
+
+```{r}
 var.PCA.scr_hr_pup_val <-InPosition::epPCA.inference.battery(all.data3_forPCA_withval[,4:226], 
                                        scale = TRUE, 
                                        center = TRUE, 
@@ -5719,6 +5772,393 @@ var.PCA.scr_hr_pup_val <-InPosition::epPCA.inference.battery(all.data3_forPCA_wi
                                        test.iters = 1000, 
                                        constrained = FALSE, 
                                        critical.value = 2)
+
+
+View(clustering_new_pre_PCA)
+
+# start by creating a cluster within self reports
+?cut
+clustering_new_pre_PCA$arousal_3cat <- cut(clustering_new_pre_PCA$arousal, 3, labels = c("low", "mid", "high"))
+
+
+colnames(clustering_new_pre_PCA)
+
+var.design_ar = as.factor(clustering_new_pre_PCA$arousal_3cat)
+
+library(prettyGraphs)
+library(InPosition)
+
+View(clustering_new_pre_PCA)
+clustering_new_pre_PCA[,6:8]
+
+
+clustering_new_pre_PCA1<- subset(clustering_new_pre_PCA,
+                                 !is.na(pup_basCor))
+
+var.design_ar = as.factor(clustering_new_pre_PCA1$arousal_3cat)
+ table(is.na(var.design_ar))
+ 
+ clustering_new_pre_PCA2<- subset(clustering_new_pre_PCA1, !is.na(arousal_3cat))
+ 
+ var.design_ar<- c(clustering_new_pre_PCA2$arousal_3cat)
+ 
+ clustering_new_pre_PCA2$arousal_3cat <- cut(clustering_new_pre_PCA2$arousal, 2,
+                                            labels = c("low", "high"))
+
+# ExPosition:
+ ?TInPosition::tepBADA.inference.battery
+var.bada.ar_physio <- TInPosition::tepBADA.inference.battery(clustering_new_pre_PCA2[,6:8], 
+                                                       scale = FALSE, 
+                                                       center = FALSE, 
+                                                       # DESIGN = factor( clustering_new_pre_PCA2$arousal_3cat ),
+                                                        DESIGN = factor(var.design_ar ),
+                                                       make_design_nominal = TRUE,
+                                                       group.masses = NULL, 
+                                                       weights = NULL, 
+                                                       graphs = TRUE, 
+                                                       k = 2, 
+                                                       test.iters = 100, 
+                                                       critical.value = 2)
+
+
+var.bada.ar_physio[["Fixed.Data"]][["TExPosition.Data"]][["fii"]][,1]
+
+
+clustering_new_pre_PCA2$test_pc1<-var.bada.ar_physio[["Fixed.Data"]][["TExPosition.Data"]][["fii"]][,1]
+
+library(tidyverse)
+
+clustering_new_pre_PCA2%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  # subset(arousal> -6)%>%
+  ggplot(aes(valence, test_pc1 ))+
+  geom_point()+
+  ggpubr::stat_cor()+
+  geom_smooth(method = 'lm')
+  xlim(-6,3.2)
+  
+  # get ground truth data
+clustering_new_pre_PCA2
+
+colnames(db_full4new_stim_screen_pupil_nopract)
+
+stimIapsval<- db_full4new_stim_screen_pupil_nopract %>%
+  group_by(stimIAPS2)%>%
+  summarise_at(c("ValenceMean", "ArousalMean"), mean, na.rm = TRUE)
+
+clustering_new_pre_PCA3 <- left_join(clustering_new_pre_PCA2, stimIapsval)
+
+clustering_new_pre_PCA3$arousal_3cat_ground<- cut(clustering_new_pre_PCA3$ArousalMean,3, labels = 
+                                                    c("low", "mid", "high"))
+
+
+
+# 
+
+var.design_ar_2<- factor(clustering_new_pre_PCA3$arousal_3cat_ground )
+
+table(is.na( var.design_ar_2))
+# sum(var.design_ar_2)
+# TExPosition::tepBADA()
+var.bada.ar_physio2 <- TInPosition::tepBADA.inference.battery(clustering_new_pre_PCA3[,6:8], 
+                                                       scale = TRUE, 
+                                                       center = TRUE, 
+                                                       # DESIGN = factor( clustering_new_pre_PCA2$arousal_3cat ),
+                                                        DESIGN = var.design_ar_2,
+                                                       make_design_nominal = TRUE,
+                                                       group.masses = NULL, 
+                                                       weights = NULL, 
+                                                       graphs = TRUE, 
+                                                       k = 2, 
+                                                       test.iters = 100, 
+                                                       critical.value = 2)
+
+
+# do with valence
+
+
+
+clustering_new_pre_PCA3$arousal_3cat<- cut(clustering_new_pre_PCA3$valence,3, labels = 
+                                                    c("neg", "mid", "pos"))
+
+
+
+# 
+
+var.design_ar_2<- factor(clustering_new_pre_PCA3$arousal_3cat_ground )
+
+table(is.na( var.design_ar_2))
+# sum(var.design_ar_2)
+# TExPosition::tepBADA()
+var.bada.vl_physio3 <- TInPosition::tepBADA.inference.battery(clustering_new_pre_PCA3[,6:8], 
+                                                       scale = TRUE, 
+                                                       center = TRUE, 
+                                                       # DESIGN = factor( clustering_new_pre_PCA2$arousal_3cat ),
+                                                        DESIGN = factor(clustering_new_pre_PCA3$arousal_3cat),
+                                                       make_design_nominal = TRUE,
+                                                       group.masses = NULL, 
+                                                       weights = NULL, 
+                                                       graphs = TRUE, 
+                                                       k = 2, 
+                                                       test.iters = 100, 
+                                                       critical.value = 2)
+
+
+clustering_new_pre_PCA3$vall_3_gr<- cut(clustering_new_pre_PCA3$ValenceMean,3, labels = 
+                                                    c("neg", "mid", "pos"))
+
+
+
+
+table(is.na( var.design_ar_2))
+# sum(var.design_ar_2)
+# TExPosition::tepBADA()
+var.bada.vlgr_physio4 <- TInPosition::tepBADA.inference.battery(clustering_new_pre_PCA3[,6:8], 
+                                                       scale = TRUE, 
+                                                       center = TRUE, 
+                                                       # DESIGN = factor( clustering_new_pre_PCA2$arousal_3cat ),
+                                                        DESIGN = factor(clustering_new_pre_PCA3$vall_3_gr),
+                                                       make_design_nominal = TRUE,
+                                                       group.masses = NULL, 
+                                                       weights = NULL, 
+                                                       graphs = TRUE, 
+                                                       k = 2, 
+                                                       test.iters = 100, 
+                                                       critical.value = 2)
+
+
+
+# MFA
+
+res.mfa <- MFA(clustering_new_pre_PCA_2, 
+               group = c(2, 1, 1, 1), 
+               type = c("n", "s", "s", "s"),
+               name.group = c("pp_stim","pupil","HR","SCR"),
+               # num.group.sup = c(1,2),
+               graph = TRUE)
+
+colnames(clustering_new_pre_PCA3)
+
+clustering_new_pre_PCA3$arousal_3cat<- cut(clustering_new_pre_PCA3$arousal,3, labels = 
+                                                    c("low", "mid", "high"))
+c<-FactoMineR::MFA(clustering_new_pre_PCA3[,c(1,14,6:8)], 
+               group = c(2, 1, 1, 1), 
+               type = c("n", "s", "s", "s"),
+               name.group = c("pp_stim","pupil","HR","SCR"),
+               num.group.sup = c(1,2),
+               graph = TRUE)
+
+?FactoMineR::MFA
+FactoMineR::MFA(clustering_new_pre_PCA3[,c(1,4,6:8,9,10)], 
+               group = c(2, 1, 1, 1,1,1), 
+               type = c("n", "s", "s", "s", "s", "s"),
+               name.group = c("pp_stim","pupil","HR","SCR", "arousal", "valence"),
+               num.group.sup = c(1,2),
+               graph = TRUE)
+
+# valence and arousal are creatign a strign compoent one maybe vecause of thir correlatipn
+# so below I am droping one to see if we have more coherence
+# ?
+FactoMineR::MFA(clustering_new_pre_PCA3[,c(1,4,6:8,9)], 
+               group = c(2, 1, 1, 1,1), 
+               type = c("n", "s", "s", "s", "s"),
+               name.group = c("pp_stim","pupil","HR","SCR", "arousal"),
+               num.group.sup = c(1,2),
+               ind.sup = c(1,2),
+               graph = TRUE)
+
+
+
+
+# include 
+colnames(clustering_new_pre_PCA3)
+unique(clustering_new_pre_PCA3$stimDescription)
+
+clustering_new_pre_PCA3.1<- clustering_new_pre_PCA3[,c(1,4,6,7,8,9,10)]
+res.mfa_bio_vs_self<- FactoMineR::MFA(clustering_new_pre_PCA3.1, 
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+```
+
+
+
+```{r}
+# use stim as indicator
+colnames(clustering_new_pre_PCA3)
+clustering_new_pre_PCA3.1<- clustering_new_pre_PCA3[,c(1,5,6,7,8,9,10)]
+
+res.mfa_bio_vs_self2<- FactoMineR::MFA(clustering_new_pre_PCA3.1[,2:7], 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+# now z score within participant
+clustering_new_pre_PCA3.1.scale<- clustering_new_pre_PCA3.1%>%
+  group_by(ssid)%>%
+  mutate_if(is.numeric, scale)
+
+
+clustering_new_pre_PCA3.1.scale$stim_descr
+res.mfa_bio_vs_self2_scale<- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale[,2:7], 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+# Now try HMFA
+
+library(FactoMineR)
+??HMFA
+
+H_n<- clustering_new_pre_PCA3.1.scale%>%
+  group_by(ssid)%>%
+  mutate(n = n())%>%
+  summarise_at(c("n"), mean, na.rm = TRUE)
+
+H_n.1<- H_n$n
+
+as.list(H_n.1)
+c(H_n.1)
+
+hierar<- list(c(H_n.1))
+
+View(wine)
+FactoMineR::HMFA(clustering_new_pre_PCA3.1.scale[,2:7],
+                 H = hierar, 
+               # group = c(1, 3, 2), 
+               type = c("n", "s", "s",  "s", "s",  "s"),
+               # "s", "s", "s"
+               name.group = c("pp_stim","auton","subj"),
+               # num.group.sup = c(1),
+                 # ncp = 
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+# okay try and aggregate  response per stimuli
+
+clustering_new_pre_PCA3.1.scale_agg_bystim<- clustering_new_pre_PCA3.1%>%
+  group_by(stimDescription)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg<- clustering_new_pre_PCA3.1.scale_agg_bystim%>%
+  mutate_if(is.numeric, scale)
+
+res.mfa_bio_vs_self2_scale_aggbystim<- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_agg_bystim, 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+```
+
+
+
+
+```{r}
+res.mfa_bio_vs_self2_scale_afteraggbystim<- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg, 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+```
+
+
+# agg by pp
+
+
+```{r}
+clustering_new_pre_PCA3.1.scale_agg_bysid<- clustering_new_pre_PCA3.1%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+
+
+clustering_new_pre_PCA3.1.scale_aft_agg_bysid<- clustering_new_pre_PCA3.1.scale_agg_bysid%>%
+  mutate_if(is.numeric, scale)
+
+ FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_agg_bysid, 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+```
+
+# now keep participant just cast pupil etc
+clustering_new_pre_PCA3.1.scale
+
+# dcast
+
+library(data.table)
+
+colnames(clustering_new_pre_PCA3.1.scale)
+clustering_new_pre_PCA3.1.scale$pup_basCor<- clustering_new_pre_PCA3.1.scale$pup_basCor[,1]
+
+clustering_new_pre_PCA3.1.scale$Bio_Mean_HR_dif<- clustering_new_pre_PCA3.1.scale$Bio_Mean_HR_dif[,1]
+
+clustering_new_pre_PCA3.1.scale$log_BIO_CDA.PhasicMax<- clustering_new_pre_PCA3.1.scale$log_BIO_CDA.PhasicMax[,1]
+
+
+clustering_new_pre_PCA3.1.scale$arousal<- clustering_new_pre_PCA3.1.scale$arousal[,1]
+
+clustering_new_pre_PCA3.1.scale$valence<- clustering_new_pre_PCA3.1.scale$valence[,1]
+
+
+clustering_new_pre_PCA3.1.scale_dcast<- data.table::dcast(setDT(clustering_new_pre_PCA3.1.scale), 
+                    ssid  ~ stimDescription, 
+                    value.var = c('pup_basCor',
+                'Bio_Mean_HR_dif', 'log_BIO_CDA.PhasicMax', 'arousal','valence'), fun.aggregate = mean)
+
+
+colnames(clustering_new_pre_PCA3.1.scale_dcast)
+
+res.mfadcast <- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_dcast[,
+                                                                      2:ncol(clustering_new_pre_PCA3.1.scale_dcast)], 
+               group = c(52, 52, 52, 52, 52), 
+               type = c("s", "s", "s", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("pup","hr", "scr", "ar", "vl"),
+               # num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+53-2 #pupil
+
+```
+
+
+
 
 
 # with self arousal
@@ -5774,12 +6214,23 @@ View(clustering_new_pre_PCA_2)
 clustering_new_pre_PCA_2$ssid<- as.factor(clustering_new_pre_PCA_2$ssid)
 ?MFA
 
+View(clustering_new_pre_PCA_2)
 clustering_new_pre_PCA_2$stimDescription
-res.mfa <- MFA(clustering_new_pre_PCA_2, 
-               group = c(2, 1, 1, 1, 2, 1), 
+colnames(clustering_new_pre_PCA_2)
+
+res.mfa <- MFA(wine, 
+               group = c(2, 5, 3, 10, 9, 2), 
                type = c("n", "s", "s", "s", "s", "s"),
-               name.group = c("pp_stim","pupil","HR","SCR", "ar_val","fix"),
-               num.group.sup = c(1,2),
+               name.group = c("origin","odor","visual",
+                              "odor.after.shaking", "taste","overall"),
+               num.group.sup = c(1, 6),
+               graph = FALSE)
+
+res.mfa <- MFA(clustering_new_pre_PCA_2, 
+               group = c(2, 1, 1, 1), 
+               type = c("n", "s", "s", "s"),
+               name.group = c("pp_stim","pupil","HR","SCR"),
+               # num.group.sup = c(1,2),
                graph = TRUE)
 
 print(res.mfa)
@@ -5788,6 +6239,10 @@ print(res.mfa)
 clustering_new_pre_PCA_2print(res.mfa)
 
 ```
+
+
+
+
 ```{r}
 library("factoextra")
 eig.val <- get_eigenvalue(res.mfa)
@@ -5804,6 +6259,9 @@ TExPosition::
 
 the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
 ```{r}
+library(FactoMineR)
+library(factoextra)
+??fviz_screeplot
 fviz_screeplot(res.mfa)
 
 ```
@@ -5855,6 +6313,7 @@ quanti.var <- get_mfa_var(res.mfa, "quanti.var")
 quanti.var 
 
 ```
+
 ```{r}
 # Coordinates
 head(quanti.var$coord)
@@ -5911,6 +6370,7 @@ fviz_mfa_ind(res.mfa,
              ) 
 
 ```
+
 ```{r}
 
 clustering_new_pre_PCA_2
@@ -5929,6 +6389,35 @@ fviz_mfa_ind(res.mfa,
              addEllipses = TRUE, ellipse.type = "confidence", 
              repel = TRUE # Avoid text overlapping
              ) 
+
+
+testget<-get_mfa(
+  res.mfa,
+  element = c("ind"))
+
+
+clustering_new_pre_PCA3$getindaxis<- testget[["coord"]][,1]
+clustering_new_pre_PCA3$getindaxis2<- testget[["coord"]][,2]
+
+clustering_new_pre_PCA3%>%
+  group_by(ssid)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(arousal, getindaxis))+
+  geom_point()+
+  ggpubr::stat_cor()+
+  xlim(-,3.3)
+
+
+clustering_new_pre_PCA3%>%
+  group_by(ssid, arousal_3cat)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  ggplot(aes(arousal, getindaxis2))+
+  geom_point()+
+  ggpubr::stat_cor()+
+  facet_grid(~arousal_3cat)
+  # xlim(-,3.3)
+
+
 
 ```
 
@@ -5977,6 +6466,7 @@ print(res.mfa_agg)
 
 
 ```
+
 ```{r}
 library("factoextra")
 eig.val_agg <- get_eigenvalue(res.mfa_agg)
