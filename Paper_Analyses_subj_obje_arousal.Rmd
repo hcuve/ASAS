@@ -6023,7 +6023,8 @@ clustering_new_pre_PCA3.1.scale<- clustering_new_pre_PCA3.1%>%
 clustering_new_pre_PCA3.1.scale$stim_descr
 
 clustering_new_pre_PCA3.1.scale
-res.mfa_bio_vs_self2_scale<- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale[,2:7], 
+
+res.mfa_bio_vs_self2_scale <- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale[,2:7], 
                group = c(1, 3, 2), 
                type = c("n", "s", "s"),
                # "s", "s", "s"
@@ -6036,7 +6037,346 @@ res.mfa_bio_vs_self2_scale<- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale[,2:
 dimdesc(res.mfa_bio_vs_self2_scale)
 
 
-TInPosition::
+
+
+
+# validation
+# -	Some idea, get p values for factorminer – dimensions, and correklations
+# -	Stability of firt 2 dimensions by resampling
+
+
+
+res.mfa_bio_vs_self2_k2<- FactoMineR::MFA(clustering_new_pre_PCA3.1[,1:9], 
+               group = c(4, 3, 2), 
+               type = c("n", "s", "s"),
+              ind.sup = c(1),
+              ncp = 2,
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+# 
+# quanti
+
+# randomly resample withouth replacement
+
+?FactoMineR::simule()
+
+clustering_new_pre_PCA3.1$stimDescription<- as.factor(clustering_new_pre_PCA3.1$stimDescription)
+
+
+clustering_new_pre_PCA3.1$ssid_stim<- paste0(clustering_new_pre_PCA3.1$ssid,
+                                             paste0(clustering_new_pre_PCA3.1$stimDescription))
+
+
+clustering_new_pre_PCA3.1$ssid_stim<- as.factor(clustering_new_pre_PCA3.1$ssid_stim)
+
+unique(clustering_new_pre_PCA3.1$ssid)
+
+# this will simulkate 61 times (we can assum that 51 paticipants)
+
+testsim$simul
+
+# clustering_new_pre_PCA3.1$stimDescription
+
+val_cutlabels<- clustering_new_pre_PCA3.1%>%
+  group_by(stimDescription,val_cut_iaps) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
+  select(c("stimDescription", "val_cut_iaps"))
+
+
+testsim<- FactoMineR::simule(clustering_new_pre_PCA3.1[,c(2,5:9)], 1)
+# then fit pca store the
+testsim_withlabels <- left_join(testsim$simul, val_cutlabels)
+View(testsim_withlabels)
+# then do it again a 100 times
+
+# correlation between variable and dimension
+
+
+res.mfa_bio_vs_self2_k2[["quanti.var"]][["coord"]]
+
+res.mfa_bio_vs_self2_k2$eig[1:2,]
+
+
+
+
+
+# https://declaredesign.org/r/fabricatr/reference/resample_data.html
+
+
+resample_data(clustered_survey, N = 5, ID_labels = "clusters")
+
+unique(clustering_new_pre_PCA3.1$ssid)
+clustering_new_pre_PCA3.1[,c(1,2,5:9)]
+
+
+testres<- resample_data(clustering_new_pre_PCA3.1 [,c(1,2,5:9)], N = 51, ID_labels = "ssid")
+
+# resample_data(clustering_new_pre_PCA3.1[,c(1,2,5:9)], N = 51, 
+#               ID_labels = c("ssid","stimDescription")) this can throw errior fu to unbalances
+              
+
+
+
+
+# pca
+resampled_temp
+# create emopty dataframe
+resamp_1st<- data.frame(matrix(NA, nrow = 1, ncol = 9))
+colnames(resamp_1st)<- names(resampled_temp)
+
+# create emoty  storage rame for eigenvakues
+eigen_first<- as.data.frame(eugentest)
+eigen_first[,]<- NA
+
+# eigen_first<- as.data.frame(eigen_first)
+
+# create empty storage for correlations
+cor_first<- as.data.frame(cortest)
+cor_first[,]<- NA
+# cor_first<- as.data.frame(cor_first)
+
+
+# now store group results/partials
+
+partials_first <- res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]]
+partials_first[,]<- NA
+partials_first
+
+i = 1
+
+
+
+# for i in 1:100
+# set.seed(ran)
+
+for (i in 1:1500) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  resampled_temp<-  resample_data(clustering_new_pre_PCA3.1 [,c(1,2,3, 5:9)], N = 51, ID_labels = "ssid")
+  resampled_temp$sim_no = i
+  
+# run PCA on the resampled data
+# ?list
+    message(sprintf("$$$$$fitting PCA %i", i))
+mfa.res_res <- FactoMineR::MFA(resampled_temp[,1:8], 
+               group = c(3, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+  message(sprintf("$$$$$storing PCA %i", i))
+eugentest<- as.data.frame(mfa.res_res$eig[1:2,])
+eugentest$sim_no<- i
+
+cortest<- as.data.frame(mfa.res_res$quanti.var$cor)
+cortest$sim_no = i
+
+partials_first<- as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)
+partials_first$sim_no = i
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+resamp_1st<- (bind_rows(resamp_1st, resampled_temp))
+eigen_first<- bind_rows(eigen_first, eugentest)
+cor_first<- bind_rows(cor_first, cortest)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+View(resamp_1st)
+View(eigen_first)
+View(cor_first)
+
+# resamp_1st%>%
+#   subset(ssid!= NA)%>%
+
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    subset(!is.na(eigenvalue))%>%
+  ggplot(aes(eigenvalue))+
+  geom_histogram(alpha = .2)+
+  facet_grid(~component)+
+  geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[1], linetype= "dashed")+
+    geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
+  theme_classic()
+
+
+# check component 1
+?quantile
+quantile(eigen_first$eigenvalue,.95, na.rm = TRUE)
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    subset(!is.na(eigenvalue) & component == "comp 1" )%>%
+  mutate(perc_5 = quantile(eigenvalue,.05, na.rm = TRUE),
+         perc_95 = quantile(eigenvalue,.95,, na.rm = TRUE))%>%
+  ggplot(aes(eigenvalue))+
+  geom_histogram(alpha = .2)+
+    geom_density()+
+  # facet_grid(~component)+
+  geom_point(x = res.mfa_bio_vs_self2_k2$eig[1],y = 10,size = 2, color = "red")+
+  # geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), ymin = 10, ymax = 12 ))
+    geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
+  geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
+  theme_classic()
+
+# dimension 2
+
+quantile(eigen_first$eigenvalue,.95, na.rm = TRUE)
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    subset(!is.na(eigenvalue) & component == "comp 2" )%>%
+  mutate(perc_5 = quantile(eigenvalue,.05, na.rm = TRUE),
+         perc_95 = quantile(eigenvalue,.95, na.rm = TRUE))%>%
+  ggplot(aes(eigenvalue))+
+  geom_histogram(alpha = .2)+
+    geom_density()+
+  # facet_grid(~component)+
+  geom_point(x = res.mfa_bio_vs_self2_k2$eig[2],y = 10,size = 2, color = "red")+
+  # geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), ymin = 10, ymax = 12 ))
+    geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
+  geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
+  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = 10))
+  theme_classic()
+
+
+```
+
+```{r}
+
+# first dimension is significant
+
+# same thing as above with variance
+quantile(eigen_first$`percentage of variance`,.95, na.rm = TRUE)
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
+  mutate(perc_5 = quantile(`percentage of variance`,.05, na.rm = TRUE),
+         perc_95 = quantile(`percentage of variance`,.95,, na.rm = TRUE))%>%
+  ggplot(aes(`percentage of variance`))+
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+
+  # facet_grid(~component)+
+      geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = .3,ymin = .2, ymax = .4), color = "gray30")+
+  geom_point(x = res.mfa_bio_vs_self2_k2$eig[1,2],y = .3,size = 3, color = "red")+
+
+    # geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
+  # geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
+  theme_classic()
+
+
+# compute a direct test
+# we can check the probability of getting a vakue equal to or more extreme than our test
+
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
+  mutate(extreme_eigen_log = eigenvalue>= res.mfa_bio_vs_self2_k2$eig[1])%>%
+  mutate(extreme_eigen_log_prob = (sum(extreme_eigen_log))/n()) %>%
+  summarise_at(c("extreme_eigen_log_prob"), mean, na.rm = TRUE)
+
+# about 50%
+
+# one main difference is that tests checl whether the intervak incldues a ceain value (like zero for eigen vectors or 1 for eigen valkues)
+# so not sure if the test abopve is appropriate withouth correcting for reversals
+
+
+```
+
+```{r}
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    subset(!is.na(eigenvalue) & component == "comp 1" )%>%
+  ggplot(aes(`percentage of variance` ))+
+  geom_histogram(alpha = .2)+
+  # facet_grid(~component)+
+  geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[1,2], linetype= "dashed")+
+    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
+  theme_classic()
+
+
+
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    subset(!is.na(eigenvalue) & component == "comp 1" )%>%
+  ggplot(aes(`percentage of variance` ))+
+  geom_histogram(alpha = .2)+
+  # facet_grid(~component)+
+  geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[1,2], linetype= "dashed")+
+    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
+  theme_classic()
+
+
+# let's gp to variables
+
+cor_first %>%
+  mutate(variable = as.factor(substr(rownames(cor_first), 1,6)))%>%
+    subset(!is.na(Dim.1)) %>%
+  subset(variable == "arousa"|variable == "valenc")%>%
+  # select(c("arousal", "valence"))%>%
+  ggplot(aes(Dim.1))+
+  geom_histogram(alpha = .2)+
+  facet_grid(~variable)+
+  geom_vline(xintercept = .75)+
+    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
+  theme_classic()
+
+
+
+cor_first %>%
+  mutate(variable = as.factor(substr(rownames(cor_first), 1,6)))%>%
+    subset(!is.na(Dim.1)) %>%
+  subset(variable != "arousa"|variable != "valenc")%>%
+  # select(c("arousal", "valence"))%>%
+  ggplot(aes(Dim.2))+
+  geom_histogram(alpha = .2)+
+  facet_grid(~variable)+
+  geom_vline(xintercept = .58)+
+    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
+  theme_classic()
+
+
+ res.mfa_bio_vs_self2_k2$quanti.var$cor
+
+
+
+```
+
+
+
+  
+
+
+
+
+
+unique(as.character(testres$ssid))
+
+mean(testres$pup_basCor)
+mean(clustering_new_pre_PCA3.1$pup_basCor)
+
+
+testres%>%
+  ggplot(aes(valence, arousal))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+
+clustering_new_pre_PCA3.1%>%
+  ggplot(aes(valence, arousal))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+
+# okay this fucntion seems to work
 ```
 
 
@@ -6257,19 +6597,7 @@ c(H_n.1)
 hierar<- list(c(H_n.1))
 
 View(wine)
-FactoMineR::HMFA(clustering_new_pre_PCA3.1.scale[,2:7],
-                 H = hierar, 
-               # group = c(1, 3, 2), 
-               type = c("n", "s", "s",  "s", "s",  "s"),
-               # "s", "s", "s"
-               name.group = c("pp_stim","auton","subj"),
-               # num.group.sup = c(1),
-                 # ncp = 
-               # ind.sup = c(1,2),
-               graph = TRUE)
 
-
-# okay try and aggregate  response per stimuli
 
 
 ```{r}
@@ -6401,6 +6729,28 @@ res.mfa_val_cat_scal<- FactoMineR::MFA(clustering_new_pre_PCA3_val_vat_scale_the
                num.group.sup = c(1),
                # ind.sup = c(1,2),
                graph = TRUE)
+
+
+?FactoMineR::MFA
+View(res.mfa_val_cat_scal)
+
+# force k = 2
+
+res.mfa_val_cat_scal_k2<- FactoMineR::MFA(clustering_new_pre_PCA3_val_vat_scale_then_agg1,
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+               name.group = c("ss_id_stim","auton","subj"),
+               num.group.sup = c(1),
+               ncp = 2,
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+res.mfa_val_cat_scal_k2$eig
+
+```
+
+```{r}
 
 
 fviz_mfa_ind(res.mfa_val_cat_scal, 
