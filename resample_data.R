@@ -348,15 +348,3 @@ uniquify_vector <- function(vector, indices) {
                            ave(vector[indices], indices, FUN=seq_along),
                            sep="_"))
 }
-© 2022 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Docs
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About

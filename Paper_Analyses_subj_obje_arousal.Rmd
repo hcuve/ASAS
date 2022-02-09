@@ -5928,9 +5928,12 @@ var.bada.vlgr_physio4 <- TInPosition::tepBADA.inference.battery(clustering_new_p
                                                        critical.value = 2)
 
 
+```
+
 
 # MFA
 
+```{r}
 res.mfa <- MFA(clustering_new_pre_PCA_2, 
                group = c(2, 1, 1, 1), 
                type = c("n", "s", "s", "s"),
@@ -6142,20 +6145,56 @@ cor_first[,]<- NA
 
 # now store group results/partials
 
-partials_first <- res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]]
+res.mfa_bio_vs_self2_k2$group$correlation
+partials_first <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
 partials_first[,]<- NA
 partials_first
+partials_first$sim_no<- NA
 
-i = 1
+# i = 1
 
 
 
 # for i in 1:100
 # set.seed(ran)
+# i = 20
 
-for (i in 1:1500) {
+
+unique(resampled_temp_test$ssid)
+nrow(resampled_temp_test)
+
+ mean(resampled_temp_test$pup_basCor) #0.6710218
+ 
+ table(resampled_temp_test$ssid)
+ 
+ View(resampled_temp_test)
+ 
+ clustering_new_pre_PCA3.1%>%
+   subset(ssid == 1)
+ 
+ 
+resampled_temp_test<- resampled_temp_test %>%
+  group_by(ssid, stimDescription, val_cut_iaps)%>%
+  mutate(dupe = n()>1)
+
+table(resampled_temp_test$dupe)
+ 
+ 
+ install.packages("fabricatr")
+ ??fabricatr::resample_data
+ View(resampled_temp_test)
+ unique(resampled_temp_test$val_cut_iaps_unique)
+ clustering_new_pre_PCA3.1$ssid<- as.character(clustering_new_pre_PCA3.1$ssid)
+
+ table(resampled_temp_test$val_cut_iaps)
+ 
+ 
+ for (i in 1:1000) {
   message(sprintf("$$$$$RUNING sim %i", i))
-  resampled_temp<-  resample_data(clustering_new_pre_PCA3.1 [,c(1,2,3, 5:9)], N = 51, ID_labels = "ssid")
+  resampled_temp_test<- fabricatr::resample_data(clustering_new_pre_PCA3.1 [,c(1,2,3, 5:9)], 
+                                  N = c(51,55),
+                                  ID_labels = c("ssid", "stimDescription"),
+                                  unique_labels = TRUE)
   resampled_temp$sim_no = i
   
 # run PCA on the resampled data
@@ -6180,13 +6219,14 @@ eugentest$sim_no<- i
 cortest<- as.data.frame(mfa.res_res$quanti.var$cor)
 cortest$sim_no = i
 
-partials_first<- as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)
-partials_first$sim_no = i
+partials_temp<- as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)
+partials_temp$sim_no = i
 # update the initial d=frames
   message(sprintf("$$$$$upating dataframes %i", i))
-resamp_1st<- (bind_rows(resamp_1st, resampled_temp))
+  resamp_1st<- (bind_rows(resamp_1st, resampled_temp))
 eigen_first<- bind_rows(eigen_first, eugentest)
 cor_first<- bind_rows(cor_first, cortest)
+partials_first<- bind_rows(partials_first, partials_temp)
   message(sprintf("$$$$$completed iteration%i", i))
 }
 
@@ -6194,37 +6234,352 @@ View(resamp_1st)
 View(eigen_first)
 View(cor_first)
 
-# resamp_1st%>%
-#   subset(ssid!= NA)%>%
+
+resamp_1st_N30_withrepl<- resamp_1st
+eigen_first_N30_withrepl<- eigen_first
+cor_first_N40_withrepl<- cor_first
+
+partials_first_n30_withrepl<- cor_first
+
+
+# sample a 100?
+
+
+for (i in 1:1500) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  resampled_temp<-  resample_data(clustering_new_pre_PCA3.1 [,c(1,2,3, 5:9)], 
+                                  N = 80, ID_labels = "ssid")
+  resampled_temp$sim_no = i
+  
+# run PCA on the resampled data
+# ?list
+    message(sprintf("$$$$$fitting PCA %i", i))
+mfa.res_res <- FactoMineR::MFA(resampled_temp[,1:8], 
+               group = c(3, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+  message(sprintf("$$$$$storing PCA %i", i))
+eugentest<- as.data.frame(mfa.res_res$eig[1:2,])
+eugentest$sim_no<- i
+
+cortest<- as.data.frame(mfa.res_res$quanti.var$cor)
+cortest$sim_no = i
+
+partials_temp<- as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)
+partials_temp$sim_no = i
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st<- (bind_rows(resamp_1st, resampled_temp))
+eigen_first<- bind_rows(eigen_first, eugentest)
+cor_first<- bind_rows(cor_first, cortest)
+partials_first<- bind_rows(partials_first, partials_temp)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+
+# check if all particiants ocur equally in the old sample
+table(resamp_1st_N30_withrepl$ssid)
+table(resamp_1st$ssid)
+
+
+resamp_1st_N80_withrepl<- resamp_1st
+eigen_first_N80_withrepl<- eigen_first
+cor_first_N80_withrepl<- cor_first
+
+partials_first_n40_withrepl<- partials_first
+
+resamp_1st_N80_withrepl
+
+table(resamp_1st_N30_withrepl$ssid)
+
+
+```
+
+
+##################################################################
+# resample hierarquically, use lower n for subject and valence
+##################################################################
+
+
+```{r}
+View(resampled_temptest)
+colnames(resamp_1st)
+colnames(resampled_temp_test)
+ # create emopty dataframe
+resamp_1st<- data.frame(matrix(NA, nrow = 1, ncol = 13))
+# cnames_resamp<- names(resampled_temp)
+# colnames(resamp_1st)<- names(resampled_temp)
+colnames(resamp_1st)<- cnames_resamp
+colnames(resamp_1st)
+# create emoty  storage rame for eigenvakues
+eigen_first<- as.data.frame(eugentest)
+eigen_first[,]<- NA
+
+# eigen_first<- as.data.frame(eigen_first)
+
+# create empty storage for correlations
+cor_first<- as.data.frame(cortest)
+cor_first[,]<- NA
+# cor_first<- as.data.frame(cor_first)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first[,]<- NA
+partials_first
+partials_first$sim_no<- NA
+
+
+# hierarquical clustering
+clustering_new_pre_PCA3.1$ssid<- as.character(clustering_new_pre_PCA3.1$ssid)
+clustering_new_pre_PCA3.1$stimDescription<- as.character(clustering_new_pre_PCA3.1$stimDescription)
+# having clusters as factors causes a subscript oput of bound error
+
+
+# think we need to store groups
+
+groups_first<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first[,]<- NA
+groups_first
+groups_first$sim_no<- NA
+
+
+clustering_new_pre_PCA3.1 [,c(1,2,3, 5:9)]
+
+unique(substr(resampled_temp_test$stimDescription_unique,1,6))
+unique(substr(resampled_temp_test$stimDescription_unique,7,30))
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+for (i in 1:1000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  resampled_temp<- fabricatr::resample_data(clustering_new_pre_PCA3.1 [,c(1,2,3, 5:9)], 
+                                  N = c(51,51),
+                                  ID_labels = c("ssid", "stimDescription"),
+                                  unique_labels = TRUE)
+  resampled_temp$sim_no = i
+  resampled_temp$ssid_new <- as.factor(substr(resampled_temp$stimDescription_unique,1,6))
+  resampled_temp$newstim <- substr(resampled_temp$stimDescription_unique,7,30)
+  # resampled_temp$stimDescription<- as.factor(resampled_temp$stimDescription)
+  
+# run PCA on the resampled data
+# ?list
+    message(sprintf("$$$$$fitting PCA %i", i))
+    mfa.res_res <- FactoMineR::MFA(resampled_temp[,c(12,2:8)], 
+               group = c(3, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest<- as.data.frame(mfa.res_res$eig[1:2,])
+eugentest$sim_no<- i
+
+cortest<- as.data.frame(mfa.res_res$quanti.var$cor)
+cortest$sim_no = i
+
+partials_temp<- as.data.frame(mfa.res_res$partial.axes$cor)
+partials_temp$sim_no = i
+
+# groups
+group_temp<- as.data.frame(mfa.res_res$group$cos2)
+group_temp$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st<- (bind_rows(resamp_1st, resampled_temp))
+eigen_first<- bind_rows(eigen_first, eugentest)
+cor_first<- bind_rows(cor_first, cortest)
+partials_first<- bind_rows(partials_first, partials_temp)
+groups_first<- bind_rows(groups_first, group_temp)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+resamp_1st
+View(resamp_1st)
+
+
+resamp_1st
+
+resamp_1st_1000boot_hier<- resamp_1st
+eigen_first_1000boot_hier<-eigen_first
+cor_first_100boot_hier<- cor_first
+
+partials_first_100boot_hier<-partials_first
+group_first_100boot_hier<-groups_first
+
+resamp_1st%>%
+  subset(sim_no == 11)
+resamp_1st%>%
+  subset(sim_no == 15)
+
+table(resamp_1st$ssid)
+table(resampled_temp_test$ssid)
+```
+Visualisations
+
+```{r}
+
+# check component eigenvalues
+# quantile(eigenvalue,.05, na.rm = TRUE)
+View(eigen_first)
+
+eigen_first$eigenvalue
 
 eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-    subset(!is.na(eigenvalue))%>%
-  ggplot(aes(eigenvalue))+
-  geom_histogram(alpha = .2)+
-  facet_grid(~component)+
-  geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[1], linetype= "dashed")+
-    geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
-  theme_classic()
-
-
-# check component 1
-?quantile
-quantile(eigen_first$eigenvalue,.95, na.rm = TRUE)
-eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-    subset(!is.na(eigenvalue) & component == "comp 1" )%>%
-  mutate(perc_5 = quantile(eigenvalue,.05, na.rm = TRUE),
-         perc_95 = quantile(eigenvalue,.95,, na.rm = TRUE))%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE)) %>% #create 95% to descrive interval around the observed estimate
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
   ggplot(aes(eigenvalue))+
   geom_histogram(alpha = .2)+
     geom_density()+
   # facet_grid(~component)+
+    geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), y = 10), color = "gray30")+
   geom_point(x = res.mfa_bio_vs_self2_k2$eig[1],y = 10,size = 2, color = "red")+
-  # geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), ymin = 10, ymax = 12 ))
-    geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
-  geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
-  theme_classic()
+
+  theme_classic()+
+  geom_vline(xintercept = 1, linetype = "dashed")+
+  ggtitle("distribution of boostraped eigen values for component  1 
+          red dot = observed eigenvalue, boostrapped 95%CI")+
+  annotate("text", x = 1.2, y = 20, label = "prob of obs eigen>= boot eigen = 51%")
+
+table(eigen_first$eigenvalue>1)
+
+t.testsample1<- eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue) & component == "comp 1" )
+
+t.test(1.14, mu = mean(t.testsample1$eigenvalue))
+
+# boostrap ratio
+# proposed by abdi for factir scores
+mean(t.testsample1$eigenvalue, na.rm = TRUE)/(sd(t.testsample1$eigenvalue,na.rm = TRUE))
+
+
+
+```
+
+
+```{r}
+# check eigen vectors (correlations
+
+# checpartials_first_n40_withrepl
+
+# check groups
+
+# binom.test(eigen_first$eigenvalue>1)
+
+
+
+# calculate the diffeence betwee true eufgenvalye abd boostrap eigenvakue
+# and check if it includes zero?
+
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(eigen_d = (mean(eigenvalue))- res.mfa_bio_vs_self2_k2$eig[1])%>%
+   mutate(eigen_d2 = eigenvalue- res.mfa_bio_vs_self2_k2$eig[1])%>%
+  
+  mutate(perc_5 = quantile(eigen_d2,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigen_d2,.975, na.rm = TRUE))%>% #create 95% to descrive interval around the observed estimate
+  ggplot(aes(eigen_d2))+
+  geom_histogram(alpha = .2)+
+    geom_density()+
+  # facet_grid(~component)+
+    geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), y = 10), color = "gray30")+
+  # geom_point(aes(x = eigen_d,y = 10,size = 2), color = "red")+
+
+  theme_classic()+
+    ggtitle("distribution of observed eigenvalue - boot eigenvalues for component  1")+
+  annotate("text", x = 0, y = 20, label = "95%CI")
+
+```
+  # geom_vline(xintercept = 1, linetype = "dashed")
+
+table(eigen_first$eigenvalue>1)
+
+
+# boot::boot()
+
+
+```{r}
+
+t.test_sample<- eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(eigen_d = (mean(eigenvalue))- res.mfa_bio_vs_self2_k2$eig[1])%>%
+   mutate(eigen_d2 = eigenvalue- res.mfa_bio_vs_self2_k2$eig[1])
+t.test(t.test_sample$eigen_d2)
+
+
+# technially a t test is calculated as the differnce between current mean and pipulation mean devied by population variance, since we often don't have population variance we estimate it from the sample
+
+
+# will this give us a t?
+(res.mfa_bio_vs_self2_k2$eig[1]- (mean(t.test_sample$eigenvalue, na.rm = TRUE)))/ 
+  (sd(t.test_sample$eigenvalue))
+
+mean(t.test_sample$eigen_d2)/  (sd(t.test_sample$eigenvalue))
+
+
+
+resamp_1st%>%
+  subset(sim_no = 1)%>%
+  subset(is.na(ssid) == FALSE)%>%
+  subset(ssid ==  306)
+
+
+?fabricatr::fabricate()
+
+
+library(fabricatr)
+
+# ),
+  # pollution = rnorm(N, mean = 5))
+fabricatr::fabricate(
+  stim = add_level(N = 3),
+  id = add_level(N = 30),
+  Var1 = runif(N, 2, 10),
+  Var2 = runif(N, -5, 6),
+  Var2 = runif(N, .2, 2),
+  Var4 = runif(N, -10, 10),
+  Var5 = runif(N, -10, 10)
+))%>%
+  arrange(stim)
+
+
+fabricate(
+  primary_schools = add_level(N = 3, 
+                              var1 = runif(N, 0, 10)),
+  students = link_levels(N = 30,
+                          by=join(var1, rho = 0.5)))
+
+
+```
+
+
+
+```{r}
 
 # dimension 2
 
@@ -6232,153 +6587,154 @@ quantile(eigen_first$eigenvalue,.95, na.rm = TRUE)
 eigen_first%>%
   mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
     subset(!is.na(eigenvalue) & component == "comp 2" )%>%
-  mutate(perc_5 = quantile(eigenvalue,.05, na.rm = TRUE),
-         perc_95 = quantile(eigenvalue,.95, na.rm = TRUE))%>%
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE),
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
   ggplot(aes(eigenvalue))+
   geom_histogram(alpha = .2)+
     geom_density()+
-  # facet_grid(~component)+
+   geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), y = 10), color = "gray30")+
   geom_point(x = res.mfa_bio_vs_self2_k2$eig[2],y = 10,size = 2, color = "red")+
-  # geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), ymin = 10, ymax = 12 ))
-    geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
-  geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
-  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = 10))
+  # geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
+  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = 10))+
   theme_classic()
-
-
+  
+  
 ```
+  
+  # first dimension is significant
 
 ```{r}
 
-# first dimension is significant
-
-# same thing as above with variance
-quantile(eigen_first$`percentage of variance`,.95, na.rm = TRUE)
+ # same thing as above with variance
+# quantile(eigen_first$`percentage of variance`,.95, na.rm = TRUE)
 eigen_first%>%
   mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-    subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
-  mutate(perc_5 = quantile(`percentage of variance`,.05, na.rm = TRUE),
-         perc_95 = quantile(`percentage of variance`,.95,, na.rm = TRUE))%>%
+  subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
+  mutate(perc_5 = quantile(`percentage of variance`,.025, na.rm = TRUE),
+         perc_95 = quantile(`percentage of variance`,.975, na.rm = TRUE))%>%
   ggplot(aes(`percentage of variance`))+
   geom_histogram(aes(y=..density..), alpha=0.5,
                  position="identity")+
   geom_density(alpha=.2) +
-
-  # facet_grid(~component)+
-      geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = .3,ymin = .2, ymax = .4), color = "gray30")+
+  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = .3), color = "gray30")+
   geom_point(x = res.mfa_bio_vs_self2_k2$eig[1,2],y = .3,size = 3, color = "red")+
 
     # geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
   # geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
   theme_classic()
 
-
-# compute a direct test
-# we can check the probability of getting a vakue equal to or more extreme than our test
-
-eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-    subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
-  mutate(extreme_eigen_log = eigenvalue>= res.mfa_bio_vs_self2_k2$eig[1])%>%
-  mutate(extreme_eigen_log_prob = (sum(extreme_eigen_log))/n()) %>%
-  summarise_at(c("extreme_eigen_log_prob"), mean, na.rm = TRUE)
-
-# about 50%
-
-# one main difference is that tests checl whether the intervak incldues a ceain value (like zero for eigen vectors or 1 for eigen valkues)
-# so not sure if the test abopve is appropriate withouth correcting for reversals
-
-
 ```
+
+
 
 ```{r}
-eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-    subset(!is.na(eigenvalue) & component == "comp 1" )%>%
-  ggplot(aes(`percentage of variance` ))+
-  geom_histogram(alpha = .2)+
-  # facet_grid(~component)+
-  geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[1,2], linetype= "dashed")+
-    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
-  theme_classic()
-
-
-
-eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-    subset(!is.na(eigenvalue) & component == "comp 1" )%>%
-  ggplot(aes(`percentage of variance` ))+
-  geom_histogram(alpha = .2)+
-  # facet_grid(~component)+
-  geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[1,2], linetype= "dashed")+
-    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
-  theme_classic()
-
-
-# let's gp to variables
+# let's go to variable correlations with dimenstions
 
 cor_first %>%
   mutate(variable = as.factor(substr(rownames(cor_first), 1,6)))%>%
     subset(!is.na(Dim.1)) %>%
-  subset(variable == "arousa"|variable == "valenc")%>%
+  # create interval per variable
+  group_by(variable)%>%
+   mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+         perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  # subset(variable == "arousa"|variable == "valenc")%>%
   # select(c("arousal", "valence"))%>%
-  ggplot(aes(Dim.1))+
-  geom_histogram(alpha = .2)+
+  ggplot(aes(Dim.1)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =.6 ), color = "gray30")+
   facet_grid(~variable)+
-  geom_vline(xintercept = .75)+
-    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  #  geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
   theme_classic()
-
 
 
 cor_first %>%
   mutate(variable = as.factor(substr(rownames(cor_first), 1,6)))%>%
-    subset(!is.na(Dim.1)) %>%
-  subset(variable != "arousa"|variable != "valenc")%>%
+    subset(!is.na(Dim.2)) %>%
+  # create interval per variable
+  group_by(variable)%>%
+   mutate(perc_5 = quantile(Dim.2,.025, na.rm = TRUE),
+         perc_95 = quantile(Dim.2,.975, na.rm = TRUE))%>%
+  # subset(variable == "arousa"|variable == "valenc")%>%
   # select(c("arousal", "valence"))%>%
-  ggplot(aes(Dim.2))+
-  geom_histogram(alpha = .2)+
+  ggplot(aes(Dim.2)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =.6 ), color = "gray30")+
   facet_grid(~variable)+
-  geom_vline(xintercept = .58)+
-    # geom_vline(xintercept = res.mfa_bio_vs_self2_k2$eig[2], linetype = "dotted")+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .1, size = 1)+
   theme_classic()
-
-
- res.mfa_bio_vs_self2_k2$quanti.var$cor
-
-
 
 ```
 
+<!-- partials -->
+
+The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
+```{r}
+View(partials_first)
+
+partials_first%>%
+  mutate(dimension = as.factor(substr(rownames(partials_first), 1,4)),
+         group = as.factor(substr(rownames(partials_first), 5,9)))%>%
+    subset(!is.na(Dim.1)) %>%
+  # create interval per variable
+  group_by(dimension, group)%>%
+   mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+         perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  ggplot(aes(Dim.1)) +
+  geom_histogram(bins = 500)+
+  # geom_histogram(aes(y=..density..), alpha=0.5,
+  #                position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =10 ), color = "gray30")+
+  facet_grid(dimension~group)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+  ylim(0,100)
 
 
+```
+graph of groups
+```{r}
+View(groups_first)
+?gather
+
+# we sgoudl probably store cos2 rather than correlatiopn
+# their cos2 values corresponding to their quality of representation on the factor map
+groups_first%>%
+  mutate(group = as.factor(substr(rownames(groups_first), 1,4)))%>%
+    subset(!is.na(Dim.1)) %>%
+  # create interval per variable
+ 
+
+  gather(dimension, value_dimenion, -group, -sim_no) %>%
+  # -perc_5,-perc_95, 
+   group_by(group,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
   
+  ggplot(aes(value_dimenion, color = group)) +
+  geom_histogram(bins = 500)+
+  # geom_histogram(aes(y=..density..), alpha=0.5,
+  #                position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =10 ), color = "gray30")+
+  facet_grid(dimension~group)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+  ylim(0,100)
 
 
-
-
-
-unique(as.character(testres$ssid))
-
-mean(testres$pup_basCor)
-mean(clustering_new_pre_PCA3.1$pup_basCor)
-
-
-testres%>%
-  ggplot(aes(valence, arousal))+
-  geom_point()+
-  ggpubr::stat_cor()
-
-
-clustering_new_pre_PCA3.1%>%
-  ggplot(aes(valence, arousal))+
-  geom_point()+
-  ggpubr::stat_cor()
-
-
-# okay this fucntion seems to work
 ```
 
+
+Do we get the same patterns when loking at paticipants and stimuli searatelly
 
 ```{r}
 # get_eigenvalue(res.mfa): Extract the eigenvalues/variances retained by each dimension (axis)
@@ -6583,20 +6939,14 @@ install.packages("MExPosition")
 
 library(FactoMineR)
 ??HMFA
-
+```{r}
 H_n<- clustering_new_pre_PCA3.1.scale%>%
   group_by(ssid)%>%
   mutate(n = n())%>%
   summarise_at(c("n"), mean, na.rm = TRUE)
 
-H_n.1<- H_n$n
+```
 
-as.list(H_n.1)
-c(H_n.1)
-
-hierar<- list(c(H_n.1))
-
-View(wine)
 
 
 
@@ -6635,6 +6985,150 @@ res.mfa_bio_vs_self2_scale_afteraggbystim<- FactoMineR::MFA(clustering_new_pre_P
                graph = TRUE)
 
 
+
+
+
+```
+
+
+########################################
+
+one approach for significance is to create random shuffling that destroys the relational aspect of the data,
+e.g. by resshugling the values betwen variabels per participant.
+e.g. go to participant one, resgule the order of puopil values for  trials, fo th scr fo the same and so on
+
+```{r}
+
+clustering_new_pre_PCA3.1_copy<- clustering_new_pre_PCA3.1
+colnames(clustering_new_pre_PCA3.1)
+
+?sample
+
+# this is slow so need to figure  a better way to to this but for now
+clustering_new_pre_PCA3.1_copy %>%
+  subset(ssid == 304 &val_cut_iaps == "mid" & aro_cut_iaps == "low" )%>%
+  group_by(ssid)%>%
+  transform(pup_basCor = sample(pup_basCor, replace = F),
+            Bio_Mean_HR_dif = sample(Bio_Mean_HR_dif, replace = F),
+            log_BIO_CDA.PhasicMax = sample(log_BIO_CDA.PhasicMax, replace = F),
+            arousal = sample(arousal, replace = F),
+            valence = sample(valence, replace = F))
+
+
+```
+            
+
+
+```{r}
+
+
+colnames(resampled_temp_reshuf)
+ # create emopty dataframe
+resamp_1st_reshuf<- data.frame(matrix(NA, nrow = 1, ncol = 9))
+cnames_resamp_reshufl<- names(resampled_temp_reshuf)
+
+colnames(resamp_1st_reshuf)<- cnames_resamp_reshufl
+colnames(resamp_1st_reshuf)
+# create emoty  storage rame for eigenvakues
+eigen_first_reshuf<- as.data.frame(eugentest)
+eigen_first_reshuf[,]<- NA
+
+# eigen_first_reshuf<- as.data.frame(eigen_first_reshuf)
+
+# create empty storage for correlations
+cor_first_reshuf<- as.data.frame(cortest)
+cor_first_reshuf[,]<- NA
+# cor_first_reshuf<- as.data.frame(cor_first_reshuf)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first_reshuf <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_reshuf[,]<- NA
+partials_first_reshuf
+partials_first_reshuf$sim_no<- NA
+
+
+# hierarquical clustering
+clustering_new_pre_PCA3.1$ssid<- as.character(clustering_new_pre_PCA3.1$ssid)
+clustering_new_pre_PCA3.1$stimDescription<- as.character(clustering_new_pre_PCA3.1$stimDescription)
+# having clusters as factors causes a subscript oput of bound error
+
+
+# think we need to store groups
+
+groups_first_reshuf<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first_reshuf[,]<- NA
+groups_first_reshuf
+groups_first_reshuf$sim_no<- NA
+
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+
+for (i in 1:1000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  
+  
+
+resampled_temp_reshuf<-    clustering_new_pre_PCA3.1_copy[,c(1,2,3, 5:9)] %>%
+  group_by(ssid)%>%
+  transform(pup_basCor = 
+              sample(pup_basCor, replace = F),
+            Bio_Mean_HR_dif = sample(Bio_Mean_HR_dif, replace = F),
+            log_BIO_CDA.PhasicMax = sample(log_BIO_CDA.PhasicMax, replace = F),
+            arousal = sample(arousal, replace = F),
+            valence = sample(valence, replace = F))
+  
+  resampled_temp_reshuf$sim_no = i
+  # resampled_temp_reshuf$ssid_new <- as.factor(substr(resampled_temp_reshuf$stimDescription_unique,1,6))
+  # resampled_temp_reshuf$newstim <- substr(resampled_temp_reshuf$stimDescription_unique,7,30)
+  # resampled_temp_reshuf$stimDescription<- as.factor(resampled_temp_reshuf$stimDescription)
+  
+# run PCA on the resampled data
+# ?list
+    message(sprintf("$$$$$fitting PCA %i", i))
+    mfa.res_reshuf <- FactoMineR::MFA(resampled_temp_reshuf[,c(1:8)], 
+               group = c(3, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest_reshufl<- as.data.frame(mfa.res_reshuf$eig[1:2,])
+eugentest_reshufl$sim_no<- i
+
+cortest_reshufl<- as.data.frame(mfa.res_reshuf$quanti.var$cor)
+cortest_reshufl$sim_no = i
+
+partials_temp_reshuf<- as.data.frame(mfa.res_reshuf$partial.axes$cor)
+partials_temp_reshuf$sim_no = i
+
+# groups
+group_temp_reshuf<- as.data.frame(mfa.res_reshuf$group$cos2)
+group_temp_reshuf$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st_reshuf<- (bind_rows(resamp_1st_reshuf, resampled_temp_reshuf))
+eigen_first_reshuf<- bind_rows(eigen_first_reshuf, eugentest_reshufl)
+cor_first_reshuf<- bind_rows(cor_first_reshuf, cortest_reshufl)
+partials_first_reshuf<- bind_rows(partials_first_reshuf, partials_temp_reshuf)
+groups_first_reshuf<- bind_rows(groups_first_reshuf, group_temp_reshuf)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+
+
 ```
 
 
@@ -6651,16 +7145,228 @@ clustering_new_pre_PCA3.1.scale_agg_bysid<- clustering_new_pre_PCA3.1%>%
 clustering_new_pre_PCA3.1.scale_aft_agg_bysid<- clustering_new_pre_PCA3.1.scale_agg_bysid%>%
   mutate_if(is.numeric, scale)
 
- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_agg_bysid, 
+res.mfa_agg_bysubj <- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_agg_bysid, 
                group = c(1, 3, 2), 
                type = c("n", "s", "s"),
                # "s", "s", "s"
-               name.group = c("stim","auton","subj"),
+               name.group = c("sid","auton","subj"),
                num.group.sup = c(1),
                # ind.sup = c(1,2),
                graph = TRUE)
 
 
+
+
+
+```
+
+
+boostrap subjct results
+
+
+```{r}
+
+factoextra::fviz_eig(res.mfa_agg_bysubj)
+factoextra::fviz_mfa_group(res.mfa_agg_bysubj)
+
+res.mfa_bio_vs_self2_k2$eig
+res.mfa_agg_bysubj$eig
+res.mfa_agg_bysubj$quanti.var$cor
+res.mfa_agg_bysubj$group$cos2
+
+
+
+```
+
+
+
+```{r}
+colnames(resampled_temp_bysubj)
+resamp_1st_bysubj<- data.frame(matrix(NA, nrow = 1, ncol = 8))
+
+# cnames_resamp_subj<- names(resampled_temp_bysubj)
+colnames(resamp_1st_bysubj)<- cnames_resamp_subj
+colnames(resamp_1st_bysubj)
+# create emoty  storage rame for eigenvakues
+eigen_first_bysubj<- as.data.frame(eugentest)
+eigen_first_bysubj[,]<- NA
+
+# eigen_first<- as.data.frame(eigen_first)
+
+# create empty storage for correlations
+cor_first_bysubj<- as.data.frame(cortest)
+cor_first_bysubj[,]<- NA
+# cor_first<- as.data.frame(cor_first)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first_bysubj <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_bysubj[,]<- NA
+partials_first_bysubj
+partials_first_bysubj$sim_no<- NA
+
+
+# hierarquical clustering
+clustering_new_pre_PCA3.1.scale_agg_bysid$ssid<- as.character(clustering_new_pre_PCA3.1.scale_agg_bysid$ssid)
+# clustering_new_pre_PCA3.1.scale_agg_bysid$stimDescription<- as.character(clustering_new_pre_PCA3.1.scale_agg_bysid$stimDescription)
+
+
+# think we need to store groups
+
+groups_first_bysubj<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first_bysubj[,]<- NA
+groups_first_bysubj
+groups_first_bysubj$sim_no<- NA
+
+
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+colnames(clustering_new_pre_PCA3.1.scale_agg_bysid)
+
+for (i in 1:1000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  
+  resampled_temp_bysubj<- fabricatr::resample_data(clustering_new_pre_PCA3.1.scale_agg_bysid, 
+                                  N = c(51),
+                                  ID_labels = c("ssid"),
+                                  unique_labels = TRUE)
+  # View(resampled_temp_bysubj)
+  resampled_temp_bysubj$sim_no = i
+  # resampled_temp_bysubj$ssid_new <- as.factor(substr(resampled_temp_bysubj$stimDescription_unique,1,6))
+  # resampled_temp_bysubj$newstim <- substr(resampled_temp_bysubj$stimDescription_unique,7,30)
+  # resampled_temp_bysubj$stimDescription<- as.factor(resampled_temp_bysubj$stimDescription)
+  
+# run PCA on the resampled data
+  # colnames(resampled_temp_bysubj)
+    message(sprintf("$$$$$fitting PCA %i", i))
+    mfa.res_bysubj <- FactoMineR::MFA(resampled_temp_bysubj[,1:6], 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("sid","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest_bysubj<- as.data.frame(mfa.res_bysubj$eig[1:2,])
+eugentest_bysubj$sim_no<- i
+
+cortest_bysubj<- as.data.frame(mfa.res_bysubj$quanti.var$cor)
+cortest_bysubj$sim_no = i
+
+partials_temp_bysubj<- as.data.frame(mfa.res_bysubj$partial.axes$cor)
+partials_temp_bysubj$sim_no = i
+
+# groups
+group_temp_bysubj<- as.data.frame(mfa.res_bysubj$group$cos2)
+group_temp_bysubj$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st_bysubj<- (bind_rows(resamp_1st_bysubj, resampled_temp_bysubj))
+eigen_first_bysubj<- bind_rows(eigen_first_bysubj, eugentest_bysubj)
+cor_first_bysubj<- bind_rows(cor_first_bysubj, cortest_bysubj)
+partials_first_bysubj<- bind_rows(partials_first_bysubj, partials_temp_bysubj)
+groups_first_bysubj<- bind_rows(groups_first_bysubj, group_temp_bysubj)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+resamp_1st_bysubj
+View(resamp_1st_bysubj)
+
+
+resamp_1st_bysubj
+
+
+
+resamp_1st_bysubj%>%
+  subset(sim_no == 11)
+
+
+
+```
+
+
+
+
+visualise boostrap CIs for agg by subjec
+
+
+
+```{r}
+eigen_first_bysubj%>%
+  mutate(component =as.factor(substr(rownames(eigen_first_bysubj), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE)) %>% #create 95% to descrive interval around the observed estimate
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
+  ggplot(aes(eigenvalue))+
+  geom_histogram(alpha = .2)+
+    geom_density()+
+  # facet_grid(~component)+
+    geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), y = 10), color = "gray30")+
+  geom_point(x = res.mfa_agg_bysubj$eig[1],y = 10,size = 2, color = "red")+
+
+  theme_classic()+
+  geom_vline(xintercept = 1, linetype = "dashed")
+  # ggtitle("distribution of boostraped eigen values for component  1 
+          # red dot = observed eigenvalue, boostrapped 95%CI")+
+  # annotate("text", x = 1.2, y = 20, label = "prob of obs eigen>= boot eigen = 51%")
+
+
+
+eigen_first_bysubj%>%
+  mutate(component =as.factor(substr(rownames(eigen_first_bysubj), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue) & component == "comp 2" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE)) %>% #create 95% to descrive interval around the observed estimate
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
+  ggplot(aes(eigenvalue))+
+  geom_histogram(alpha = .2)+
+    geom_density()+
+  # facet_grid(~component)+
+    geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), y = 10), color = "gray30")+
+  geom_point(x = res.mfa_agg_bysubj$eig[2],y = 10,size = 2, color = "red")+
+
+  theme_classic()+
+  geom_vline(xintercept = 1, linetype = "dashed")
+
+
+
+
+```
+
+variables and dimension corelations
+```{r}
+cor_first_bysubj %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bysubj), 1,6)))%>%
+    subset(!is.na(Dim.1)) %>%
+  # create interval per variable
+  group_by(variable)%>%
+   mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+         perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  # subset(variable == "arousa"|variable == "valenc")%>%
+  # select(c("arousal", "valence"))%>%
+  ggplot(aes(Dim.1)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =.6 ), color = "gray30")+
+  facet_grid(~variable)+
+  # geom_point(xlim = res.mfa_agg_bysubj$quanti.var$cor, y = 4, color = "red", size = 2)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  #  geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+  
 ```
 Agg within participant by neg pos etc (using normative data)
 With and without selfreports
@@ -6763,1208 +7469,8 @@ fviz_mfa_ind(res.mfa_val_cat_scal,
 
 # we can sorta see that while things allign relativelly well on sujective dimension, they don't allugn very well on the autonomic dimension
   
-
-```
-
-
-
-# now keep participant just cast pupil etc
-clustering_new_pre_PCA3.1.scale
-
-# dcast
-
-library(data.table)
-
-colnames(clustering_new_pre_PCA3.1.scale)
-clustering_new_pre_PCA3.1.scale$pup_basCor<- clustering_new_pre_PCA3.1.scale$pup_basCor[,1]
-
-clustering_new_pre_PCA3.1.scale$Bio_Mean_HR_dif<- clustering_new_pre_PCA3.1.scale$Bio_Mean_HR_dif[,1]
-
-clustering_new_pre_PCA3.1.scale$log_BIO_CDA.PhasicMax<- clustering_new_pre_PCA3.1.scale$log_BIO_CDA.PhasicMax[,1]
-
-
-clustering_new_pre_PCA3.1.scale$arousal<- clustering_new_pre_PCA3.1.scale$arousal[,1]
-
-clustering_new_pre_PCA3.1.scale$valence<- clustering_new_pre_PCA3.1.scale$valence[,1]
-
-
-clustering_new_pre_PCA3.1.scale_dcast<- data.table::dcast(setDT(clustering_new_pre_PCA3.1.scale), 
-                    ssid  ~ stimDescription, 
-                    value.var = c('pup_basCor',
-                'Bio_Mean_HR_dif', 'log_BIO_CDA.PhasicMax', 'arousal','valence'), fun.aggregate = mean)
-
-
-colnames(clustering_new_pre_PCA3.1.scale_dcast)
-
-res.mfadcast <- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_dcast[,
-                                                                      2:ncol(clustering_new_pre_PCA3.1.scale_dcast)], 
-               group = c(52, 52, 52, 52, 52), 
-               type = c("s", "s", "s", "s", "s"),
-               # "s", "s", "s"
-               name.group = c("pup","hr", "scr", "ar", "vl"),
-               # num.group.sup = c(1),
-               # ind.sup = c(1,2),
-               graph = TRUE)
-
-53-2 #pupil
-
-```
-
-
-
-
-
-# with self arousal
-var.PCA.scr_hr_pup_ar <-InPosition::epPCA.inference.battery(all.data3_forPCA_withar[,4:227], 
-                                       scale = TRUE, 
-                                       center = TRUE, 
-                                       # DESIGN = var.design_asd, 
-                                       # make_design_nominal = TRUE, 
-                                       graphs = TRUE, k = 0, 
-                                       test.iters = 1000, 
-                                       constrained = FALSE, 
-                                       critical.value = 2)
-
-
-View(all.data3_forPCA_withar)
-
-View(clustering_new_pre_PCA)
-```
-
-Multiple factor analysys
-
-- consider aggregating  (average per stim)
-- PCA on arousal arousal and valence
-
-
-```{r}
-
-library(factoextra)
-library(FactoMineR)
-
-clustering_new_pre_PCA
-colnames(clustering_new_pre_PCA)
-
-clustering_new_pre_PCA_2<- clustering_new_pre_PCA[, c(1,5:10,12)]
-colnames(clustering_new_pre_PCA_2)
-
-MFA(base, group, type = rep("s",length(group)), ind.sup = NULL, 
-    name.group = NULL, num.group.sup = NULL, graph = TRUE)
-
-
-res.mfa <- MFA(wine, 
-               group = c(2, 5, 3, 10, 9, 2), 
-               type = c("n", "s", "s", "s", "s", "s"),
-               name.group = c("origin","odor","visual",
-                              "odor.after.shaking", "taste","overall"),
-               num.group.sup = c(1, 6),
-               graph = FALSE)
-
-clustering_new_pre_PCA_2
-
-View(clustering_new_pre_PCA_2)
-
-clustering_new_pre_PCA_2$ssid<- as.factor(clustering_new_pre_PCA_2$ssid)
-?MFA
-
-View(clustering_new_pre_PCA_2)
-clustering_new_pre_PCA_2$stimDescription
-colnames(clustering_new_pre_PCA_2)
-
-res.mfa <- MFA(wine, 
-               group = c(2, 5, 3, 10, 9, 2), 
-               type = c("n", "s", "s", "s", "s", "s"),
-               name.group = c("origin","odor","visual",
-                              "odor.after.shaking", "taste","overall"),
-               num.group.sup = c(1, 6),
-               graph = FALSE)
-
-res.mfa <- MFA(clustering_new_pre_PCA_2, 
-               group = c(2, 1, 1, 1), 
-               type = c("n", "s", "s", "s"),
-               name.group = c("pp_stim","pupil","HR","SCR"),
-               # num.group.sup = c(1,2),
-               graph = TRUE)
-
-print(res.mfa)
-
-
-clustering_new_pre_PCA_2print(res.mfa)
-
-```
-
-
-
-
-```{r}
-library("factoextra")
-eig.val <- get_eigenvalue(res.mfa)
-head(eig.val)
-
-install.packages("MExPosition")
-# ExPosition::FA
-
-TExPosition::
-# InPosition::
-# TExPosition::
-
-```
-
-the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
-```{r}
-library(FactoMineR)
-library(factoextra)
-??fviz_screeplot
-fviz_screeplot(res.mfa)
-
-```
-
-The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
-
-```{r}
-
-group <- get_mfa_var(res.mfa, "group")
-group
-
-```
-
-The different components can be accessed as follow:
-```{r}
-# Coordinates of groups
-head(group$coord)
-# Cos2: quality of representation on the factore map
-head(group$cos2)
-# Contributions to the  dimensions
-head(group$contrib)
-
-```
-
-To plot the groups of variables, type this:
-
-```{r}
-fviz_mfa_var(res.mfa, "group")
-
-```
-
-
-red color = active groups of variables
-green color = supplementary groups of variables
-The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
-
-To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
-```{r}
-# Contribution to the first dimension
-fviz_contrib(res.mfa, "group", axes = 1)
-# Contribution to the second dimension
-fviz_contrib(res.mfa, "group", axes = 2)
-
-```
-Quantitative variables
-The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
-```{r}
-quanti.var <- get_mfa_var(res.mfa, "quanti.var")
-quanti.var 
-
-```
-
-```{r}
-# Coordinates
-head(quanti.var$coord)
-# Cos2: quality on the factore map
-head(quanti.var$cos2)
-# Contributions to the dimensions
-head(quanti.var$contrib)
-
-```
-Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
-
-```{r}
-fviz_mfa_var(res.mfa, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE)
-
-```
-
-To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
-```{r}
-fviz_mfa_var(res.mfa, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE,
-             geom = c("point", "text"), legend = "bottom")
-
-```
-
-
-```{r}
-fviz_contrib(res.mfa, choice = "quanti.var", axes = 1, top = 20,
-             palette = "jco")
-
-
-```
-Graph of individuals
-
-```{r}
-# To get the results for individuals, type this:
-
-ind <- get_mfa_ind(res.mfa)
-ind
-
-```
-To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
-
-```{r}
-fviz_mfa_ind(res.mfa, col.ind = "cos2", 
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = FALSE)
-
-fviz_mfa_ind(res.mfa, 
-             habillage = "Label", # color by groups 
-             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-```
-
-```{r}
-
-clustering_new_pre_PCA_2
-
-fviz_mfa_ind(res.mfa, 
-             habillage = "stimDescription", # color by groups 
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-
-fviz_mfa_ind(res.mfa, 
-             habillage = "ssid", # color by groups 
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-
-testget<-get_mfa(
-  res.mfa,
-  element = c("ind"))
-
-
-clustering_new_pre_PCA3$getindaxis<- testget[["coord"]][,1]
-clustering_new_pre_PCA3$getindaxis2<- testget[["coord"]][,2]
-
-clustering_new_pre_PCA3%>%
-  group_by(ssid)%>%
-  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
-  ggplot(aes(arousal, getindaxis))+
-  geom_point()+
-  ggpubr::stat_cor()+
-  xlim(-,3.3)
-
-
-clustering_new_pre_PCA3%>%
-  group_by(ssid, arousal_3cat)%>%
-  summarise_if(is.numeric, mean, na.rm = TRUE)%>%
-  ggplot(aes(arousal, getindaxis2))+
-  geom_point()+
-  ggpubr::stat_cor()+
-  facet_grid(~arousal_3cat)
-  # xlim(-,3.3)
-
-
-
-```
-
-
-Aggregate one average per stim
-
-
-```{r}
-
-library(factoextra)
-library(FactoMineR)
-
-
-colnames(clustering_agg_JASPtest)
-
-clustering_agg_JASP_PCA_2<- clustering_agg_JASPtest [, c(1,27, 2:4)]
-colnames(clustering_agg_JASP_PCA_2)
-
-clustering_agg_JASP_PCA_2$stimIAPS2<- as.factor(clustering_agg_JASP_PCA_2$stimIAPS2)
-
-clustering_agg_JASP_PCA_2$stimDescription<- as.factor(clustering_agg_JASP_PCA_2$stimDescription)
-
-
-
-
-res.mfa_agg <- MFA(wine, 
-               group = c(2, 5, 3, 10, 9, 2), 
-               type = c("n", "s", "s", "s", "s", "s"),
-               name.group = c("origin","odor","visual",
-                              "odor.after.shaking", "taste","overall"),
-               num.group.sup = c(1, 6),
-               graph = FALSE)
-
-
-colnames(clustering_agg_JASP_PCA_2)
-res.mfa_agg <- MFA(clustering_agg_JASP_PCA_2, 
-               group = c(2, 1, 1, 1), 
-               type = c("n", "s", "s", "s"),
-               name.group = c("stim_desc","HR","pupil","SCR"),
-               num.group.sup = c(1,2),
-               graph = TRUE)
-
-print(res.mfa_agg)
-
-
-
-
-```
-
-```{r}
-library("factoextra")
-eig.val_agg <- get_eigenvalue(res.mfa_agg)
-head(eig.val_agg)
-
-
-```
-
-the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
-```{r}
-fviz_screeplot(res.mfa_agg)
-
-```
-
-The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
-
-```{r}
-
-group_agg <- get_mfa_var(res.mfa_agg, "group")
-group_agg
-
-```
-
-The different components can be accessed as follow:
-```{r}
-# Coordinates of groups
-head(group_agg$coord)
-# Cos2: quality of representation on the factore map
-head(group_agg$cos2)
-# Contributions to the  dimensions
-head(group_agg$contrib)
-
-```
-
-To plot the groups of variables, type this:
-
-```{r}
-fviz_mfa_var(res.mfa_agg, "group")
-
-```
-
-
-red color = active groups of variables
-green color = supplementary groups of variables
-The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
-
-To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
-```{r}
-# Contribution to the first dimension
-fviz_contrib(res.mfa_agg, "group", axes = 1)
-# Contribution to the second dimension
-fviz_contrib(res.mfa_agg, "group", axes = 2)
-
-```
-Quantitative variables
-The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
-```{r}
-quanti.var_agg <- get_mfa_var(res.mfa_agg, "quanti.var")
-quanti.var_agg
-
-```
-
-```{r}
-# Coordinates
-head(quanti.var_agg$coord)
-# Cos2: quality on the factore map
-head(quanti.var_agg$cos2)
-# Contributions to the dimensions
-head(quanti.var_agg$contrib)
-
-```
-Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
-
-```{r}
-fviz_mfa_var(res.mfa_agg, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE)
-
-```
-
-To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
-```{r}
-fviz_mfa_var(res.mfa_agg, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE,
-             geom = c("point", "text"), legend = "bottom")
-
-```
-
-
-```{r}
-fviz_contrib(res.mfa_agg, choice = "quanti.var", axes = 1, top = 20,
-             palette = "jco")
-fviz_contrib(res.mfa_agg, choice = "quanti.var", axes = 2, top = 20,
-             palette = "jco")
-
-```
-Graph of individuals
-
-```{r}
-# To get the results for individuals, type this:
-
-ind_agg <- get_mfa_ind(res.mfa_agg)
-ind_agg
-
-```
-To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
-
-```{r}
-fviz_mfa_ind(res.mfa_agg, col.ind = "cos2", 
-             # gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE)
-clust2_dataset$stimDescription
-pp_stim
-fviz_mfa_ind(res.mfa_agg, 
-             habillage = "stimDescription", # color by groups 
-             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-```
-
-
-```{r}
-
-clustering_new_pre_PCA_2
-
-fviz_mfa_ind(res.mfa_agg, 
-             habillage = "stimIAPS2", # color by groups 
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-
-
-```
-
-Graph of partial individuals
-The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
-
-In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
-
-For a given individual, there are as many partial points as groups of variables.
-
-The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
-
-```{r}
-fviz_mfa_ind(res.mfa_agg, partial = "all") 
-# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
-
-fviz_mfa_ind(res.mfa, partial = c("1DAM", "1VAU", "2ING")) 
-
-```
-
-
-Graph of partial axes
-The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
-
-```{r}
-fviz_mfa_axes(res.mfa_agg)
-
-```
-
-
-```{r}
-data(wine)
-View(wine)
-
-View(clustering_new_pre_PCA_2)
-
-```
-
-
-colnames
-
-```{r}
-db_forPCA
-colnames(db_forPCA)
-library(tidyverse)
-data3_forPCA_withar
-all.data3_forPCA_withar$TAS_split<- if_else(all.data3_forPCA_withar$TAS > 
-                                          median(all.data3_forPCA_withar$TAS, na.rm = TRUE), "High", "Low")
-colnames(all.data3_forPCA_withar)
-db_forPCA_MFA<- all.data3_forPCA_withar[, c(1,228, 4:171)]
-
-colnames(db_forPCA_MFA)
-
-
-db_forPCA_MFA
-
-db_forPCA_MFA$ssid<- as.factor(db_forPCA_MFA$ssid)
-
-
-colnames(db_forPCA_MFA)
-
-db_forPCA_MFA$arousal_9561SickKitty<- NULL
-res.mfa_dcast <- MFA(db_forPCA_MFA, 
-               group = c(2, 56, 56, 56), 
-               type = c("n", "s", "s", "s"),
-               name.group = c("pp_gr","pupil","HR","SCR"),
-               num.group.sup = c(1,2),
-               graph = TRUE)
-
-print(res.mfa_dcast)
-
-
-
-
-```
-
-
-
-
-
-
-
-```{r}
-library("factoextra")
-# res.mfa_dcast <- get_eigenvalue(res.mfa_dcast)
-# head(res.mfa_dcast)
-
-
-```
-
-the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
-```{r}
-fviz_screeplot(res.mfa_dcast)
-
-```
-
-The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
-
-```{r}
-
-group_dcast <- get_mfa_var(res.mfa_dcast, "group")
-group_dcast
-
-```
-
-The different components can be accessed as follow:
-```{r}
-# Coordinates of groups
-head(group_dcast$coord)
-# Cos2: quality of representation on the factore map
-head(group_dcast$cos2)
-# Contributions to the  dimensions
-head(group_dcast$contrib)
-
-```
-
-To plot the groups of variables, type this:
-
-```{r}
-fviz_mfa_var(res.mfa_dcast, "group")
-
-```
-
-
-red color = active groups of variables
-green color = supplementary groups of variables
-The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
-
-To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
-```{r}
-# Contribution to the first dimension
-fviz_contrib(res.mfa_dcast, "group", axes = 1)
-# Contribution to the second dimension
-fviz_contrib(res.mfa_dcast, "group", axes = 2)
-
-```
-Quantitative variables
-The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
-```{r}
-quanti.var_dcast <- get_mfa_var(res.mfa_dcast, "quanti.var")
-quanti.var_dcast
-
-```
-
-```{r}
-# Coordinates
-head(quanti.var_dcast$coord)
-# Cos2: quality on the factore map
-head(quanti.var_dcast$cos2)
-# Contributions to the dimensions
-head(quanti.var_dcast$contrib)
-
-```
-Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
-
-```{r}
-fviz_mfa_var(res.mfa_dcast, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE)
-
-```
-
-To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
-```{r}
-fviz_mfa_var(res.mfa_dcast, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE,
-             geom = c("point", "text"), legend = "bottom")
-
-```
-
-
-```{r}
-fviz_contrib(res.mfa_dcast, choice = "quanti.var", axes = 1, top = 20,
-             palette = "jco")
-fviz_contrib(res.mfa_agg, choice = "quanti.var", axes = 2, top = 20,
-             palette = "jco")
-
-```
-Graph of individuals
-
-```{r}
-# To get the results for individuals, type this:
-
-ind_dcast <- get_mfa_ind(res.mfa_dcast)
-ind_dcast
-
-```
-To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
-
-```{r}
-fviz_mfa_ind(res.mfa_dcast, col.ind = "cos2", 
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE)
-clust2_dataset$stimDescription
-pp_stim
-fviz_mfa_ind(res.mfa_dcast, 
-             habillage = "TAS_split", # color by groups 
-             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-```
-
-
-```{r}
-
-clustering_new_pre_PCA_2
-
-fviz_mfa_ind(res.mfa_dcast, 
-             habillage = "stimIAPS2", # color by groups 
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-
-
-```
-
-Graph of partial individuals
-The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
-
-In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
-
-For a given individual, there are as many partial points as groups of variables.
-
-The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
-
-```{r}
-fviz_mfa_ind(res.mfa_dcast, partial = "all") 
-# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
-
-
-```
-
-
-Graph of partial axes
-The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
-
-```{r}
-fviz_mfa_axes(res.mfa_dcast)
-
-```
-
-<!-- neg, neutra positive -->
-
-
-
-
-
-```{r}
-data(wine)
-View(wine)
-
-View(clustering_new_pre_PCA_2)
-?cut
-clustering_new_pre_PCA_2$valence_split<- cut(clustering_new_pre_PCA_2$valence, 3,
-                                             labels = c("neg", "mid", "positive"))
-
-
-
-clustering_new_pre_PCA_2_agg_by_val<- clustering_new_pre_PCA_2%>%
-  group_by(ssid,valence_split)%>%
-  summarise_if(is.numeric, mean, na.rm = TRUE)
-
-
-View(clustering_new_pre_PCA_2_agg_by_val)
-
-colnames(clustering_new_pre_PCA_2_agg_by_val)
-clustering_new_pre_PCA_2_agg_by_val_sel<- clustering_new_pre_PCA_2_agg_by_val[, c(1:7)]
-
-# dcast
-library(data.table)
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast<- data.table::dcast(setDT(clustering_new_pre_PCA_2_agg_by_val_sel), 
-                    ssid ~ valence_split, value.var = c('pup_basCor',
-                'Bio_Mean_HR_dif', 'log_BIO_CDA.PhasicMax', "arousal", "valence"))
-
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast
-
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast$pup_basCor_NA<- NULL
-
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast$Bio_Mean_HR_dif_NA<- NULL
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast$log_BIO_CDA.PhasicMax_NA<- NULL
-
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast$valence_NA<- NULL
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast$arousal_NA<- NULL
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast
-View(clustering_new_pre_PCA_2_agg_by_val_sel_dcast)
-
-namesrepl<- colnames(clustering_new_pre_PCA_2_agg_by_val_sel_dcast)
-
-namesrepl<- c("ssid", "p_neg", "p_mid" ,"p_pos", "HR_neg" , "HR_mid",
-                  "HR_pos","SCR_neg", "SCR_mid", "SCR_pos", "ar_neg","ar_mid", "ar_pos",
-              "vl_neg","vl_mid", "vl_pos")
-
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast2<- clustering_new_pre_PCA_2_agg_by_val_sel_dcast
-names(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2)<- namesrepl
-
-
-```
-
-MFA agg by val
-
-
-```{r}
-colnames(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2)
-
-View(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2)
-res.mfa_agg_byval <- MFA(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2, 
-               group = c(1, 3, 3, 3), 
-               type = c("n", "s", "s", "s"),
-               name.group = c("ssid","pupil","HR","SCR"),
-               num.group.sup = c(1),
-               graph = TRUE)
-
-print(res.mfa_agg_byval)
-
-
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast2$pcscoremaybe <- res.mfa_agg_byval[["global.pca"]][["ind"]][["cos2"]][,1]
-
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast2$ar<- (clustering_new_pre_PCA_2_agg_by_val_sel_dcast2$ar_neg+clustering_new_pre_PCA_2_agg_by_val_sel_dcast2$ar_mid+
-  clustering_new_pre_PCA_2_agg_by_val_sel_dcast2$ar_pos)/3
-
-# cor.test(res.mfa_agg_byval[["global.pca"]][["ind"]][["cos2"]][,3],
-#          clustering_new_pre_PCA_2_agg_by_val_sel_dcast2$ar)
-
-```
-
-
-
-```{r}
-library("factoextra")
-eif_vyval <- get_eigenvalue(res.mfa_agg_byval)
-head(eif_vyval)
-
-
-```
-
-the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
-```{r}
-fviz_screeplot(res.mfa_agg_byval)
-
-```
-
-The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
-
-```{r}
-
-group_vybal <- get_mfa_var(res.mfa_agg_byval, "group")
-group_vybal
-
-```
-
-The different components can be accessed as follow:
-```{r}
-# Coordinates of groups
-head(group_vybal$coord)
-# Cos2: quality of representation on the factore map
-head(group_vybal$cos2)
-# Contributions to the  dimensions
-head(group_vybal$contrib)
-
-```
-
-To plot the groups of variables, type this:
-
-```{r}
-fviz_mfa_var(res.mfa_agg_byval, "group")
-
-```
-
-
-red color = active groups of variables
-green color = supplementary groups of variables
-The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
-
-To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
-```{r}
-# Contribution to the first dimension
-fviz_contrib(res.mfa_agg_byval, "group", axes = 1)
-# Contribution to the second dimension
-fviz_contrib(res.mfa_agg_byval, "group", axes = 2)
-
-```
-Quantitative variables
-The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
-```{r}
-quanti.var_agg_by_val <- get_mfa_var(res.mfa_agg_byval, "quanti.var")
-quanti.var_agg_by_val
-
-```
-
-```{r}
-# Coordinates
-head(quanti.var_agg_by_val$coord)
-# Cos2: quality on the factore map
-head(quanti.var_agg_by_val$cos2)
-# Contributions to the dimensions
-head(quanti.var_agg_by_val$contrib)
-
-```
-Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
-
-```{r}
-fviz_mfa_var(res.mfa_agg_byval, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE)
-
-
-```
-
-
-
-Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
-
-```{r}
-fviz_mfa_var(res.mfa_dcast, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE)
-
-```
-
-To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
-```{r}
-fviz_mfa_var(res.mfa_agg_byval, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE,
-             geom = c("point", "text"), legend = "bottom")
-
-```
-
-
-```{r}
-fviz_contrib(res.mfa_agg_byval, choice = "quanti.var", axes = 1, top = 20,
-             palette = "jco")
-fviz_contrib(res.mfa_agg_byval, choice = "quanti.var", axes = 2, top = 20,
-             palette = "jco")
-
-```
-Graph of individuals
-
-```{r}
-# To get the results for individuals, type this:
-
-ind_agg_byval <- get_mfa_ind(res.mfa_agg_byval)
-ind_agg_byval
-
-```
-To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
-
-```{r}
-fviz_mfa_ind(res.mfa_agg_byval, col.ind = "cos2", 
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE)
-
-fviz_mfa_ind(res.mfa_agg_byval, 
-             habillage = "ssid", # color by groups
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-```
-
-
-```{r}
-
-clustering_new_pre_PCA_2
-
-fviz_mfa_ind(res.mfa_agg_byval, 
-             # habillage = "stimIAPS2", # color by groups 
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-
-
-```
-
-Graph of partial individuals
-The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
-
-In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
-
-For a given individual, there are as many partial points as groups of variables.
-
-The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
-
-```{r}
-fviz_mfa_ind(res.mfa_agg_byval, partial = "all") 
-# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
-
-
-```
-
-
-Graph of partial axes
-The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
-
-```{r}
-fviz_mfa_axes(res.mfa_agg_byval)
-
-```
-
-
-with valence
-clustering_new_pre_PCA_2_agg_by_val_sel_dcast
-
-
-
-```{r}
-
-colnames(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2)
-res.mfa_agg_byval2 <- MFA(clustering_new_pre_PCA_2_agg_by_val_sel_dcast2, 
-               group = c(1, 3, 3, 3,3,3), 
-               type = c("n", "s", "s", "s","s", "s"),
-               name.group = c("ssid","pupil","HR","SCR", "AR", "VL"),
-               num.group.sup = c(1),
-               graph = TRUE)
-
-print(res.mfa_agg_byval2)
-
-
-```
-
-
-
-```{r}
-library("factoextra")
-eif_vyval2 <- get_eigenvalue(res.mfa_agg_byval2)
-head(eif_vyval2)
-
-
-```
-
-the function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the scree plot:
-```{r}
-fviz_screeplot(res.mfa_agg_byval2)
-
-```
-
-The function get_mfa_var() [in factoextra] is used to extract the results for groups of variables. This function returns a list containing the coordinates, the cos2 and the contribution of groups, as well as, the
-
-```{r}
-
-group_vybal2 <- get_mfa_var(res.mfa_agg_byval2, "group")
-group_vybal2
-
-```
-
-The different components can be accessed as follow:
-```{r}
-# Coordinates of groups
-head(group_vybal2$coord)
-# Cos2: quality of representation on the factore map
-head(group_vybal2$cos2)
-# Contributions to the  dimensions
-head(group_vybal2$contrib)
-
-```
-
-To plot the groups of variables, type this:
-
-```{r}
-fviz_mfa_var(res.mfa_agg_byval2, "group")
-
-```
-
-
-red color = active groups of variables
-green color = supplementary groups of variables
-The plot above illustrates the correlation between groups and dimensions. The coordinates of the four active groups on the first dimension are almost identical. This means that they contribute similarly to the first dimension. Concerning the second dimension, the two groups - odor and odor.after.shake - have the highest coordinates indicating a highest contribution to the second dimension.
-
-To draw a bar plot of groups contribution to the dimensions, use the function fviz_contrib():
-```{r}
-# Contribution to the first dimension
-fviz_contrib(res.mfa_agg_byval2, "group", axes = 1)
-# Contribution to the second dimension
-fviz_contrib(res.mfa_agg_byval2, "group", axes = 2)
-
-```
-Quantitative variables
-The function get_mfa_var() [in factoextra] is used to extract the results for quantitative variables. This function returns a list containing the coordinates, the cos2 and the contribution of variables:
-```{r}
-quanti.var_agg_by_val2 <- get_mfa_var(res.mfa_agg_byval2, "quanti.var")
-quanti.var_agg_by_val2
-
-```
-
-```{r}
-# Coordinates
-head(quanti.var_agg_by_val2$coord)
-# Cos2: quality on the factore map
-head(quanti.var_agg_by_val2$cos2)
-# Contributions to the dimensions
-head(quanti.var_agg_by_val2$contrib)
-
-```
-Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
-
-```{r}
-fviz_mfa_var(res.mfa_agg_byval2, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE)
-
-
-```
-
-
-
-Correlation between quantitative variables and dimensions. The R code below plots quantitative variables colored by groups. The argument palette is used to change group colors (see ?ggpubr::ggpar for more information about palette). Supplementary quantitative variables are in dashed arrow and violet color. We use repel = TRUE, to avoid text overlapping.
-
-```{r}
-fviz_mfa_var(res.mfa_agg_byval2, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE)
-
-```
-
-To make the plot more readable, we can use geom = c(“point”, “text”) instead of geom = c(“arrow”, “text”). We’ll change also the legend position from “right” to “bottom”, using the argument legend = “bottom”:
-```{r}
-fviz_mfa_var(res.mfa_agg_byval2, "quanti.var", palette = "jco", 
-             col.var.sup = "violet", repel = TRUE,
-             geom = c("point", "text"), legend = "bottom")
-
-```
-
-
-```{r}
-fviz_contrib(res.mfa_agg_byval2, choice = "quanti.var", axes = 1, top = 20,
-             palette = "jco")
-fviz_contrib(res.mfa_agg_byval, choice = "quanti.var", axes = 2, top = 20,
-             palette = "jco")
-
-```
-Graph of individuals
-
-```{r}
-# To get the results for individuals, type this:
-
-ind_agg_byval2 <- get_mfa_ind(res.mfa_agg_byval2)
-ind_agg_byval2
-
-```
-To plot individuals, use the function fviz_mfa_ind() [in factoextra]. By default, individuals are colored in blue. However, like variables, it’s also possible to color individuals by their cos2 values:
-
-```{r}
-fviz_mfa_ind(res.mfa_agg_byval2, col.ind = "cos2", 
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE)
-
-fviz_mfa_ind(res.mfa_agg_byval2, 
-             habillage = "ssid", # color by groups
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-```
-
-
-```{r}
-
-clustering_new_pre_PCA_2
-
-fviz_mfa_ind(res.mfa_agg_byval2, 
-             # habillage = "stimIAPS2", # color by groups 
-             # palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-             addEllipses = TRUE, ellipse.type = "confidence", 
-             repel = TRUE # Avoid text overlapping
-             ) 
-
-
-
-```
-
-Graph of partial individuals
-The results for individuals obtained from the analysis performed with a single group are named partial individuals. In other words, an individual considered from the point of view of a single group is called partial individual.
-
-In the default fviz_mfa_ind() plot, for a given individual, the point corresponds to the mean individual or the center of gravity of the partial points of the individual. That is, the individual viewed by all groups of variables.
-
-For a given individual, there are as many partial points as groups of variables.
-
-The graph of partial individuals represents each wine viewed by each group and its barycenter. To plot the partial points of all individuals, type this:
-
-```{r}
-fviz_mfa_ind(res.mfa_agg_byval2, partial = "all") 
-# If you want to visualize partial points for wines of interest, let say c(“1DAM”, “1VAU”, “2ING”), use this:
-
-
-```
-
-
-Graph of partial axes
-The graph of partial axes shows the relationship between the principal axes of the MFA and the ones obtained from analyzing each group using either a PCA (for groups of continuous variables) or a MCA (for qualitative variables).
-
-```{r}
-fviz_mfa_axes(res.mfa_agg_byval2)
-fviz_mfa_axes()
-
+save.image("subjobjPCAfeb9.RData")
 ```
 
 
-Mutual information
 
-```{r}
-install.packages("infotheo")
-library(infotheo)
-
-mutinformation(X, Y, method="emp")
-?mutinformation
-mutinformation(clustering_new_pre_PCA_2$arousal, clustering_new_pre_PCA_2$pup_basCor, 
-               method="mm")
-
-install.packages("entropy")
-
-entropy::mi.plugin(clustering_new_pre_PCA_2[,c(3,6)])
-```
