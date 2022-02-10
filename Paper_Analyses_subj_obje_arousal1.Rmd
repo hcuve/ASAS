@@ -6060,7 +6060,13 @@ res.mfa_bio_vs_self2_k2<- FactoMineR::MFA(clustering_new_pre_PCA3.1[,1:9],
                graph = TRUE)
 
 
+
+```
+
+
 # 
+
+```{r}
 # quanti
 
 # randomly resample withouth replacement
@@ -6447,50 +6453,39 @@ eigen_first$eigenvalue
 
 eigen_first%>%
   mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
-  subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+   # gather(dimension, value_dimenion, -group, -sim_no) %>%
+  group_by(component)%>%
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
   mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
-         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE)) %>% #create 95% to descrive interval around the observed estimate
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                               res.mfa_bio_vs_self2_k2$eig[1],
+                               res.mfa_bio_vs_self2_k2$eig[2])) %>% #create 95% to descrive interval around the observed estimate
+  # also store observed eige for each dimensions
   # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
   ggplot(aes(eigenvalue))+
-  geom_histogram(alpha = .2)+
-    geom_density()+
+  geom_histogram(aes(y=..density..), alpha = .3) +  # scale histogram y
+  geom_density(col = "red", alpha = .001)+
   # facet_grid(~component)+
-    geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), y = 10), color = "gray30")+
-  geom_point(x = res.mfa_bio_vs_self2_k2$eig[1],y = 10,size = 2, color = "red")+
+  geom_errorbar(aes(xmin = perc_5, xmax=perc_95, y = 1), color = "gray30")+
+  geom_point(aes(x = eig_obs_dim, y = 1),size = 2, color = "red", alpha = .3)+
 
   theme_classic()+
-  geom_vline(xintercept = 1, linetype = "dashed")+
-  ggtitle("distribution of boostraped eigen values for component  1 
-          red dot = observed eigenvalue, boostrapped 95%CI")+
-  annotate("text", x = 1.2, y = 20, label = "prob of obs eigen>= boot eigen = 51%")
-
-table(eigen_first$eigenvalue>1)
-
-t.testsample1<- eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
-  subset(!is.na(eigenvalue) & component == "comp 1" )
-
-t.test(1.14, mu = mean(t.testsample1$eigenvalue))
-
-# boostrap ratio
-# proposed by abdi for factir scores
-mean(t.testsample1$eigenvalue, na.rm = TRUE)/(sd(t.testsample1$eigenvalue,na.rm = TRUE))
-
+  geom_vline(aes(xintercept = perc_5), linetype = "dashed")+
+    geom_vline(aes(xintercept = perc_95), linetype = "dashed")+
+               
+  geom_hline(yintercept = 0, linetype = "dashed")+
+  facet_grid(~component)+
+  ggtitle("distribution of boostraped eigen values for components 
+          red dot = observed eigenvalue, boostrapped 95%CI")
+  # annotate("text", x = 1.2, y = 20, label = "prob of obs eigen>= boot eigen = 51%")
 
 
 ```
 
-
+use this in the resampling bit
 ```{r}
-# check eigen vectors (correlations
-
-# checpartials_first_n40_withrepl
-
-# check groups
-
-# binom.test(eigen_first$eigenvalue>1)
-
-
 
 # calculate the diffeence betwee true eufgenvalye abd boostrap eigenvakue
 # and check if it includes zero?
@@ -6515,113 +6510,37 @@ eigen_first%>%
   annotate("text", x = 0, y = 20, label = "95%CI")
 
 ```
-  # geom_vline(xintercept = 1, linetype = "dashed")
-
-table(eigen_first$eigenvalue>1)
 
 
-# boot::boot()
-
-
-```{r}
-
-t.test_sample<- eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
-  subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
-  mutate(eigen_d = (mean(eigenvalue))- res.mfa_bio_vs_self2_k2$eig[1])%>%
-   mutate(eigen_d2 = eigenvalue- res.mfa_bio_vs_self2_k2$eig[1])
-t.test(t.test_sample$eigen_d2)
-
-
-# technially a t test is calculated as the differnce between current mean and pipulation mean devied by population variance, since we often don't have population variance we estimate it from the sample
-
-
-# will this give us a t?
-(res.mfa_bio_vs_self2_k2$eig[1]- (mean(t.test_sample$eigenvalue, na.rm = TRUE)))/ 
-  (sd(t.test_sample$eigenvalue))
-
-mean(t.test_sample$eigen_d2)/  (sd(t.test_sample$eigenvalue))
-
-
-
-resamp_1st%>%
-  subset(sim_no = 1)%>%
-  subset(is.na(ssid) == FALSE)%>%
-  subset(ssid ==  306)
-
-
-?fabricatr::fabricate()
-
-
-library(fabricatr)
-
-# ),
-  # pollution = rnorm(N, mean = 5))
-fabricatr::fabricate(
-  stim = add_level(N = 3),
-  id = add_level(N = 30),
-  Var1 = runif(N, 2, 10),
-  Var2 = runif(N, -5, 6),
-  Var2 = runif(N, .2, 2),
-  Var4 = runif(N, -10, 10),
-  Var5 = runif(N, -10, 10)
-))%>%
-  arrange(stim)
-
-
-fabricate(
-  primary_schools = add_level(N = 3, 
-                              var1 = runif(N, 0, 10)),
-  students = link_levels(N = 30,
-                          by=join(var1, rho = 0.5)))
-
-
-```
-
-
-
-```{r}
-
-# dimension 2
-
-quantile(eigen_first$eigenvalue,.95, na.rm = TRUE)
-eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-    subset(!is.na(eigenvalue) & component == "comp 2" )%>%
-  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE),
-         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
-  ggplot(aes(eigenvalue))+
-  geom_histogram(alpha = .2)+
-    geom_density()+
-   geom_errorbar(aes(xmin = min(perc_5), xmax=max(perc_95), y = 10), color = "gray30")+
-  geom_point(x = res.mfa_bio_vs_self2_k2$eig[2],y = 10,size = 2, color = "red")+
-  # geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
-  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = 10))+
-  theme_classic()
   
-  
-```
-  
-  # first dimension is significant
 
 ```{r}
 
  # same thing as above with variance
 # quantile(eigen_first$`percentage of variance`,.95, na.rm = TRUE)
-eigen_first%>%
-  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
-  subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
-  mutate(perc_5 = quantile(`percentage of variance`,.025, na.rm = TRUE),
+
+
+eigen_first %>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+  # gather(dimension, value_dimenion, -group, -sim_no) %>%
+  group_by(component)%>%
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(`percentage of variance`,.025, na.rm = TRUE), 
          perc_95 = quantile(`percentage of variance`,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+  mutate(perc_obs_dim = if_else(component == "comp 1", 
+                               res.mfa_bio_vs_self2_k2$eig[1,2],
+                               res.mfa_bio_vs_self2_k2$eig[2,2])) %>% #
   ggplot(aes(`percentage of variance`))+
   geom_histogram(aes(y=..density..), alpha=0.5,
                  position="identity")+
   geom_density(alpha=.2) +
   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y = .3), color = "gray30")+
-  geom_point(x = res.mfa_bio_vs_self2_k2$eig[1,2],y = .3,size = 3, color = "red")+
+  geom_point(aes(x = perc_obs_dim,y = .3),size = 3, color = "red")+
+  facet_grid(~component)+
 
-    # geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
-  # geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
+    geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
+  geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
   theme_classic()
 
 ```
@@ -6631,44 +6550,35 @@ eigen_first%>%
 ```{r}
 # let's go to variable correlations with dimenstions
 
-cor_first %>%
+
+cor.test_obsmfa<- as.data.frame(res.mfa_bio_vs_self2_k2$quanti.var$cor) %>%
+   mutate(variable = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$quanti.var$cor)), 1,6)))%>%
+ gather(dimension, value_dimenion, -variable)
+
+
+cor_first1<- cor_first %>%
   mutate(variable = as.factor(substr(rownames(cor_first), 1,6)))%>%
-    subset(!is.na(Dim.1)) %>%
-  # create interval per variable
-  group_by(variable)%>%
-   mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
-         perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
-  # subset(variable == "arousa"|variable == "valenc")%>%
-  # select(c("arousal", "valence"))%>%
-  ggplot(aes(Dim.1)) +
+    gather(dimension, value_dimenion, -variable, -sim_no) %>%
+  group_by(variable,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))
+
+left_join(cor_first1, cor.test_obsmfa, by = c("variable", "dimension")) %>%
+  ggplot(aes(value_dimenion.x)) +
   geom_histogram(aes(y=..density..), alpha=0.5,
                  position="identity")+
   geom_density(alpha=.2) +
-   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =.6 ), color = "gray30")+
-  facet_grid(~variable)+
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-2 ), color = "gray30")+
+  facet_grid(~dimension)+
+  geom_point(aes(x = value_dimenion.y, y = -2))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  facet_grid(variable~dimension)+
   # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
-  #  geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+
   theme_classic()
 
 
-cor_first %>%
-  mutate(variable = as.factor(substr(rownames(cor_first), 1,6)))%>%
-    subset(!is.na(Dim.2)) %>%
-  # create interval per variable
-  group_by(variable)%>%
-   mutate(perc_5 = quantile(Dim.2,.025, na.rm = TRUE),
-         perc_95 = quantile(Dim.2,.975, na.rm = TRUE))%>%
-  # subset(variable == "arousa"|variable == "valenc")%>%
-  # select(c("arousal", "valence"))%>%
-  ggplot(aes(Dim.2)) +
-  geom_histogram(aes(y=..density..), alpha=0.5,
-                 position="identity")+
-  geom_density(alpha=.2) +
-   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =.6 ), color = "gray30")+
-  facet_grid(~variable)+
-  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
-   geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .1, size = 1)+
-  theme_classic()
+
 
 ```
 
@@ -6678,25 +6588,64 @@ The graph of partial axes shows the relationship between the principal axes of t
 ```{r}
 View(partials_first)
 
-partials_first%>%
-  mutate(dimension = as.factor(substr(rownames(partials_first), 1,4)),
+res.mfa_bio_vs_self2_k2$partial.axes$cor
+
+partials_first_1_obs<- as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor) %>%
+   mutate(dimension_partial = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)), 1,4)),
+           group = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)), 5,9)))%>%
+ gather(dimension, value_dimenion,-group,-dimension_partial)
+
+
+
+
+partials_first_1boot<- partials_first%>%
+  mutate(dimension_partial = as.factor(substr(rownames(partials_first), 1,4)),
          group = as.factor(substr(rownames(partials_first), 5,9)))%>%
-    subset(!is.na(Dim.1)) %>%
-  # create interval per variable
-  group_by(dimension, group)%>%
-   mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
-         perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
-  ggplot(aes(Dim.1)) +
-  geom_histogram(bins = 500)+
-  # geom_histogram(aes(y=..density..), alpha=0.5,
-  #                position="identity")+
+   gather(dimension, value_dimenion, -group, -sim_no, -dimension_partial) %>%
+   group_by(dimension_partial,dimension,group)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))
+
+left_join(partials_first_1boot,partials_first_1_obs,by = c("dimension_partial", "group", "dimension")) %>%
+  group_by(dimension_partial,dimension, group)%>%
+  subset(dimension_partial == "Dim1")%>%
+   # mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+   #       perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
   geom_density(alpha=.2) +
-   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =10 ), color = "gray30")+
+  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-5 ), color = "gray30")+
+  geom_point(aes(x = value_dimenion.y, y = -5))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  
   facet_grid(dimension~group)+
-  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
-   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
-  theme_classic()
-  ylim(0,100)
+  
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .5)+
+  theme_classic()+
+  ggtitle("partial to dimension 1")
+
+
+left_join(partials_first_1boot,partials_first_1_obs,by = c("dimension_partial", "group", "dimension")) %>%
+  group_by(dimension_partial,dimension, group)%>%
+  subset(dimension_partial == "Dim2")%>%
+   # mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+   #       perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-5 ), color = "gray30")+
+  geom_point(aes(x = value_dimenion.y, y = -5))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  
+  facet_grid(dimension~group)+
+  
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .5)+
+  theme_classic()+
+  ggtitle("partial to dimension 2")
+
+
 
 
 ```
@@ -6705,35 +6654,106 @@ graph of groups
 View(groups_first)
 ?gather
 
+
+
+groups_first_obs<- as.data.frame(res.mfa_bio_vs_self2_k2$group$correlation) %>%
+   mutate(group = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$group$correlation)), 1,4)))%>%
+ gather(dimension, value_dimenion_obs,-group)
+
+
+res.mfa_bio_vs_self2_k2$group$correlation
+
 # we sgoudl probably store cos2 rather than correlatiopn
 # their cos2 values corresponding to their quality of representation on the factor map
-groups_first%>%
+groups_first_1boot<- groups_first%>%
   mutate(group = as.factor(substr(rownames(groups_first), 1,4)))%>%
-    subset(!is.na(Dim.1)) %>%
-  # create interval per variable
- 
-
-  gather(dimension, value_dimenion, -group, -sim_no) %>%
+  gather(dimension, value_dimenion,-group,-sim_no)%>%
   # -perc_5,-perc_95, 
    group_by(group,dimension)%>%
    mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
-         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))
+
+?boot::boot.ci
+boot::boot.ci(groups_first_1boot$value_dimenion, type = "bca")[1]
+?bootBCa
+bootBCa(.5, groups_first_1boot$value_dimenion, n = 2600)[1]
+left_join(groups_first_1boot, groups_first_obs,by = c("group", "dimension"))%>%
   
-  ggplot(aes(value_dimenion, color = group)) +
-  geom_histogram(bins = 500)+
-  # geom_histogram(aes(y=..density..), alpha=0.5,
-  #                position="identity")+
+
+
+  
+  ggplot(aes(value_dimenion)) +
+   geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
   geom_density(alpha=.2) +
-   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =10 ), color = "gray30")+
+  
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-3 ), color = "gray30")+
+   geom_point(aes(x = value_dimenion_obs, y = -3))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  
   facet_grid(dimension~group)+
   # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
    # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
   theme_classic()
-  ylim(0,100)
+  
+  # bootsrap confidence intervals don't include point estimate
+# seems like a consequnce of resampling a biased statistocs
+# https://stats.stackexchange.com/questions/388931/bootstrap-confidence-intervals-do-not-include-the-observed-mean-can-this-be
+
+
+# try plooting with corrected bca
+# ?bca
+# groups_first_1boot_CIcorrected<- groups_first%>%
+#   mutate(group = as.factor(substr(rownames(groups_first), 1,4)))%>%
+#   gather(dimension, value_dimenion,-group,-sim_no)%>%
+#   # -perc_5,-perc_95, 
+#    group_by(group,dimension)%>%
+#   subset(!is.na(value_dimenion))%>%
+#    mutate(perc_5 = bca(value_dimenion)[1],
+#          perc_95 = bca(value_dimenion)[2])
+
+
+groups_first_1boot_CIcorrected2<- groups_first%>%
+  mutate(group = as.factor(substr(rownames(groups_first), 1,4)))%>%
+  gather(dimension, value_dimenion,-group,-sim_no)
+
+
+
+left_join(groups_first_1boot_CIcorrected2, groups_first_obs,by = c("group", "dimension"))%>%
+  subset(!is.na(value_dimenion))%>%
+  group_by(dimension,group)%>%
+   mutate(perc_5 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 2600)[1],
+         perc_95 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 2600)[2])%>%
+   ggplot(aes(value_dimenion)) +
+   geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-3 ), color = "gray30")+
+   geom_point(aes(x = value_dimenion_obs, y = -3))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  
+  facet_grid(dimension~group)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
 
 
 ```
 
+
+```{r}
+install.packages("coxed")
+library(coxed)
+
+bcatest<- partials_first_1boot%>%
+  subset(!is.na(value_dimenion))
+
+bcatest<- !is.na(bcatest)
+
+bca(bcatest$value_dimenion)[1]
+
+```
 
 Do we get the same patterns when loking at paticipants and stimuli searatelly
 
@@ -6825,7 +6845,7 @@ quanti.var_bio_vs_self2_scale
 
 res.mfa_bio_vs_self2_scale
 fviz_mfa_var(res.mfa_bio_vs_self2_scale, 
-             "quanti.var", 
+             # "quanti.var", 
              palette = "jco", 
              col.var.sup = "violet", 
              repel = TRUE,
@@ -7001,111 +7021,125 @@ one approach for significance is to create random shuffling that destroys the re
 e.g. by resshugling the values betwen variabels per participant.
 e.g. go to participant one, resgule the order of puopil values for  trials, fo th scr fo the same and so on
 
+to see the reshufllfing for the hierarqucal data see separate script - paper_analyses_subj1
+
+# agg by pp
+
+
 ```{r}
-
-clustering_new_pre_PCA3.1_copy<- clustering_new_pre_PCA3.1
-colnames(clustering_new_pre_PCA3.1)
-
-?sample
-
-# this is slow so need to figure  a better way to to this but for now
-clustering_new_pre_PCA3.1_copy %>%
-  subset(ssid == 304 &val_cut_iaps == "mid" & aro_cut_iaps == "low" )%>%
+clustering_new_pre_PCA3.1.scale_agg_bysid<- clustering_new_pre_PCA3.1%>%
   group_by(ssid)%>%
-  transform(pup_basCor = sample(pup_basCor, replace = TRUE),
-            Bio_Mean_HR_dif = sample(Bio_Mean_HR_dif, replace = TRUE),
-            log_BIO_CDA.PhasicMax = sample(log_BIO_CDA.PhasicMax, replace = TRUE),
-            arousal = sample(arousal, replace = F),
-            valence = sample(valence, replace = F))
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+
+
+clustering_new_pre_PCA3.1.scale_aft_agg_bysid<- clustering_new_pre_PCA3.1.scale_agg_bysid%>%
+  mutate_if(is.numeric, scale)
+
+res.mfa_agg_bysubj <- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_agg_bysid, 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("sid","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+
 
 
 ```
-            
+
+
+boostrap subjct results
 
 
 ```{r}
 
+factoextra::fviz_eig(res.mfa_agg_bysubj)
+factoextra::fviz_mfa_group(res.mfa_agg_bysubj)
 
-colnames(resampled_temp_reshuf)
- # create emopty dataframe
-resamp_1st_reshuf<- data.frame(matrix(NA, nrow = 1, ncol = 9))
-cnames_resamp_reshufl<- names(resampled_temp_reshuf)
-
-colnames(resamp_1st_reshuf)<- cnames_resamp_reshufl
-colnames(resamp_1st_reshuf)
+res.mfa_bio_vs_self2_k2$eig
+res.mfa_agg_bysubj$eig
+res.mfa_agg_bysubj$quanti.var$cor
+res.mfa_agg_bysubj$group$cos2
 
 
+
+```
+
+
+
+```{r}
+colnames(resampled_temp_bysubj)
+resamp_1st_bysubj<- data.frame(matrix(NA, nrow = 1, ncol = 8))
+
+cnames_resamp_subj<- names(resampled_temp_bysubj)
+colnames(resamp_1st_bysubj)<- cnames_resamp_subj
+colnames(resamp_1st_bysubj)
 # create emoty  storage rame for eigenvakues
-eigen_first_reshuf<- as.data.frame(res.mfa_bio_vs_self2_k2$eig)
-eigen_first_reshuf[,]<- NA
+eigen_first_bysubj<- as.data.frame(eugentest)
+eigen_first_bysubj[,]<- NA
 
-# eigen_first_reshuf<- as.data.frame(eigen_first_reshuf)
+# eigen_first<- as.data.frame(eigen_first)
 
 # create empty storage for correlations
-cor_first_reshuf<- as.data.frame(cor_first_reshuf)
-cor_first_reshuf[,]<- NA
-# cor_first_reshuf<- as.data.frame(cor_first_reshuf)
+cor_first_bysubj<- as.data.frame(cortest)
+cor_first_bysubj[,]<- NA
+# cor_first<- as.data.frame(cor_first)
 
 
 # now store group results/partials
 
 # res.mfa_bio_vs_self2_k2$group$correlation
-partials_first_reshuf <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
-partials_first_reshuf[,]<- NA
-partials_first_reshuf
-partials_first_reshuf$sim_no<- NA
+partials_first_bysubj <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_bysubj[,]<- NA
+partials_first_bysubj
+partials_first_bysubj$sim_no<- NA
 
 
 # hierarquical clustering
-clustering_new_pre_PCA3.1$ssid<- as.character(clustering_new_pre_PCA3.1$ssid)
-clustering_new_pre_PCA3.1$stimDescription<- as.character(clustering_new_pre_PCA3.1$stimDescription)
-# having clusters as factors causes a subscript oput of bound error
-
-
+clustering_new_pre_PCA3.1.scale_agg_bysid$ssid<- as.character(clustering_new_pre_PCA3.1.scale_agg_bysid$ssid)
+# clustering_new_pre_PCA3.1.scale_agg_bysid$stimDescription<- as.character(clustering_new_pre_PCA3.1.scale_agg_bysid$stimDescription)
 
 
 # think we need to store groups
 
-groups_first_reshuf<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+groups_first_bysubj<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
 # res.mfa_bio_vs_self2_k2$group$correlation
 
-groups_first_reshuf[,]<- NA
-groups_first_reshuf
-groups_first_reshuf$sim_no<- NA
+groups_first_bysubj[,]<- NA
+groups_first_bysubj
+groups_first_bysubj$sim_no<- NA
+
 
 
 #################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+colnames(clustering_new_pre_PCA3.1.scale_agg_bysid)
 
-for (i in 1:10000) {
+for (i in 1:5000) {
   message(sprintf("$$$$$RUNING sim %i", i))
   
-  
-# changed below to replace treue - shuflle with replacement
-  # https://stats.stackexchange.com/questions/104040/resampling-simulation-methods-monte-carlo-bootstrapping-jackknifing-cross?rq=1
-  # See the question on permutation vs bootstrapping - "The permutation test is best for testing hypotheses and bootstrapping is best for estimating confidence intervals".
-resampled_temp_reshuf <-    clustering_new_pre_PCA3.1_copy[,c(1,2,3, 5:9)] %>%
-  group_by(ssid)%>%
-  transform(pup_basCor = 
-              sample(pup_basCor, replace = FALSE),
-            Bio_Mean_HR_dif = sample(Bio_Mean_HR_dif, replace = FALSE),
-            log_BIO_CDA.PhasicMax = sample(log_BIO_CDA.PhasicMax, replace = FALSE),
-            arousal = sample(arousal, replace = FALSE),
-            valence = sample(valence, replace = FALSE))
-  
-  resampled_temp_reshuf$sim_no = i
-  # resampled_temp_reshuf$ssid_new <- as.factor(substr(resampled_temp_reshuf$stimDescription_unique,1,6))
-  # resampled_temp_reshuf$newstim <- substr(resampled_temp_reshuf$stimDescription_unique,7,30)
-  # resampled_temp_reshuf$stimDescription<- as.factor(resampled_temp_reshuf$stimDescription)
+  resampled_temp_bysubj<- fabricatr::resample_data(clustering_new_pre_PCA3.1.scale_agg_bysid, 
+                                  N = c(51),
+                                  ID_labels = c("ssid"),
+                                  unique_labels = TRUE)
+  # View(resampled_temp_bysubj)
+  resampled_temp_bysubj$sim_no = i
+  # resampled_temp_bysubj$ssid_new <- as.factor(substr(resampled_temp_bysubj$stimDescription_unique,1,6))
+  # resampled_temp_bysubj$newstim <- substr(resampled_temp_bysubj$stimDescription_unique,7,30)
+  # resampled_temp_bysubj$stimDescription<- as.factor(resampled_temp_bysubj$stimDescription)
   
 # run PCA on the resampled data
-# ?list
-    message(sprintf("$$$$$fitting PCA %i", i))
-    mfa.res_reshuf <- FactoMineR::MFA(resampled_temp_reshuf[,c(1:8)], 
-               group = c(3, 3, 2), 
+  colnames(resampled_temp_bysubj)
+    # message(sprintf("$$$$$fitting PCA %i", i))
+    mfa.res_bysubj <- FactoMineR::MFA(resampled_temp_bysubj[,1:6], 
+               group = c(1, 3, 2), 
                type = c("n", "s", "s"),
               # ind.sup = c(1),
               ncp = 2,
-               name.group = c("pp_stim","auton","subj"),
+               name.group = c("sid","auton","subj"),
                num.group.sup = c(1),
                # ind.sup = c(1,2),
                graph = FALSE)
@@ -7113,37 +7147,40 @@ resampled_temp_reshuf <-    clustering_new_pre_PCA3.1_copy[,c(1,2,3, 5:9)] %>%
 
 # store the eigen values
 message(sprintf("$$$$$storing PCA %i", i))
-eugentest_reshufl<- as.data.frame(mfa.res_reshuf$eig[1:2,])
-eugentest_reshufl$sim_no<- i
+eugentest_bysubj<- as.data.frame(mfa.res_bysubj$eig[1:2,])
+eugentest_bysubj$sim_no<- i
 
-cortest_reshufl<- as.data.frame(mfa.res_reshuf$quanti.var$cor)
-cortest_reshufl$sim_no = i
+cortest_bysubj<- as.data.frame(mfa.res_bysubj$quanti.var$cor)
+cortest_bysubj$sim_no = i
 
-partials_temp_reshuf<- as.data.frame(mfa.res_reshuf$partial.axes$cor)
-partials_temp_reshuf$sim_no = i
+partials_temp_bysubj<- as.data.frame(mfa.res_bysubj$partial.axes$cor)
+partials_temp_bysubj$sim_no = i
 
 # groups
-group_temp_reshuf<- as.data.frame(mfa.res_reshuf$group$cos2)
-group_temp_reshuf$sim_no = i
+group_temp_bysubj<- as.data.frame(mfa.res_bysubj$group$cos2)
+group_temp_bysubj$sim_no = i
 
 
 # update the initial d=frames
   message(sprintf("$$$$$upating dataframes %i", i))
-  resamp_1st_reshuf<- (bind_rows(resamp_1st_reshuf, resampled_temp_reshuf))
-eigen_first_reshuf<- bind_rows(eigen_first_reshuf, eugentest_reshufl)
-cor_first_reshuf<- bind_rows(cor_first_reshuf, cortest_reshufl)
-partials_first_reshuf<- bind_rows(partials_first_reshuf, partials_temp_reshuf)
-groups_first_reshuf<- bind_rows(groups_first_reshuf, group_temp_reshuf)
+  resamp_1st_bysubj<- (bind_rows(resamp_1st_bysubj, resampled_temp_bysubj))
+eigen_first_bysubj<- bind_rows(eigen_first_bysubj, eugentest_bysubj)
+cor_first_bysubj<- bind_rows(cor_first_bysubj, cortest_bysubj)
+partials_first_bysubj<- bind_rows(partials_first_bysubj, partials_temp_bysubj)
+groups_first_bysubj<- bind_rows(groups_first_bysubj, group_temp_bysubj)
   message(sprintf("$$$$$completed iteration%i", i))
 }
 
+resamp_1st_bysubj
+View(resamp_1st_bysubj)
 
-save(clustering_new_pre_PCA3.1_copy,resampled_temp_reshuf,
-     resamp_1st_reshuf,
-     eigen_first_reshuf,
-     cor_first_reshuf,
-     res.mfa_bio_vs_self2_k2,
-     clustering_new_pre_PCA3.1, file = "resample_hierar.RData")
+
+resamp_1st_bysubj
+
+
+
+resamp_1st_bysubj%>%
+  subset(sim_no == 11)
 
 
 
@@ -7151,156 +7188,123 @@ save(clustering_new_pre_PCA3.1_copy,resampled_temp_reshuf,
 
 
 
-visualise resshufled null data
+
+visualise boostrap CIs for agg by subjec
 
 
-
-```{r}
-
-
-eigen_first_reshuf%>%
-  mutate(component =as.factor(substr(rownames(eigen_first_reshuf), 1,6)))%>% #retrieve names for components
-  subset(!is.na(eigenvalue))%>% #select only component 1 and remove nas I introduced in the dataframe
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+   # gather(dimension, value_dimenion, -group, -sim_no) %>%
   group_by(component)%>%
-  
-   mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
          perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
   ungroup()%>%
-    group_by(component)%>%
   mutate(eig_obs_dim = if_else(component == "comp 1", 
                                res.mfa_bio_vs_self2_k2$eig[1],
-                               res.mfa_bio_vs_self2_k2$eig[2])) %>% #store observed to visualise ion the null
-  mutate(prob = paste(((sum(eigenvalue>=eig_obs_dim))/n())*100, paste0("%"))) %>%
+                               res.mfa_bio_vs_self2_k2$eig[2])) %>% #create 95% to descrive interval around the observed estimate
+  # also store observed eige for each dimensions
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
   ggplot(aes(eigenvalue))+
-  geom_histogram(aes(y=..density..),bins = 500, alpha = .3) +  # scale histogram y
+  geom_histogram(aes(y=..density..), alpha = .3) +  # scale histogram y
   geom_density(col = "red", alpha = .001)+
   # facet_grid(~component)+
-    geom_vline(aes(xintercept = eig_obs_dim),size = 2, color = "red", linetype = "dashed", alpha = .3)+
-  geom_point(aes(x = eig_obs_dim, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  geom_errorbar(aes(xmin = perc_5, xmax=perc_95, y = 1), color = "gray30")+
+  geom_point(aes(x = eig_obs_dim, y = 1),size = 2, color = "red", alpha = .3)+
 
   theme_classic()+
-
-  # annotate(aes(text, label = prob))
-
-  theme_classic()+
-  facet_grid(~component)
-
-# component 1 is significant
-```
-
-
-cor reshudl
+  geom_vline(aes(xintercept = perc_5), linetype = "dashed")+
+    geom_vline(aes(xintercept = perc_95), linetype = "dashed")+
+               
+  geom_hline(yintercept = 0, linetype = "dashed")+
+  facet_grid(~component)+
+  ggtitle("distribution of boostraped eigen values for components 
+          red dot = observed eigenvalue, boostrapped 95%CI")
+  # annotate("text", x = 1.2, y = 20, label = "prob of obs eigen>= boot eigen = 51%")
 
 
 ```{r}
 
-cor.test_obsmfa<- as.data.frame(res.mfa_bio_vs_self2_k2$quanti.var$cor) %>%
-   mutate(variable = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$quanti.var$cor)), 1,6)))%>%
+eigen_first_bysubj%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+   # gather(dimension, value_dimenion, -group, -sim_no) %>%
+  group_by(component)%>%
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                              res.mfa_agg_bysubj$eig[1],
+                              res.mfa_agg_bysubj$eig[2])) %>% #create 95% to descrive interval around the observed estimate
+  # also store observed eige for each dimensions
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..), alpha = .3) +  # scale histogram y
+  geom_density(col = "red", alpha = .001)+
+  # facet_grid(~component)+
+  geom_errorbar(aes(xmin = perc_5, xmax=perc_95, y = 1), color = "gray30")+
+  geom_point(aes(x = eig_obs_dim, y = 1),size = 2, color = "red", alpha = .3)+
+
+  theme_classic()+
+  geom_vline(aes(xintercept = perc_5), linetype = "dashed")+
+    geom_vline(aes(xintercept = perc_95), linetype = "dashed")+
+               
+  geom_hline(yintercept = 0, linetype = "dashed")+
+  facet_grid(~component)
+  # annotate("text", x = 1.2, y = 20, label = "prob of obs eigen>= boot eigen = 51%")
+
+
+
+
+
+```
+
+res.mfa_agg_bysubj
+variables and dimension corelations
+```{r}
+res.mfa_agg_bysubj
+cor.test_obsmfa_bysubj<- as.data.frame(res.mfa_agg_bysubj$quanti.var$cor) %>%
+   mutate(variable = as.factor(substr(rownames(as.data.frame(res.mfa_agg_bysubj$quanti.var$cor)), 1,6)))%>%
  gather(dimension, value_dimenion, -variable)
 
-cor.test_obsmfa
 
-colnames(cor_first_reshuf)
-cor_first_reshuf1<- cor_first_reshuf %>%
-  mutate(variable = as.factor(substr(rownames(cor_first_reshuf), 1,6)))%>%
+cor_first_bysubj1<- cor_first_bysubj %>%
+  mutate(variable = as.factor(substr(rownames(cor_first), 1,6)))%>%
     gather(dimension, value_dimenion, -variable, -sim_no) %>%
-  
   group_by(variable,dimension)%>%
    mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
-         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
-  subset(!is.na(value_dimenion))
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))
 
 
-
-# this mighgt have to do with the wrong test
-left_join(cor_first_reshuf1, cor.test_obsmfa, by = c("variable", "dimension")) %>%
-  group_by(variable,dimension)%>%
-     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
-   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
-  # the line above computes the probability that the correlation is more extreme (in magnitutde) thn the observed one
-   
+left_join(cor_first_bysubj1, cor.test_obsmfa_bysubj, by = c("variable", "dimension")) %>%
   ggplot(aes(value_dimenion.x)) +
   geom_histogram(aes(y=..density..), alpha=0.5,
                  position="identity")+
   geom_density(alpha=.2) +
-  # geom_point(aes(x = value_dimenion.y, y = -2))+
-    # geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-2 ), color = "gray30")+
+  facet_grid(~dimension)+
+  geom_point(aes(x = value_dimenion.y, y = -2))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
   facet_grid(variable~dimension)+
-   geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
-  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
   # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
 
   theme_classic()
 
-```
-
-
-
-```{r}
-partials_first_1_obs<- as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor) %>%
-   mutate(dimension_partial = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)), 1,4)),
-           group = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$partial.axes$cor)), 5,9)))%>%
- gather(dimension, value_dimenion,-group,-dimension_partial)
-
-
-partials_first_reshuf_1<- partials_first_reshuf %>%
-  mutate(dimension_partial = as.factor(substr(rownames(partials_first_reshuf), 1,4)),
-         group = as.factor(substr(rownames(partials_first_reshuf), 5,9)))%>%
-   gather(dimension, value_dimenion, -group, -sim_no, -dimension_partial) %>%
-   group_by(dimension_partial,dimension,group)%>%
-   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
-         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
-  subset(!is.na(value_dimenion))
-
-
-left_join(partials_first_reshuf_1,partials_first_1_obs,by = c("dimension_partial", "group", "dimension")) %>%
-  group_by(dimension_partial,dimension, group)%>%
-   # group_by(variable,dimension)%>%
-     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
-   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
-  subset(dimension_partial == "Dim1")%>%
-   # mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
-   #       perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
-  ggplot(aes(value_dimenion.x)) +
-  geom_histogram(aes(y=..density..), alpha=0.5,
-                 position="identity")+
-  geom_density(alpha=.2) +
-  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-5 ), color = "gray30")+
-  geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
-  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
-  facet_grid(dimension~group)+
-  
-
-  theme_classic()+
-  ggtitle("partial to dimension 1")
-
-
-
-left_join(partials_first_reshuf_1,partials_first_1_obs,by = c("dimension_partial", "group", "dimension")) %>%
-  group_by(dimension_partial,dimension, group)%>%
-   # group_by(variable,dimension)%>%
-     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
-   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
-  subset(dimension_partial == "Dim2")%>%
-   # mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
-   #       perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
-  ggplot(aes(value_dimenion.x)) +
-  geom_histogram(aes(y=..density..), alpha=0.5,
-                 position="identity")+
-  geom_density(alpha=.2) +
-  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-5 ), color = "gray30")+
-  geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
-  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
-  facet_grid(dimension~group)+
-
-  theme_classic()+
-  ggtitle("partial to dimension 2")
 
   
 ```
+much less consistent
 
-Groups
 
+groups_first_obs<- as.data.frame(res.mfa_bio_vs_self2_k2$group$correlation) %>%
+   mutate(group = as.factor(substr(rownames(as.data.frame(res.mfa_bio_vs_self2_k2$group$correlation)), 1,4)))%>%
+ gather(dimension, value_dimenion_obs,-group)
+
+
+res.mfa_bio_vs_self2_k2$group$correlation
+
+# we sgoudl probably store cos2 rather than correlatiopn
+# their cos2 values corresponding to their quality of representation on the factor map
 groups_first_1boot<- groups_first%>%
   mutate(group = as.factor(substr(rownames(groups_first), 1,4)))%>%
   gather(dimension, value_dimenion,-group,-sim_no)%>%
@@ -7334,25 +7338,352 @@ left_join(groups_first_1boot, groups_first_obs,by = c("group", "dimension"))%>%
 
 ```{r}
 
-groups_first_reshuf<- groups_first_reshuf%>%
+
+
+groups_first_bysubj_obs<- as.data.frame(res.mfa_agg_bysubj$group$correlation) %>%
+   mutate(group = as.factor(substr(rownames(as.data.frame(res.mfa_agg_bysubj$group$correlation)), 1,4)))%>%
+ gather(dimension, value_dimenion_obs,-group)
+
+groups_first_bysubj_boot<- groups_first_bysubj%>%
+  mutate(group = as.factor(substr(rownames(groups_first), 1,4)))%>%
+  gather(dimension, value_dimenion,-group,-sim_no)
+  # -perc_5,-perc_95, 
+ 
+
+left_join(groups_first_bysubj_boot, groups_first_bysubj_obs,by = c("group", "dimension"))%>%
+    group_by(group,dimension)%>%
+   mutate(perc_5 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 51)[1],
+         perc_95 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 51)[2])%>%
+
+  ggplot(aes(value_dimenion)) +
+   geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-1 ), color = "gray30")+
+   geom_point(aes(x = value_dimenion_obs, y = -1))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  
+  facet_grid(dimension~group)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+
+```
+
+
+
+resample agg by sbj
+
+
+```{r}
+colnames(resamp_1st_bysubj_reshuf)
+ # create emopty dataframe
+resamp_1st_bysubj_reshuf<- data.frame(matrix(NA, nrow = 1, ncol = 7))
+cnames_resamp_bysubj_reshuf<- names(resampled_temp_bysubj_reshuf)
+
+colnames(resamp_1st_bysubj_reshuf)<- cnames_resamp_bysubj_reshuf
+colnames(resamp_1st_bysubj_reshuf)
+# create emoty  storage rame for eigenvakues
+eigen_first_bysubj_reshuf<- as.data.frame(eugentest)
+eigen_first_bysubj_reshuf[,]<- NA
+
+# eigen_first_bysubj_reshuf<- as.data.frame(eigen_first_bysubj_reshuf)
+
+# create empty storage for correlations
+cor_first_bysubj_reshuf<- as.data.frame(cortest)
+cor_first_bysubj_reshuf[,]<- NA
+# cor_first_bysubj_reshuf<- as.data.frame(cor_first_bysubj_reshuf)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first_bysubj_reshuf <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_bysubj_reshuf[,]<- NA
+partials_first_bysubj_reshuf
+partials_first_bysubj_reshuf$sim_no<- NA
+
+
+# hierarquical clustering
+clustering_new_pre_PCA3.1$ssid <- as.character(clustering_new_pre_PCA3.1$ssid)
+clustering_new_pre_PCA3.1$stimDescription<- as.character(clustering_new_pre_PCA3.1$stimDescription)
+# having clusters as factors causes a subscript oput of bound error
+
+
+# think we need to store groups
+
+groups_first_bysubj_reshuf<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first_bysubj_reshuf[,]<- NA
+groups_first_bysubj_reshuf
+groups_first_bysubj_reshuf$sim_no<- NA
+
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+
+for (i in 1:10000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  # changed below to replace treue - shuflle with replacement
+  # https://stats.stackexchange.com/questions/104040/resampling-simulation-methods-monte-carlo-bootstrapping-jackknifing-cross?rq=1
+  # See the question on permutation vs bootstrapping - "The permutation test is best for testing hypotheses and bootstrapping is best for estimating confidence intervals".
+resampled_temp_bysubj_reshuf <- clustering_new_pre_PCA3.1.scale_agg_bysid %>%
+  # group_by(ssid)%>%
+  transform(pup_basCor = 
+              sample(pup_basCor, replace = FALSE),
+            Bio_Mean_HR_dif = sample(Bio_Mean_HR_dif, replace = FALSE),
+            log_BIO_CDA.PhasicMax = sample(log_BIO_CDA.PhasicMax, replace = FALSE),
+            arousal = sample(arousal, replace = FALSE),
+            valence = sample(valence, replace = FALSE))
+  
+  resampled_temp_bysubj_reshuf$sim_no = i
+
+# run PCA on the resampled data
+# ?list
+  colnames(resampled_temp_bysubj_reshuf)
+    message(sprintf("$$$$$fitting PCA %i", i))
+    mfa.res_bysubj_reshuf <- FactoMineR::MFA(resampled_temp_bysubj_reshuf[,c(1:6)], 
+               group = c(1, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest_bysubj_reshufl<- as.data.frame(mfa.res_bysubj_reshuf$eig[1:2,])
+eugentest_bysubj_reshufl$sim_no<- i
+
+cortest_bysubj_reshufl<- as.data.frame(mfa.res_bysubj_reshuf$quanti.var$cor)
+cortest_bysubj_reshufl$sim_no = i
+
+partials_temp_bysubj_reshuf<- as.data.frame(mfa.res_bysubj_reshuf$partial.axes$cor)
+partials_temp_bysubj_reshuf$sim_no = i
+
+# groups
+group_temp_bysubj_reshuf<- as.data.frame(mfa.res_bysubj_reshuf$group$cos2)
+group_temp_bysubj_reshuf$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st_bysubj_reshuf<- (bind_rows(resamp_1st_bysubj_reshuf, resampled_temp_bysubj_reshuf))
+eigen_first_bysubj_reshuf<- bind_rows(eigen_first_bysubj_reshuf, eugentest_bysubj_reshufl)
+cor_first_bysubj_reshuf<- bind_rows(cor_first_bysubj_reshuf, cortest_bysubj_reshufl)
+partials_first_bysubj_reshuf<- bind_rows(partials_first_bysubj_reshuf, partials_temp_bysubj_reshuf)
+groups_first_bysubj_reshuf<- bind_rows(groups_first_bysubj_reshuf, group_temp_bysubj_reshuf)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+save.image("subjobjPCAfeb9.RData")
+
+```
+
+
+
+visualise resshufled null data
+
+
+
+
+```{r}
+
+eigen_first_bysubj_reshuf%>%
+  mutate(component =as.factor(substr(rownames(eigen_first_bysubj_reshuf), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue))%>% #select only component 1 and remove nas I introduced in the dataframe
+  group_by(component)%>%
+   mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+    group_by(component)%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                               res.mfa_agg_bysubj$eig[1],
+                               res.mfa_agg_bysubj$eig[2])) %>% #store observed to visualise ion the null
+  mutate(prob = paste(((sum(eigenvalue>=eig_obs_dim))/n())*100, paste0("%"))) %>%
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..),bins = 500, alpha = .3) +  # scale histogram y
+  geom_density(col = "red", alpha = .001)+
+  # facet_grid(~component)+
+    geom_vline(aes(xintercept = eig_obs_dim),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = eig_obs_dim, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+
+  theme_classic()+
+
+  # annotate(aes(text, label = prob))
+
+  theme_classic()+
+  facet_grid(~component)
+
+# component 1 is significant
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+colnames(cor_first_reshuf)
+cor_first_bysubj_reshuf1<- cor_first_bysubj_reshuf %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bysubj_reshuf), 1,6)))%>%
+    gather(dimension, value_dimenion, -variable, -sim_no) %>%
+  group_by(variable,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
+  subset(!is.na(value_dimenion))
+
+
+
+# this mighgt have to do with the wrong test
+left_join(cor_first_bysubj_reshuf1, cor.test_obsmfa_bysubj, by = c("variable", "dimension")) %>%
+  group_by(variable,dimension)%>%
+     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
+   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
+  # the line above computes the probability that the correlation is more extreme (in magnitutde) thn the observed one
+   
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  # geom_point(aes(x = value_dimenion.y, y = -2))+
+    # geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  facet_grid(variable~dimension)+
+   geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+
+  theme_classic()
+
+
+
+```
+
+
+```{r}
+partials_first_1_bysubj_obs<- as.data.frame(res.mfa_agg_bysubj$partial.axes$cor) %>%
+   mutate(dimension_partial = as.factor(substr(rownames(as.data.frame(res.mfa_agg_bysubj$partial.axes$cor)), 1,4)),
+           group = as.factor(substr(rownames(as.data.frame(res.mfa_agg_bysubj$partial.axes$cor)), 5,9)))%>%
+ gather(dimension, value_dimenion,-group,-dimension_partial)
+
+
+partials_first_bysubj_reshuf
+
+partials_first_bysubj_reshuf_1<- partials_first_bysubj_reshuf %>%
+  mutate(dimension_partial = as.factor(substr(rownames(partials_first_bysubj_reshuf), 1,4)),
+         group = as.factor(substr(rownames(partials_first_bysubj_reshuf), 5,9)))%>%
+   gather(dimension, value_dimenion, -group, -sim_no, -dimension_partial) %>%
+   group_by(dimension_partial,dimension,group)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
+  subset(!is.na(value_dimenion))
+
+
+left_join(partials_first_bysubj_reshuf_1,partials_first_1_bysubj_obs,by = c("dimension_partial", "group", "dimension")) %>%
+  group_by(dimension_partial,dimension, group)%>%
+   subset(!is.na(value_dimenion.x))%>%
+   # group_by(variable,dimension)%>%
+     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
+   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
+  subset(dimension_partial == "Dim1")%>%
+   # mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+   #       perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-1 ), color = "gray30")+
+  geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  facet_grid(dimension~group)+
+  
+
+  theme_classic()+
+  ggtitle("partial to dimension 1")
+
+
+left_join(partials_first_bysubj_reshuf_1,partials_first_1_bysubj_obs,by = c("dimension_partial", "group", "dimension")) %>%
+  group_by(dimension_partial,dimension, group)%>%
+     subset(!is.na(value_dimenion.x))%>%
+   # group_by(variable,dimension)%>%
+     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
+   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
+  subset(dimension_partial == "Dim2")%>%
+   # mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+   #       perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-1 ), color = "gray30")+
+  geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  facet_grid(dimension~group)+
+  
+
+  theme_classic()+
+  ggtitle("partial to dimension 2")
+
+
+
+
+
+
+```
+
+
+
+
+groups
+variables and dimension corelations
+
+
+```{r}
+
+cor_first_bysubj_reshuf %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bysubj_reshuf), 1,6)))%>%
+    subset(!is.na(Dim.1)) %>%
+  # create interval per variable
+  group_by(variable)%>%
+  ggplot(aes(Dim.1)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  
+  facet_grid(~variable)+
+  # geom_point(xlim = res.mfa_agg_bysubj$quanti.var$cor, y = 4, color = "red", size = 2)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  #  geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+
+groups_first_bysubj_reshuf
+groups_first_bysubj_reshuf<- groups_first_bysubj_reshuf%>%
   mutate(group = as.factor(substr(rownames(groups_first_reshuf), 1,4)))
 
-group_cordf<- as.data.frame(res.mfa_bio_vs_self2_k2$group$correlation)
-group_cordf$group<-as.factor(substr(rownames(group_cordf), 1,4)) 
 
-group_cordf1<- group_cordf%>%
+group_cordf_bysubj<- as.data.frame(res.mfa_agg_bysubj$group$correlation)
+group_cordf_bysubj$group<-as.factor(substr(rownames(group_cordf_bysubj), 1,4)) 
+
+group_cordf_bysubj1<- group_cordf_bysubj%>%
 gather(dimension, value_dimenion, - group)
-
-groups_first_reshuf1<- left_join(groups_first_reshuf, group_cordf1)
 
 
  
 # View(groups_first_reshuf)
-groups_first_reshuf1<- groups_first_reshuf %>%
+groups_first_bysubj_reshuf1<- groups_first_bysubj_reshuf %>%
   gather(dimension, value_dimenion, -group, -sim_no) %>%
   subset(!is.na(value_dimenion))
   
- left_join(groups_first_reshuf1, group_cordf1, c("group", "dimension"))%>%
+ left_join(groups_first_bysubj_reshuf1, group_cordf_bysubj1, c("group", "dimension"))%>%
    group_by(group,dimension)%>%
    mutate(perc_5 = quantile(value_dimenion.x,.025, na.rm = TRUE),
          perc_95 = quantile(value_dimenion.x,.975, na.rm = TRUE))%>%
@@ -7377,4 +7708,1013 @@ res.mfa_bio_vs_self2_k2$group$correlation
 
 ```
 
+
+Agg within participant by neg pos etc (using normative data)
+With and without selfreports
+```{r}
+clustering_new_pre_PCA3_val_vat_agg_scale
+```
+
+start with bootsrap to estimate CIS
+```{r}
+
+clustering_new_pre_PCA3_val_vat_agg_scale # this is the one I need
+colnames(clustering_new_pre_PCA3_val_vat_agg_scale)
+
+res.mfa_agg_bysubj_cat_val<- FactoMineR::MFA(clustering_new_pre_PCA3_val_vat_agg_scale, 
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("sid","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+colnames(resampled_temp_bysubj_cat_val)
+resamp_1st_bysubj_cat_val<- data.frame(matrix(NA, nrow = 1, ncol = 12))
+
+ cnames_resamp_subj1<- names(resampled_temp_bysubj_cat_val)
+colnames(resamp_1st_bysubj_cat_val)<- cnames_resamp_subj1
+colnames(resamp_1st_bysubj_cat_val)
+# create emoty  storage rame for eigenvakues
+eigen_first_bysubj_cat_val<- as.data.frame(eugentest)
+eigen_first_bysubj_cat_val[,]<- NA
+
+# eigen_first<- as.data.frame(eigen_first)
+
+# create empty storage for correlations
+cor_first_bysubj_cat_val<- as.data.frame(cortest)
+cor_first_bysubj_cat_val[,]<- NA
+# cor_first<- as.data.frame(cor_first)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first_bysubj_cat_val <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_bysubj_cat_val[,]<- NA
+partials_first_bysubj_cat_val
+partials_first_bysubj_cat_val$sim_no<- NA
+
+
+# hierarquical clustering
+clustering_new_pre_PCA3.1.scale_agg_bysid$ssid<- as.character(clustering_new_pre_PCA3.1.scale_agg_bysid$ssid)
+# clustering_new_pre_PCA3.1.scale_agg_bysid$stimDescription<- as.character(clustering_new_pre_PCA3.1.scale_agg_bysid$stimDescription)
+
+
+# think we need to store groups
+
+groups_first_bysubj_cat_val<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first_bysubj_cat_val[,]<- NA
+groups_first_bysubj_cat_val
+groups_first_bysubj_cat_val$sim_no<- NA
+
+
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+colnames(clustering_new_pre_PCA3.1.scale_agg_bysid)
+library(fabricatr)
+
+clustering_new_pre_PCA3_val_vat_agg_scale$valence_iaps_cat<- as.character(clustering_new_pre_PCA3_val_vat_agg_scale$valence_iaps_cat)
+
+
+clustering_new_pre_PCA3_val_vat_agg_scale$ssid<- as.character(clustering_new_pre_PCA3_val_vat_agg_scale$ssid)
+nrow(clustering_new_pre_PCA3_val_vat_agg_scale)
+
+for (i in 1:5000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  
+  resampled_temp_bysubj_cat_val<- fabricatr::resample_data(clustering_new_pre_PCA3_val_vat_agg_scale, 
+                                  N = c(51,3),
+                                  ID_labels = c("ssid", "valence_iaps_cat"),
+                                  unique_labels = TRUE)
+  # View(resampled_temp_bysubj_cat_val)
+  resampled_temp_bysubj_cat_val$sim_no = i
+  resampled_temp_bysubj_cat_val$ssid_new <- as.factor(substr(resampled_temp_bysubj_cat_val$valence_iaps_cat_unique,1,6))
+  resampled_temp_bysubj_cat_val$newstim <- substr(resampled_temp_bysubj_cat_val$valence_iaps_cat_unique,7,9)
+
+# run PCA on the resampled data
+  # colnames(resampled_temp_bysubj_cat_val)
+    message(sprintf("$$$$$fitting PCA %i", i))
+    # colnames(resampled_temp_bysubj_cat_val[,c(11,12,3:7)])
+    mfa.res_bysubj_cat_val <- FactoMineR::MFA(resampled_temp_bysubj_cat_val[,c(11,12,3:7)], 
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("sid","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest_bysubj_cat_val<- as.data.frame(mfa.res_bysubj_cat_val$eig[1:2,])
+eugentest_bysubj_cat_val$sim_no<- i
+
+cortest_bysubj_cat_val<- as.data.frame(mfa.res_bysubj_cat_val$quanti.var$cor)
+cortest_bysubj_cat_val$sim_no = i
+
+partials_temp_bysubj_cat_val<- as.data.frame(mfa.res_bysubj_cat_val$partial.axes$cor)
+partials_temp_bysubj_cat_val$sim_no = i
+
+# groups
+group_temp_bysubj_cat_val<- as.data.frame(mfa.res_bysubj_cat_val$group$cos2)
+group_temp_bysubj_cat_val$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st_bysubj_cat_val<- (bind_rows(resamp_1st_bysubj_cat_val, resampled_temp_bysubj_cat_val))
+eigen_first_bysubj_cat_val<- bind_rows(eigen_first_bysubj_cat_val, eugentest_bysubj_cat_val)
+cor_first_bysubj_cat_val<- bind_rows(cor_first_bysubj_cat_val, cortest_bysubj_cat_val)
+partials_first_bysubj_cat_val<- bind_rows(partials_first_bysubj_cat_val, partials_temp_bysubj_cat_val)
+groups_first_bysubj_cat_val<- bind_rows(groups_first_bysubj_cat_val, group_temp_bysubj_cat_val)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+resamp_1st_bysubj
+View(resamp_1st_bysubj)
+
+
+resamp_1st_bysubj
+
+
+
+resamp_1st_bysubj%>%
+  subset(sim_no == 11)
+
+
+
+
+
+
+
+
+
+```
+
+Visualization of bootsrap for data agregate within particpant and neg mid anpos
+
+```{r}
+
+
+eigen_first_bysubj_cat_val%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+   # gather(dimension, value_dimenion, -group, -sim_no) %>%
+  group_by(component)%>%
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                              res.mfa_agg_bysubj_cat_val$eig[1],
+                              res.mfa_agg_bysubj_cat_val$eig[2])) %>% #create 95% to descrive interval around the observed estimate
+  # also store observed eige for each dimensions
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..), alpha = .3) +  # scale histogram y
+  geom_density(col = "red", alpha = .001)+
+  # facet_grid(~component)+
+  geom_errorbar(aes(xmin = perc_5, xmax=perc_95, y = 1), color = "gray30")+
+  geom_point(aes(x = eig_obs_dim, y = 1),size = 2, color = "red", alpha = .3)+
+
+  theme_classic()+
+  geom_vline(aes(xintercept = perc_5), linetype = "dashed")+
+    geom_vline(aes(xintercept = perc_95), linetype = "dashed")+
+               
+  geom_hline(yintercept = 0, linetype = "dashed")+
+  facet_grid(~component)
+
+
+
+
+
+```
+
+
+variables and dimension correlations
+
+```{r}
+cor.test_obsmfa_bysubj_cat_val<- as.data.frame(res.mfa_agg_bysubj_cat_val$quanti.var$cor) %>%
+   mutate(variable = as.factor(substr(rownames(as.data.frame(res.mfa_agg_bysubj_cat_val$quanti.var$cor)), 1,6)))%>%
+ gather(dimension, value_dimenion, -variable)
+
+
+cor_first_bysubj_cat_val1<- cor_first_bysubj_cat_val %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bysubj_cat_val), 1,6)))%>%
+    gather(dimension, value_dimenion, -variable, -sim_no) %>%
+  group_by(variable,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))
+
+
+left_join(cor_first_bysubj_cat_val1, cor.test_obsmfa_bysubj_cat_val, by = c("variable", "dimension")) %>%
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-2 ), color = "gray30")+
+  facet_grid(~dimension)+
+  geom_point(aes(x = value_dimenion.y, y = -2))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  facet_grid(variable~dimension)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+
+  theme_classic()
+
+
+
+cor_first_bysubj_cat_val %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bysubj_cat_val), 1,6)))%>%
+    subset(!is.na(Dim.1)) %>%
+  # create interval per variable
+  group_by(variable)%>%
+   mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+         perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  # subset(variable == "arousa"|variable == "valenc")%>%
+  # select(c("arousal", "valence"))%>%
+  ggplot(aes(Dim.1)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =.6 ), color = "gray30")+
+  facet_grid(~variable)+
+  # geom_point(xlim = res.mfa_agg_bysubj$quanti.var$cor, y = 4, color = "red", size = 2)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  #  geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+
+
+cor_first_bysubj_cat_val %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bysubj_cat_val), 1,6)))%>%
+    subset(!is.na(Dim.2)) %>%
+  # create interval per variable
+  group_by(variable)%>%
+   mutate(perc_5 = quantile(Dim.1,.025, na.rm = TRUE),
+         perc_95 = quantile(Dim.1,.975, na.rm = TRUE))%>%
+  # subset(variable == "arousa"|variable == "valenc")%>%
+  # select(c("arousal", "valence"))%>%
+  ggplot(aes(Dim.2)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =.6 ), color = "gray30")+
+  facet_grid(~variable)+
+  # geom_point(xlim = res.mfa_agg_bysubj$quanti.var$cor, y = 4, color = "red", size = 2)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  #  geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+
+# much less conistent
+
+
+clustering_new_pre_PCA3.1.scale_agg_bystim
+# FactoMineR::MFA(clustering_new_pre_PCA3_val_vat_agg[
+clustering_new_pre_PCA3_val_vat_scale_then_agg1
+
+clustering_new_pre_PCA3_val_vat_agg_scale
+  
+  
+  
+  
+```
+
+resample for significance testing
+
+
+```{r}
+colnames(resamp_1st_bysubj_reshuf_cat_val)
+ # create emopty dataframe
+resamp_1st_bysubj_reshuf_cat_val<- data.frame(matrix(NA, nrow = 1, ncol = 8))
+cnames_resamp_bysubj_reshuf_cat_val<- names(resampled_temp_bysubj_reshuf_cat_val)
+
+colnames(resamp_1st_bysubj_reshuf_cat_val)<- cnames_resamp_bysubj_reshuf_cat_val
+colnames(resamp_1st_bysubj_reshuf_cat_val)
+# create emoty  storage rame for eigenvakues
+eigen_first_bysubj_reshuf_cat_val<- as.data.frame(eugentest)
+eigen_first_bysubj_reshuf_cat_val[,]<- NA
+
+# eigen_first_bysubj_reshuf_cat_val<- as.data.frame(eigen_first_bysubj_reshuf_cat_val)
+
+# create empty storage for correlations
+cor_first_bysubj_reshuf_cat_val<- as.data.frame(cortest)
+cor_first_bysubj_reshuf_cat_val[,]<- NA
+# cor_first_bysubj_reshuf_cat_val<- as.data.frame(cor_first_bysubj_reshuf_cat_val)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first_bysubj_reshuf_cat_val <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_bysubj_reshuf_cat_val[,]<- NA
+partials_first_bysubj_reshuf_cat_val
+partials_first_bysubj_reshuf_cat_val$sim_no<- NA
+
+
+
+
+# think we need to store groups
+
+groups_first_bysubj_reshuf_cat_val<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first_bysubj_reshuf_cat_val[,]<- NA
+groups_first_bysubj_reshuf_cat_val
+groups_first_bysubj_reshuf_cat_val$sim_no<- NA
+
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+?sample
+
+# permutations should be withouth replacement
+for (i in 1:5000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  # changed below to replace treue - shuflle with replacement
+  # https://stats.stackexchange.com/questions/104040/resampling-simulation-methods-monte-carlo-bootstrapping-jackknifing-cross?rq=1
+  # See the question on permutation vs bootstrapping - "The permutation test is best for testing hypotheses and bootstrapping is best for estimating confidence intervals".
+  colnames(clustering_new_pre_PCA3_val_vat_agg_scale)
+resampled_temp_bysubj_reshuf_cat_val <- clustering_new_pre_PCA3_val_vat_agg_scale %>%
+  group_by(ssid)%>%
+  transform(pup_basCor = 
+              sample(pup_basCor, replace = FALSE),
+            Bio_Mean_HR_dif = sample(Bio_Mean_HR_dif, replace = FALSE),
+            log_BIO_CDA.PhasicMax = sample(log_BIO_CDA.PhasicMax, replace = FALSE),
+            arousal = sample(arousal, replace = FALSE),
+            valence = sample(valence, replace = FALSE))
+  
+  resampled_temp_bysubj_reshuf_cat_val$sim_no = i
+
+# run PCA on the resampled data
+# ?list
+  # colnames(resampled_temp_bysubj_reshuf_cat_val)
+    message(sprintf("$$$$$fitting PCA %i", i))
+    mfa.res_bysubj_reshuf_cat_val <- FactoMineR::MFA(resampled_temp_bysubj_reshuf_cat_val[,c(1:7)], 
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("pp_stim","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest_bysubj_reshuf_cat_vall<- as.data.frame(mfa.res_bysubj_reshuf_cat_val$eig[1:2,])
+eugentest_bysubj_reshuf_cat_vall$sim_no<- i
+
+cortest_bysubj_reshuf_cat_vall<- as.data.frame(mfa.res_bysubj_reshuf_cat_val$quanti.var$cor)
+cortest_bysubj_reshuf_cat_vall$sim_no = i
+
+partials_temp_bysubj_reshuf_cat_val<- as.data.frame(mfa.res_bysubj_reshuf_cat_val$partial.axes$cor)
+partials_temp_bysubj_reshuf_cat_val$sim_no = i
+
+# groups
+group_temp_bysubj_reshuf_cat_val<- as.data.frame(mfa.res_bysubj_reshuf_cat_val$group$cos2)
+group_temp_bysubj_reshuf_cat_val$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st_bysubj_reshuf_cat_val<- (bind_rows(resamp_1st_bysubj_reshuf_cat_val, resampled_temp_bysubj_reshuf_cat_val))
+eigen_first_bysubj_reshuf_cat_val<- bind_rows(eigen_first_bysubj_reshuf_cat_val, eugentest_bysubj_reshuf_cat_vall)
+cor_first_bysubj_reshuf_cat_val<- bind_rows(cor_first_bysubj_reshuf_cat_val, cortest_bysubj_reshuf_cat_vall)
+partials_first_bysubj_reshuf_cat_val<- bind_rows(partials_first_bysubj_reshuf_cat_val, partials_temp_bysubj_reshuf_cat_val)
+groups_first_bysubj_reshuf_cat_val<- bind_rows(groups_first_bysubj_reshuf_cat_val, group_temp_bysubj_reshuf_cat_val)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+save.image("subjobjPCAfeb93.RData")
+
+
+
+
+```
+
+
+
+
+<!-- visualisae permutation tests -->
+
+```{r}
+
+eigen_first_bysubj_reshuf_cat_val%>%
+  mutate(component =as.factor(substr(rownames(eigen_first_bysubj_reshuf_cat_val), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue))%>% #select only component 1 and remove nas I introduced in the dataframe
+  group_by(component)%>%
+   mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+    group_by(component)%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                               res.mfa_agg_bysubj_cat_val$eig[1],#always update these two lines
+                               res.mfa_agg_bysubj_cat_val$eig[2])) %>% #store observed to visualise ion the null
+  mutate(prob = paste(((sum(eigenvalue>=eig_obs_dim))/n())*100, paste0("%"))) %>%
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..),bins = 500, alpha = .3) +  # scale histogram y
+  geom_density(col = "red", alpha = .001)+
+  # facet_grid(~component)+
+    geom_vline(aes(xintercept = eig_obs_dim),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = eig_obs_dim, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+
+  theme_classic()+
+
+  # annotate(aes(text, label = prob))
+
+  theme_classic()+
+  facet_grid(~component)
+
+
+
+
+```
+
+
+
+correlation btween variables and dimensions
+
+```{r}
+res.mfa_agg_bysubj$quanti.var$cor
+
+
+
+colnames(cor_first_reshuf)
+cor_first_bysubj_reshuf_cat_val1<- cor_first_bysubj_reshuf_cat_val %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bysubj_reshuf_cat_val), 1,6)))%>%
+    gather(dimension, value_dimenion, -variable, -sim_no) %>%
+  group_by(variable,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
+  subset(!is.na(value_dimenion))
+
+
+
+# this mighgt have to do with the wrong test
+left_join(cor_first_bysubj_reshuf_cat_val1, cor.test_obsmfa_bysubj_cat_val, by = c("variable", "dimension")) %>%
+  group_by(variable,dimension)%>%
+     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
+   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
+  # the line above computes the probability that the correlation is more extreme (in magnitutde) thn the observed one
+   
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  # geom_point(aes(x = value_dimenion.y, y = -2))+
+    # geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  facet_grid(variable~dimension)+
+   geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+
+  theme_classic()
+
+
+
+
+
+
+```
+groups
+
+```{r}
+
+
+groups_first_bysubj_reshuf_cat_val
+groups_first_bysubj_reshuf_cat_val<- groups_first_bysubj_reshuf_cat_val%>%
+  mutate(group = as.factor(substr(rownames(groups_first_bysubj_reshuf_cat_val), 1,4)))
+
+
+group_cordf_bysubj_cat_val_obs<- as.data.frame(res.mfa_agg_bysubj_cat_val$group$correlation)
+group_cordf_bysubj_cat_val_obs$group<-as.factor(substr(rownames(group_cordf_bysubj_cat_val_obs), 1,4)) 
+
+group_cordf_bysubj_cat_val_obs1<- group_cordf_bysubj_cat_val_obs%>%
+gather(dimension, value_dimenion, - group)
+
+
+ 
+# View(groups_first_reshuf)
+groups_first_bysubj_reshuf_cat_val1<- groups_first_bysubj_reshuf_cat_val %>%
+  gather(dimension, value_dimenion, -group, -sim_no) %>%
+  subset(!is.na(value_dimenion))
+  
+ left_join(groups_first_bysubj_reshuf_cat_val1, group_cordf_bysubj_cat_val_obs1, c("group", "dimension"))%>%
+   group_by(group,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion.x,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion.x,.975, na.rm = TRUE))%>%
+     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
+   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
+  
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(bins = 500)+
+
+  geom_density(alpha=.2) +
+  facet_grid(dimension~group)+
+     geom_vline(aes(xintercept = value_dimenion.y), linetype = "dashed", color = "red")+
+   # geom_vline(aes(xintercept = Dim.2.y),  linetype = "dashed", color = "blue")+
+  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  # geom_histogram(aes(y=..density..), alpha=0.5,
+  #                position="identity")+
+
+  theme_classic()
+
+
+
+
+```
+
+<!-- agg by stim -->
+
+
+
+```{r}
+colnames(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg)
+
+res.mfa_agg_stim<- FactoMineR::MFA(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg, 
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+               # "s", "s", "s"
+               name.group = c("stim_cat","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = TRUE)
+
+
+```
+
+boostrap
+```{r}
+
+
+clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg # this is the one I need
+colnames(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg)
+
+
+colnames(resampled_temp_bystim_cat_val)
+resamp_1st_bystim_cat_val<- data.frame(matrix(NA, nrow = 1, ncol = 10))
+
+cnames_resamp_subj<- names(resampled_temp_bystim_cat_val)
+colnames(resamp_1st_bystim_cat_val)<- cnames_resamp_subj
+colnames(resamp_1st_bystim_cat_val)
+# create emoty  storage rame for eigenvakues
+eigen_first_bystim_cat_val<- as.data.frame(eugentest)
+eigen_first_bystim_cat_val[,]<- NA
+
+# eigen_first<- as.data.frame(eigen_first)
+
+# create empty storage for correlations
+cor_first_bystim_cat_val<- as.data.frame(cortest)
+cor_first_bystim_cat_val[,]<- NA
+# cor_first<- as.data.frame(cor_first)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first_bystim_cat_val <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_bystim_cat_val[,]<- NA
+partials_first_bystim_cat_val
+partials_first_bystim_cat_val$sim_no<- NA
+
+
+# hierarquical clustering
+clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg$stimDescription <- as.character(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg$stimDescription)
+clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg$val_cut_iaps <- as.character(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg$val_cut_iaps)
+
+
+# think we need to store groups
+
+groups_first_bystim_cat_val<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first_bystim_cat_val[,]<- NA
+groups_first_bystim_cat_val
+groups_first_bystim_cat_val$sim_no<- NA
+
+
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+
+library(fabricatr)
+
+
+for (i in 1:5000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  
+  resampled_temp_bystim_cat_val<- fabricatr::resample_data(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg, 
+                                  N = c(53),
+                                  ID_labels = c("stimDescription"),
+                                  unique_labels = TRUE)
+  # View(resampled_temp_bystim_cat_val)
+  resampled_temp_bystim_cat_val$sim_no = i
+  resampled_temp_bystim_cat_val$stimDescription_new <- as.factor(substr(resampled_temp_bystim_cat_val$stimDescription_unique,1,3))
+
+# run PCA on the resampled data
+  # colnames(resampled_temp_bystim_cat_val)
+    message(sprintf("$$$$$fitting PCA %i", i))
+    # colnames(resampled_temp_bystim_cat_val[,c(10,2:7)])
+    mfa.res_bystim_cat_val <- FactoMineR::MFA(resampled_temp_bystim_cat_val[,c(10,2:7)], 
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("stimid_cat","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest_bystim_cat_val<- as.data.frame(mfa.res_bystim_cat_val$eig[1:2,])
+eugentest_bystim_cat_val$sim_no<- i
+
+cortest_bystim_cat_val<- as.data.frame(mfa.res_bystim_cat_val$quanti.var$cor)
+cortest_bystim_cat_val$sim_no = i
+
+partials_temp_bystim_cat_val<- as.data.frame(mfa.res_bystim_cat_val$partial.axes$cor)
+partials_temp_bystim_cat_val$sim_no = i
+
+# groups
+group_temp_bystim_cat_val<- as.data.frame(mfa.res_bystim_cat_val$group$cos2)
+group_temp_bystim_cat_val$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st_bystim_cat_val<- (bind_rows(resamp_1st_bystim_cat_val, resampled_temp_bystim_cat_val))
+eigen_first_bystim_cat_val<- bind_rows(eigen_first_bystim_cat_val, eugentest_bystim_cat_val)
+cor_first_bystim_cat_val<- bind_rows(cor_first_bystim_cat_val, cortest_bystim_cat_val)
+partials_first_bystim_cat_val<- bind_rows(partials_first_bystim_cat_val, partials_temp_bystim_cat_val)
+groups_first_bystim_cat_val<- bind_rows(groups_first_bystim_cat_val, group_temp_bystim_cat_val)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+#################################
+# note i have not checked the rsults from above
+
+
+```
+
+
+visualise CIS boots
+
+
+```{r}
+
+eigen_first_bystim_cat_val%>%
+  mutate(component =as.factor(substr(rownames(eigen_first_bystim_cat_val), 1,6)))%>% #retrieve names for components
+   # gather(dimension, value_dimenion, -group, -sim_no) %>%
+  group_by(component)%>%
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                              res.mfa_agg_stim $eig[1],
+                              res.mfa_agg_stim$eig[2])) %>% #create 95% to descrive interval around the observed estimate
+  # also store observed eige for each dimensions
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..), alpha = .3) +  # scale histogram y
+  geom_density(col = "red", alpha = .001)+
+  # facet_grid(~component)+
+  geom_errorbar(aes(xmin = perc_5, xmax=perc_95, y = 1), color = "gray30")+
+  geom_point(aes(x = eig_obs_dim, y = 1),size = 2, color = "red", alpha = .3)+
+
+  theme_classic()+
+  geom_vline(aes(xintercept = perc_5), linetype = "dashed")+
+    geom_vline(aes(xintercept = perc_95), linetype = "dashed")+
+               
+  geom_hline(yintercept = 0, linetype = "dashed")+
+  facet_grid(~component)
+  # annotate("text", x = 1
+
+
+
+
+```
+
+correlation variables dimensions
+
+```{r}
+cor.test_obsmfa_bystim_cat_val<- as.data.frame(res.mfa_agg_stim$quanti.var$cor) %>%
+   mutate(variable = as.factor(substr(rownames(as.data.frame(res.mfa_agg_stim$quanti.var$cor)), 1,6)))%>%
+ gather(dimension, value_dimenion, -variable)
+
+
+cor_first_bystim_cat_val1<- cor_first_bystim_cat_val %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bystim_cat_val), 1,6)))%>%
+    gather(dimension, value_dimenion, -variable, -sim_no) %>%
+  group_by(variable,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))
+
+
+left_join(cor_first_bystim_cat_val1, cor.test_obsmfa_bystim_cat_val, by = c("variable", "dimension")) %>%
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-2 ), color = "gray30")+
+  facet_grid(~dimension)+
+  geom_point(aes(x = value_dimenion.y, y = -2))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  facet_grid(variable~dimension)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+
+  theme_classic()
+
+
+
+
+
+
+```
+
+
+groups
+
+```{r}
+
+groups_first_bystim_obs<- as.data.frame(res.mfa_agg_stim$group$correlation) %>%
+   mutate(group = as.factor(substr(rownames(as.data.frame(res.mfa_agg_stim$group$correlation)), 1,4)))%>%
+ gather(dimension, value_dimenion_obs,-group)
+
+groups_first_bystim_cat_val_boot<- groups_first_bystim_cat_val%>%
+  mutate(group = as.factor(substr(rownames(groups_first_bystim_cat_val), 1,4)))%>%
+  gather(dimension, value_dimenion,-group,-sim_no)
+  # -perc_5,-perc_95, 
+ 
+
+left_join(groups_first_bystim_cat_val_boot, groups_first_bystim_obs,by = c("group", "dimension"))%>%
+    group_by(group,dimension)%>%
+   mutate(perc_5 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 51)[1],
+         perc_95 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 51)[2])%>%
+
+  ggplot(aes(value_dimenion)) +
+   geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-1 ), color = "gray30")+
+   geom_point(aes(x = value_dimenion_obs, y = -1))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  
+  facet_grid(dimension~group)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+
+
+
+
+
+
+```
+
+
+
+resdshufle stim
+```{r}
+colnames(resampled_temp_bystimj_reshuf)
+# create emopty dataframe
+resamp_1st_bystimj_reshuf<- data.frame(matrix(NA, nrow = 1, ncol = 8))
+cnames_resamp_bystimj_reshuf<- names(resampled_temp_bystimj_reshuf)
+
+colnames(resamp_1st_bystimj_reshuf)<- cnames_resamp_bystimj_reshuf
+colnames(resamp_1st_bystimj_reshuf)
+# create emoty  storage rame for eigenvakues
+eigen_first_bystimj_reshuf<- as.data.frame(eugentest)
+eigen_first_bystimj_reshuf[,]<- NA
+
+# eigen_first_bystimj_reshuf<- as.data.frame(eigen_first_bystimj_reshuf)
+
+# create empty storage for correlations
+cor_first_bystimj_reshuf<- as.data.frame(cortest)
+cor_first_bystimj_reshuf[,]<- NA
+# cor_first_bystimj_reshuf<- as.data.frame(cor_first_bystimj_reshuf)
+
+
+# now store group results/partials
+
+# res.mfa_bio_vs_self2_k2$group$correlation
+partials_first_bystimj_reshuf <- as.data.frame(res.mfa_bio_vs_self2_k2[["partial.axes"]][["contrib"]])
+partials_first_bystimj_reshuf[,]<- NA
+partials_first_bystimj_reshuf
+partials_first_bystimj_reshuf$sim_no<- NA
+
+
+clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg$stimDescription<- as.character(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg$stimDescription)
+# having clusters as factors causes a subscript oput of bound error
+
+
+# think we need to store groups
+
+groups_first_bystimj_reshuf<-as.data.frame(  res.mfa_bio_vs_self2_k2$group$correlation)
+# res.mfa_bio_vs_self2_k2$group$correlation
+
+groups_first_bystimj_reshuf[,]<- NA
+groups_first_bystimj_reshuf
+groups_first_bystimj_reshuf$sim_no<- NA
+
+
+#################be careful to use the correct mfa.res_res. a few times i forgot to use the right one and got constants in the updated dataframes (e.g. partials)
+
+for (i in 1:10000) {
+  message(sprintf("$$$$$RUNING sim %i", i))
+  # changed below to replace treue - shuflle with replacement
+  # https://stats.stackexchange.com/questions/104040/resampling-simulation-methods-monte-carlo-bootstrapping-jackknifing-cross?rq=1
+  # See the question on permutation vs bootstrapping - "The permutation test is best for testing hypotheses and bootstrapping is best for estimating confidence intervals".
+resampled_temp_bystimj_reshuf <- clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg %>%
+  # group_by(ssid)%>%
+  transform(pup_basCor = 
+            sample(pup_basCor, replace = FALSE),
+            Bio_Mean_HR_dif = sample(Bio_Mean_HR_dif, replace = FALSE),
+            log_BIO_CDA.PhasicMax = sample(log_BIO_CDA.PhasicMax, replace = FALSE),
+            arousal = sample(arousal, replace = FALSE),
+            valence = sample(valence, replace = FALSE))
+  
+# View(resampled_temp_bystimj_reshuf)
+  resampled_temp_bystimj_reshuf$sim_no = i
+
+# run PCA on the resampled data
+# ?list
+  # colnames(resampled_temp_bystimj_reshuf)
+    message(sprintf("$$$$$fitting PCA %i", i))
+    mfa.res_bystimj_reshuf <- FactoMineR::MFA(resampled_temp_bystimj_reshuf[,c(1:7)], 
+               group = c(2, 3, 2), 
+               type = c("n", "s", "s"),
+              # ind.sup = c(1),
+              ncp = 2,
+               name.group = c("stim_cat","auton","subj"),
+               num.group.sup = c(1),
+               # ind.sup = c(1,2),
+               graph = FALSE)
+
+
+# store the eigen values
+message(sprintf("$$$$$storing PCA %i", i))
+eugentest_bystimj_reshufl<- as.data.frame(mfa.res_bystimj_reshuf$eig[1:2,])
+eugentest_bystimj_reshufl$sim_no<- i
+
+cortest_bystimj_reshufl<- as.data.frame(mfa.res_bystimj_reshuf$quanti.var$cor)
+cortest_bystimj_reshufl$sim_no = i
+
+partials_temp_bystimj_reshuf<- as.data.frame(mfa.res_bystimj_reshuf$partial.axes$cor)
+partials_temp_bystimj_reshuf$sim_no = i
+
+# groups
+group_temp_bystimj_reshuf<- as.data.frame(mfa.res_bystimj_reshuf$group$cos2)
+group_temp_bystimj_reshuf$sim_no = i
+
+
+# update the initial d=frames
+  message(sprintf("$$$$$upating dataframes %i", i))
+  resamp_1st_bystimj_reshuf<- (bind_rows(resamp_1st_bystimj_reshuf, resampled_temp_bystimj_reshuf))
+eigen_first_bystimj_reshuf<- bind_rows(eigen_first_bystimj_reshuf, eugentest_bystimj_reshufl)
+cor_first_bystimj_reshuf<- bind_rows(cor_first_bystimj_reshuf, cortest_bystimj_reshufl)
+partials_first_bystimj_reshuf<- bind_rows(partials_first_bystimj_reshuf, partials_temp_bystimj_reshuf)
+groups_first_bystimj_reshuf<- bind_rows(groups_first_bystimj_reshuf, group_temp_bystimj_reshuf)
+  message(sprintf("$$$$$completed iteration%i", i))
+}
+
+save.image("subjobjPCAfeb9.RData")
+
+```
+
+
+
+
+visualise pernuation on stim MFA
+
+```{r}
+
+eigen_first_bystimj_reshuf%>%
+  mutate(component =as.factor(substr(rownames(eigen_first_bystimj_reshuf), 1,6)))%>% #retrieve names for components
+  subset(!is.na(eigenvalue))%>% #select only component 1 and remove nas I introduced in the dataframe
+  group_by(component)%>%
+   mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+    group_by(component)%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                               res.mfa_agg_stim$eig[1],
+                               res.mfa_agg_stim$eig[2])) %>% #store observed to visualise ion the null
+  mutate(prob = paste(((sum(eigenvalue>=eig_obs_dim))/n())*100, paste0("%"))) %>%
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..),bins = 500, alpha = .3) +  # scale histogram y
+  geom_density(col = "red", alpha = .001)+
+  # facet_grid(~component)+
+    geom_vline(aes(xintercept = eig_obs_dim),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = eig_obs_dim, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+
+  theme_classic()+
+
+  # annotate(aes(text, label = prob))
+
+  theme_classic()+
+  facet_grid(~component)
+
+```
+
+
+significance variable and dimensions
+
+
+
+```{r}
+res.mfa_agg_bysubj$quanti.var$cor
+cor_first_bystimj_reshuf
+
+
+colnames(cor_first_reshuf)
+cor_first_bystimj_reshuf_cat_val1<- cor_first_bystimj_reshuf %>%
+  mutate(variable = as.factor(substr(rownames(cor_first_bystimj_reshuf), 1,6)))%>%
+    gather(dimension, value_dimenion, -variable, -sim_no) %>%
+  group_by(variable,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion,.975, na.rm = TRUE))%>%
+  subset(!is.na(value_dimenion))
+
+
+
+# this mighgt have to do with the wrong test
+left_join(cor_first_bystimj_reshuf_cat_val1, cor.test_obsmfa_bystim_cat_val, by = c("variable", "dimension")) %>%
+  group_by(variable,dimension)%>%
+     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
+   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
+  # the line above computes the probability that the correlation is more extreme (in magnitutde) thn the observed one
+   
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  # geom_point(aes(x = value_dimenion.y, y = -2))+
+    # geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  facet_grid(variable~dimension)+
+   geom_vline(aes(xintercept = value_dimenion.y),size = 2, color = "red", linetype = "dashed", alpha = .3)+
+  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+
+  theme_classic()
+
+```
+
+groups
+```{r}
+
+
+
+
+groups_first_bystimj_reshuf
+groups_first_bystimj_reshuf<- groups_first_bystimj_reshuf%>%
+  mutate(group = as.factor(substr(rownames(groups_first_bystimj_reshuf), 1,4)))
+
+
+group_cordf_bystim_cat_val_obs<- as.data.frame(res.mfa_agg_stim$group$correlation)
+group_cordf_bystim_cat_val_obs$group<-as.factor(substr(rownames(group_cordf_bystim_cat_val_obs), 1,4)) 
+
+group_cordf_bystim_cat_val_obs1<- group_cordf_bystim_cat_val_obs%>%
+gather(dimension, value_dimenion, - group)
+
+
+ 
+# View(groups_first_reshuf)
+groups_first_bystimj_reshuf1<- groups_first_bystimj_reshuf %>%
+  gather(dimension, value_dimenion, -group, -sim_no) %>%
+  subset(!is.na(value_dimenion))
+  
+ left_join(groups_first_bystimj_reshuf1, group_cordf_bystim_cat_val_obs1, c("group", "dimension"))%>%
+   group_by(group,dimension)%>%
+   mutate(perc_5 = quantile(value_dimenion.x,.025, na.rm = TRUE),
+         perc_95 = quantile(value_dimenion.x,.975, na.rm = TRUE))%>%
+     mutate(prob1 = paste(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y)))/n())*100, paste0("%")))%>%
+   mutate(prob = if_else(((sum(abs(value_dimenion.x)>=abs(value_dimenion.y))/n())*100)<5, "p < .05", "ns")) %>%
+  
+  ggplot(aes(value_dimenion.x)) +
+  geom_histogram(bins = 500)+
+
+  geom_density(alpha=.2) +
+  facet_grid(dimension~group)+
+     geom_vline(aes(xintercept = value_dimenion.y), linetype = "dashed", color = "red")+
+   # geom_vline(aes(xintercept = Dim.2.y),  linetype = "dashed", color = "blue")+
+  geom_point(aes(x = value_dimenion.y, y = 1, shape = prob),size = 3,  color = "red", alpha = .5)+
+  # geom_histogram(aes(y=..density..), alpha=0.5,
+  #                position="identity")+
+
+  theme_classic()
+
+
+
+
+  
+
+```
 
