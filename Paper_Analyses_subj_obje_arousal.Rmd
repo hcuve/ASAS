@@ -5692,6 +5692,7 @@ var.PCA.scr_hr_pup <-InPosition::epPCA.inference.battery(var.data,
                                        test.iters = 1000, 
                                        constrained = FALSE, 
                                        critical.value = 2)
+InPosition::epCA.inference.battery()
 
 # includValenceMean_median_split
 colnames(all.data3)
@@ -6612,7 +6613,7 @@ eigen_first%>%
   mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
   subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
   mutate(perc_5 = quantile(`percentage of variance`,.025, na.rm = TRUE),
-         perc_95 = quantile(`percentage of variance`,.975, na.rm = TRUE))%>%
+         perc_95 = quantile(`percentage of variance`,.975, na.rm = TRUE)) %>%
   ggplot(aes(`percentage of variance`))+
   geom_histogram(aes(y=..density..), alpha=0.5,
                  position="identity")+
@@ -6623,6 +6624,16 @@ eigen_first%>%
     # geom_vline(aes(xintercept = perc_5), linetype = "dotted")+
   # geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
   theme_classic()
+
+
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>%
+    group_by(component)%>%
+  # subset(!is.na(`percentage of variance`) & component == "comp 1" )%>%
+  mutate(perc_5 = quantile(`percentage of variance`,.025, na.rm = TRUE),
+         perc_95 = quantile(`percentage of variance`,.975, na.rm = TRUE))%>%
+  group_by(component)%>%
+  summarise_if(is.numeric, mean)
 
 ```
 
@@ -6730,6 +6741,13 @@ groups_first%>%
    # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
   theme_classic()
   ylim(0,100)
+  
+  
+  groups_first
+  
+  
+  res.MFA_stim_val_scale$group$contrib
+  res.MFA_stim_val_scale[["ind"]][["coord"]])
 
 
 ```

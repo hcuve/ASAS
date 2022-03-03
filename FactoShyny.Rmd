@@ -1,0 +1,43 @@
+---
+title: "Tryfactoshyny"
+author: "Helio"
+date: "15/02/2022"
+output: html_document
+---
+
+
+```{r}
+install.packages("Factoshiny")
+
+library(Fact)
+
+View(clustering_new_pre_PCA3.1)
+
+Factoshiny::MFAshiny(clustering_new_pre_PCA3.1)
+
+clustering_new_pre_PCA3.1.scale
+
+clustering_new_pre_PCA3.1.scale$ssid<- as.factor(clustering_new_pre_PCA3.1.scale$ssid)
+clustering_new_pre_PCA3.1$ssid<- as.factor(clustering_new_pre_PCA3.1.scale$ssid)
+Factoshiny::MFAshiny(clustering_new_pre_PCA3.1.scale)
+
+Factoshiny::MFAshiny(clustering_new_pre_PCA3.1.scale_agg_bystim)
+
+Factoshiny::MFAshiny(clustering_new_pre_PCA3.1.scale_agg_bystim_scaleafteragg)
+
+# just agg by ssid
+clustering_new_pre_PCA3.1.scale_agg_bysid
+Factoshiny::MFAshiny(clustering_new_pre_PCA3.1.scale_agg_bysid)
+clustering_new_pre_PCA3.1.scale_aft_agg_bysid
+clustering_new_pre_PCA3.1_copy
+
+# group_by(ssid, val_cut_iaps
+         # clustering_new_pre_PCA3.1
+
+clustering_new_pre_PCA_2_agg_by_val_sel$ssid<- as.factor(clustering_new_pre_PCA_2_agg_by_val_sel$ssid)
+# clustering_new_pre_PCA_2_agg_by_val_sel
+Factoshiny::MFAshiny(clustering_new_pre_PCA_2_agg_by_val_sel1)
+
+clustering_new_pre_PCA_2_agg_by_val_sel1<- clustering_new_pre_PCA_2_agg_by_val_sel%>%
+  subset(!is.na(valence_split))
+```

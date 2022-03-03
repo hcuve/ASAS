@@ -6519,6 +6519,15 @@ eigen_first%>%
  # same thing as above with variance
 # quantile(eigen_first$`percentage of variance`,.95, na.rm = TRUE)
 
+View(eigen_first)
+eigen_first1<- eigen_first %>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+  # gather(dimension, value_dimenion, -group, -sim_no) %>%
+  group_by(component)%>%
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(`percentage of variance`,.025, na.rm = TRUE), 
+         perc_95 = quantile(`percentage of variance`,.975, na.rm = TRUE))
+
 
 eigen_first %>%
   mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
@@ -6543,6 +6552,8 @@ eigen_first %>%
   geom_vline(aes(xintercept = perc_95), linetype = "dotted")+
   theme_classic()
 
+
+res.mfa_bio_vs_self2_scale$eig[2,3]
 ```
 
 
@@ -6576,6 +6587,36 @@ left_join(cor_first1, cor.test_obsmfa, by = c("variable", "dimension")) %>%
   # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
 
   theme_classic()
+
+mfa_boot_corfirst<- left_join(cor_first1, cor.test_obsmfa, by = c("variable", "dimension")) 
+
+mfa_boot_corfirst$measure<- if_else(mfa_boot_corfirst$variable == "log_BI", "SCR",
+        if_else(mfa_boot_corfirst$variable == "Bio_Me", "HR",
+                if_else(mfa_boot_corfirst$variable == "pup_ba", "pupil",
+                if_else(mfa_boot_corfirst$variable == "arousa", "arousal",
+                if_else(mfa_boot_corfirst$variable == "valenc", "valence",NULL)
+                ))))
+
+mfa_boot_corfirst$variable
+left_join(cor_first1, cor.test_obsmfa, by = c("variable", "dimension"))
+
+
+mfa_boot_corfirst%>%
+  subset(dimension == "Dim.1")%>%
+  ggplot(aes(value_dimenion.x, color = measure)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  # geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-2 , linetype = measure))+ #color = "gray30"
+  # facet_grid(~dimension)+
+  geom_point(aes(x = value_dimenion.y, y = -2))+
+    geom_vline(xintercept = 0,linetype = "dashed", alpha = .5, size = 1)+
+  # facet_grid(~dimension)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  scale_color_brewer(palette = "Dark2")+
+
+  theme_classic()+
+  p$graphstyle_int
 
 
 
@@ -6717,7 +6758,10 @@ groups_first_1boot_CIcorrected2<- groups_first%>%
   mutate(group = as.factor(substr(rownames(groups_first), 1,4)))%>%
   gather(dimension, value_dimenion,-group,-sim_no)
 
+library(boot)
+library(rms)
 
+??bootBCa
 
 left_join(groups_first_1boot_CIcorrected2, groups_first_obs,by = c("group", "dimension"))%>%
   subset(!is.na(value_dimenion))%>%
@@ -6734,6 +6778,26 @@ left_join(groups_first_1boot_CIcorrected2, groups_first_obs,by = c("group", "dim
     geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
   
   facet_grid(dimension~group)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()
+
+
+left_join(groups_first_1boot_CIcorrected2, groups_first_obs,by = c("group", "dimension"))%>%
+  subset(!is.na(value_dimenion))%>%
+  group_by(dimension,group)%>%
+   mutate(perc_5 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 2600)[1],
+         perc_95 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 2600)[2])%>%
+   ggplot(aes(value_dimenion, color = group)) +
+   geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+  
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-3 ), color = "gray30")+
+   geom_point(aes(x = value_dimenion_obs, y = -3))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)+
+  
+  facet_grid(~dimension)+
   # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
    # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
   theme_classic()
