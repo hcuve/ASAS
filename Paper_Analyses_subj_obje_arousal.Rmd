@@ -5692,10 +5692,69 @@ var.PCA.scr_hr_pup <-InPosition::epPCA.inference.battery(var.data,
                                        test.iters = 1000, 
                                        constrained = FALSE, 
                                        critical.value = 2)
+
+
+clustering_new_pre_PCA3.1
+
+colnames(clustering_new_pre_PCA3.1)
+
+library(prettyGraphs)
+
+min(clustering_new_pre_PCA3.1$log_BIO_CDA.PhasicMax, na.rm = TRUE)
+testjustpca <-InPosition::epPCA.inference.battery(clustering_new_pre_PCA3.1[,5:7], 
+                                       scale = TRUE, 
+                                       center = TRUE, 
+                                       # DESIGN = var.design_asd, 
+                                       # make_design_nominal = TRUE, 
+                                       graphs = TRUE, k = 0, 
+                                       test.iters = 1000, 
+                                       constrained = FALSE, 
+                                       critical.value = 2)
+
+?InPosition::epPCA.inference.battery
+
+clustering_new_pre_PCA3.1$pc1<- testjustpca$Fixed.Data$ExPosition.Data$fi[,1]
+clustering_new_pre_PCA3.1$pc2<- testjustpca$Fixed.Data$ExPosition.Data$fi[,2]
+testjustpca$Fixed.Data$ExPosition.Data$fi
+
+library(lmerTest)
+
+summary(lmer(arousal ~ (pc1 + pc2) + (1|ssid) + (1|stimDescription),
+     data = clustering_new_pre_PCA3.1))
+
+write_csv(clustering_new_pre_PCA3.1, "clustering_new_pre_PCA3.1new.csv")
+
 InPosition::epCA.inference.battery()
 
 # includValenceMean_median_split
 colnames(all.data3)
+
+# 
+colnames(clustering_new_pre_PCA_2_agg_by_val_sel)
+
+min(clustering_new_pre_PCA_2_agg_by_val_sel$log_BIO_CDA.PhasicMax)
+testjustpca2 <-InPosition::epPCA.inference.battery(clustering_new_pre_PCA_2_agg_by_val_sel[,3:5], 
+                                       scale = TRUE, 
+                                       center = TRUE, 
+                                       # DESIGN = var.design_asd, 
+                                       # make_design_nominal = TRUE, 
+                                       graphs = TRUE, k = 0, 
+                                       test.iters = 1000, 
+                                       constrained = FALSE, 
+                                       critical.value = 2)
+
+clustering_new_pre_PCA_2_agg_by_val_sel$pc1 <- testjustpca2$Fixed.Data$ExPosition.Data$fi[,1]
+clustering_new_pre_PCA_2_agg_by_val_sel$pc2 <- testjustpca2$Fixed.Data$ExPosition.Data$fi[,2]
+
+
+
+library(lmerTest)
+
+summary(lmer(arousal ~ (pc1 + pc2) + (1|ssid),
+     data = clustering_new_pre_PCA_2_agg_by_val_sel))
+
+
+
 
 
 # mySpca <- spca(obj, ask=FALSE, type=1, scannf=FALSE)
