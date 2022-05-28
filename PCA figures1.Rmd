@@ -1,0 +1,1179 @@
+---
+title: "Figures"
+author: "Helio"
+date: "15/02/2022"
+output: html_document
+---
+
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+
+newDF <- clustering_new_pre_PCA3.1[,c("ssid","stimDescription","val_cut_iaps","pup_basCor","Bio_Mean_HR_dif","log_BIO_CDA.PhasicMax","arousal","valence")]
+newDF2 <- clustering_new_pre_PCA3.1[,c("stimDescription","val_cut_iaps","pup_basCor","Bio_Mean_HR_dif","log_BIO_CDA.PhasicMax","arousal","valence")]
+res.MFA<-MFA(newDF,group=c(3,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=FALSE)
+
+?plot.MFA
+
+
+colnames(newDF)
+colnames(newDF) <- c("subject", "stimuli", "norm", "pupil", "HR", "SCR", "arousal", "valence")
+
+table(if_else(newDF$norm == "neg", "negative",
+                    if_else(newDF$norm == "mid", "mid",
+                     if_else(newDF$norm == "pos", "positive", NULL))))
+
+newDF$norm<- if_else(newDF$norm == "neg", "negative",
+                    if_else(newDF$norm == "mid", "mid",
+                     if_else(newDF$norm == "pos", "positive", NULL)))
+
+table(is.na(newDF$norm))
+
+colnames(newDF)
+res.MFA_val<-MFA(newDF,group=c(3,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=FALSE)
+
+plot.MFA(res.MFA, choix="ind",lab.par=FALSE,invisible= c('ind','quali'),select='cos2  0.2',habillage='val_cut_iaps',title="Individual factor map")
+
+
+
+# drop sid
+
+newDF2_stim_val <- newDF[,c("stimuli","norm","pupil", "HR", "SCR", "arousal", "valence")]
+res.MFA_stim_val<-MFA(newDF2_stim_val,group=c(2,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+
+plot.MFA(res.MFA_stim_val)
+?plot.MFA
+
+Factoshiny::MFAshiny(newDF2_stim_val)
+factoextra::fviz_mfa(res.MFA_stim_val, geom = "point",
+                      choix="ind",
+                      invisible= c('quali'))
+
+library(FactoMineR)
+library(tidyverse)
+plot.MFA(res.MFA_stim_val, 
+         choix="ind",
+         
+         label = "none", 
+         
+         lab.par=TRUE,
+         invisible= c('ind', 'quali'),
+
+         # habillage='norm',
+         col.ind = "cos2",
+         title="Individual factor map") +
+  theme_classic()
+  p$graphstyle_int
+  
+  
+  
+  
+  
+  
+  
+newDF <- newDF2_stim_val[,c("stimuli","norm","pupil","HR","SCR","arousal","valence")]
+
+
+sf = 1 # scaling factor to make it easier to change sizes of everything, in which case change here
+p<- list()
+p$graphstyle_int <-  theme(#base plot theme
+  
+  # axis lines
+  axis.line.y = element_line(color="black", size = 1.5),
+  axis.line.x = element_line(color="black", size = 1,5),
+  
+  axis.title.y=element_text(size = 14*(sf+.1), margin=margin(0,5,0,0)),
+  axis.title.x=element_text(size = 14*(sf+.1), margin=margin(0,5,0,0)),
+  
+  # text
+  strip.text.x = element_text(size = 15*(sf+.1),  colour = "black"),
+  strip.text.y = element_text(size = 15*(sf+.1),  colour = "black"),
+  
+  text=element_text(size = 14),#family = "arial", 
+  axis.text.x = element_text(size = 14*(sf+.1),colour = "black"), # family = "arial", 
+  axis.text.y = element_text(size = 14*(sf+.1), colour = "black"),#√
+  
+  
+  # panel
+  # pane
+  # panel.grid.major = element_line(colour="black"),
+  # panel.background = element_blank(),
+  # panel.background = element_rect(fill="black"),
+  # panel.border = element_rect(color="black"),
+  # strip shades (reco rectagles)
+   # strip.background = element_rect(fill="black"),
+  
+  # legend
+  legend.position = "top",
+  legend.key = element_rect(colour = "transparent", fill="transparent"),
+  legend.direction = "horizontal",
+
+  legend.text = element_text(size = 10*(sf+.3)),
+  # legend.title = element_text(size = 10*(sf+.3)),
+  # legend line tends to be really small in print so adjust here
+  # legend.key.height = unit(5, "cm"),
+  legend.key.width = unit(1, "cm"),
+  # lege
+  # legen
+  
+  # title
+  plot.title = element_text(hjust = .5)
+  
+  #legend.text = element_text(size = 10*sf),
+  # legend.title=element_blank(),
+  #legend.text = element_blank(),
+  #axis.ticks = element_blank(),
+)
+
+newDF2_stim_val %>%
+  group
+
+# centering ensures that we don't prioritise specific participants due to their extreme values
+# we still capture the covarince within participants
+clustering_new_pre_PCA3.1%>%
+  group_by(ssid)%>%
+  mutate_if(is.numeric, scale)
+
+
+newDFscale_sid_norm<- newDF%>%
+  group_by(subject)%>%
+  mutate_if(is.numeric, scale)%>%
+  group_by(subject, norm)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+newDFscale_stim<- newDF$subject%>%
+  group_by(subject, subject_orig)%>%
+  mutate_if(is.numeric, scale)%>%
+  group_by(stimuli, norm)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+
+newDFscale<- newDF%>%
+  group_by(subject)%>%
+  mutate_if(is.numeric, scale)
+
+colnames(newDFscale)
+res.MFA_stim_val<-MFA(newDF2_stim_val,group=c(2,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+res.MFA_stim_val_scale<-MFA(newDFscale[,c(2,4:8)],group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+res.MFA_stim_val_scal2e<-MFA(newDFscale[,3:8],group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+
+FactoMineR::MFA(newDFscale[,3:8],group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+
+res.MFA_stim_val_scale$group$cos2
+Factoshiny::MFAshiny(newDFscale)
+
+
+colnames(newDFscale_sid_norm)
+res.MFA_stim_val_scal2e_sidnorm <-MFA(newDFscale_sid_norm[,1:7],group=c(2,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),
+                                      num.group.sup=c(1),graph=TRUE)
+
+# stim plot
+
+res.MFA_stim_val_scal2e_stim <-MFA(newDFscale_stim[,1:7],group=c(2,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),
+                                      num.group.sup=c(1),graph=TRUE)
+
+
+# BADIA
+
+res.MFA_stim_val_scal2e_stim
+
+
+clustering_new_pre_PCA2
+
+design_notm<- factor(newDFscale_stim$norm)
+library(TExPosition)
+
+TInPosition::tepBADA.inference.battery(newDFscale_stim[,3:7], 
+                                                       scale = FALSE, 
+                                                       center = TRUE, 
+                                                       # DESIGN = factor( clustering_new_pre_PCA2$arousal_3cat ),
+                                       DESIGN = newDFscale_stim$norm,
+                                                       make_design_nominal = TRUE,
+                                                       group.masses = NULL, 
+                                                       weights = NULL, 
+                                                       graphs = TRUE, 
+                                                       k = 2, 
+                                                       test.iters = 1000, 
+                                                       critical.value = 2)
+
+
+bada_all<- TInPosition::tepBADA.inference.battery(newDFscale[,4:8], 
+                                                       scale = FALSE, 
+                                                       center = FALSE, 
+                                                       # DESIGN = factor( clustering_new_pre_PCA2$arousal_3cat ),
+                                       DESIGN = newDFscale$norm,
+                                                       make_design_nominal = TRUE,
+                                                       group.masses = NULL, 
+                                                       weights = NULL, 
+                                                       graphs = TRUE, 
+                                                       k = 2, 
+                                                       test.iters = 1000, 
+                                                       critical.value = 2)
+
+
+# sid
+
+newDFscale_sid<- newDF%>%
+  group_by(subject)%>%
+  mutate_if(is.numeric, scale, scale = FALSE)%>%
+  group_by(subject)%>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+
+  
+  mean(newDFscale_sid$HR)
+  
+res.MFA_stim_val_scal2e_sid <-MFA(newDFscale_sid[,1:6],group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),
+                                      num.group.sup=c(1),graph=TRUE)
+
+# get the first two components and do clustering on it
+
+res.MFA_stim_val_scal2e_stim$global.pca
+
+
+MFAstimtoKmeans <- bind_cols(as.data.frame(res.MFA_stim_val_scal2e_stim[["ind"]][["coord"]]), newDFscale_stim[,c(1:2)])
+MFAsidtoKmeans <- bind_cols(as.data.frame(res.MFA_stim_val_scal2e_sidnorm[["ind"]][["coord"]]), newDFscale_sid_norm[,c(1:2)])
+
+
+MFAsid2toKmeans <- bind_cols(as.data.frame(res.MFA_stim_val_scal2e_sid[["ind"]][["coord"]]), newDFscale_sid[,c(1:2)])
+
+
+db_full_sum_2$subject<-as.character(db_full_sum_2$ssid)
+left_join(MFAsid2toKmeans,db_full_sum_2 )%>%
+  ggplot(aes(Dim.1, TASc))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+
+left_join(MFAsid2toKmeans,db_full_sum_2 )%>%
+  ggplot(aes(Dim.2, TASc))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+left_join(MFAsid2toKmeans,db_full_sum_2 )%>%
+  ggplot(aes(Dim.2, AQc))+
+  geom_point()+
+  ggpubr::stat_cor()
+
+
+
+multilMFAtokmeans<-bind_cols(as.data.frame(res.MFA_stim_val_scale[["ind"]][["coord"]]), newDFscale[,c(1:3,9)])
+
+
+
+multilMFAtokmeans$subject
+cor.test(MFAstimtoKmeans$Dim.1, MFAstimtoKmeans$Dim.2)
+write_csv( MFAsidtoKmeans, "MFAsidtoKmeans.csv")
+write_csv( MFAstimtoKmeans, "MFAstimtoKmeans.csv")
+write_csv( multilMFAtokmeans, "multilMFAtokmeans.csv")
+
+
+
+Factoshiny::MFAshiny(newDFscale_sid_norm)
+
+Factoshiny::MFAshiny(newDFscale_stim)
+
+
+library(readr)
+HCPCshinyvariableand_clusters <- read_csv("~/OneDrive - Nexus365/InteroStudy2020/analysis/DataAnalysisJanuary2020/DataAnalysisJan2020/HCPCshinyvariableand_clusters1.csv")
+View(HCPCshinyvariableand_clusters)
+
+HCPCshinyvariableand_clusters<- HCPCshinyvariableand_clusters%>%
+ gather(cluster, value, -X1)
+  
+write_csv(HCPCshinyvariableand_clusters, "HCPCshinyvariableand_clusters.csv")
+
+
+HCPCshinyvariableand_clusters$X1<- if_else(HCPCshinyvariableand_clusters$X1 == "norm=positive",
+                                           "positive",
+                                            if_else(HCPCshinyvariableand_clusters$X1 == "norm=negative", "negative",
+                                                     if_else(HCPCshinyvariableand_clusters$X1 == "norm=mid", "mid",HCPCshinyvariableand_clusters$X1)))
+
+
+HCPCshinyvariableand_clusters$X1<- factor(HCPCshinyvariableand_clusters$X1, levels = c("positive", "mid", "negative", "pupil", "SCR", "HR", "valence", "arousal"))
+
+HCPCshinyvariableand_clusters%>%
+  mutate(variable = as.factor(if_else(X1 == "mid", "norm",
+                                      if_else(X1 == "negative", "norm",
+                                              if_else(X1 == "positive", "norm", "quantitative")))))%>%
+  # subset(variable == "norm")%>%
+         
+         # HCPCshinyvariableand_clusters %>%
+ggplot(aes(cluster,X1,  fill = value))+
+    geom_tile()+
+  # facet_grid(~variable)+
+  theme_classic()+
+  # geom_text(aes(label = sig))+
+  p$graphstyle+
+  scale_fill_viridis_c("inferno")
+  
+```
+
+
+```{r}
+plot.MFA(res.MFA_stim_val, 
+         choix="ind",
+         partial='all',
+         lab.par=TRUE,
+         invisible= c('ind','quali'),
+         select='cos2  0',
+         habillage='group',
+         title="Individual factor map")+
+  theme_classic()
+  p$graphstyle_int
+
+  # plot the scaled within a person
+mfa_plots$ind1 
+
+res.MFA_stim_val_scale
+ mfa_plots$ind1 <- plot.MFA(res.MFA_stim_val_scale, 
+         choix="ind",
+         partial='all',
+         label = "norm",
+         lab.par=TRUE,
+         invisible= c('ind','quali'),
+         select='cos2  0',
+         habillage='group',
+         title="Individual factor map",
+         alpha = .2,
+         shadowtext = TRUE,
+         cex = 1)+
+  xlab(paste0("Dimension 1 (",round(mean(res.mfa_bio_vs_self2_scale$eig[1,2], na.rm = TRUE),2),"%[95%CI:",
+              paste0(round(mean(eigen_first1$perc_5[eigen_first1$component == "comp 1"], na.rm = TRUE),2), ",",
+                     round(mean(eigen_first1$perc_95[eigen_first1$component == "comp 2"], na.rm = TRUE),2), "])")))+
+  ylab(paste0("Dimension 2 (",round(mean(res.mfa_bio_vs_self2_scale$eig[2,2], na.rm = TRUE),2),"%[95%CI:",
+              paste0(round(mean(eigen_first1$perc_5[eigen_first1$component == "comp 1"], na.rm = TRUE),2), ",",
+                     round(mean(eigen_first1$perc_95[eigen_first1$component == "comp 2"], na.rm = TRUE),2), "])")))+
+  annotate("text", label = paste0("total var: ", round(res.mfa_bio_vs_self2_scale$eig[2,3], 2), "%"), x = 2, y = -1.3, size = 5)+
+       scale_color_brewer(palette = "Dark2", labels = c("autonomic", "subjective"))+
+  theme_classic()+
+  p$graphstyle_int+
+   guides(colour = guide_legend(override.aes = list(size=2, stroke=1.5))) 
+    
+ guides(fill = guide_legend(override.aes = list(linetype = "solid", size = 1) ))
+ 
+ mfa_plots$ind1
+   coord_fixed(ratio = 1)
+
+   
+   # custom plot
+ mfa_plots$ind1 
+ 
+ ggsave("indi_factomap.tiff",  mfa_plots$ind1, device = "tiff", width = 10, height = 6, dpi = 800)
+```
+
+
+```{r}
+  ?geom_point
+ind_inertial<- as.data.frame(res.MFA_stim_val_scale[["quali.var.sup"]][["within.inertia"]])
+
+ind_coord<- as.data.frame(res.MFA_stim_val_scale[["quali.var.sup"]][["coord"]])
+
+ind_inertial%>%
+  mutate(stimuli = row.names(ind_inertial))%>%
+  ggplot(aes(x = Dim.1, Dim.2))+
+  geom_point()
+
+
+ind_parial_group<-as.data.frame(res.MFA_stim_val_scale[["quali.var.sup"]][["coord.partiel"]])
+
+
+# strsplit("test.fuck", "[.]")[[1]][1]
+ind_parial_group<- ind_parial_group%>%
+  mutate(variable = row.names(ind_parial_group))%>%
+  mutate(group = if_else(grepl("autonomic",variable), "autonomic", "subjective"))%>%
+  group_by(variable)%>%
+  mutate(stimuli = strsplit(variable, "[.]")[[1]][1])
+
+ind_coord<- ind_coord%>%
+  mutate(stimuli = row.names(ind_coord))
+  
+ind_coord%>%
+  mutate(stimuli = row.names(ind_coord))%>%
+  ggplot(aes(x = Dim.1, Dim.2))+
+  # coord_fixed(ratio = 1)+
+  geom_point(shape = 0, size = 2)+
+  ylim(-1.5,1)+
+  geom_line(aes)
+
+ind_coord2_aut<- left_join(ind_coord, subset(ind_parial_group, group == "autonomic"), by = "stimuli")
+ind_coord2_aut_subj<- left_join(ind_coord2_aut, subset(ind_parial_group, group != "autonomic"), by = "stimuli")
+
+
+left_join(ind_coord, ind_parial_group, by = "stimuli") 
+
+
+ind_coord2_aut_subj$Dim.1.x_center<- ind_coord2_aut_subj$Dim.1.x
+ind_coord2_aut_subj%>%
+    ggplot(aes(x = Dim.1.x, Dim.2.x))+
+  # coord_fixed(ratio = 1)+
+  geom_point(shape = 0, size = 2)+
+   geom_point(aes(Dim.1.y, Dim.2.y), shape = 0, size = 2, color = "red")+
+  geom_line(aes(Dim.1.x_center, Dim.2.y))
+  scale_color_brewer(palette = "Dark2", direction = -1)
+  
+  # ylim(-1.5,1)+
+  geom_l(aes(x = Dim.1.x, y = Dim.1.y))
+  
+  
+  
+  
+left_join(ind_coord, ind_parial_group, by = "stimuli") %>%
+
+    ggplot(aes(x = Dim.1.x, Dim.2.x))+
+  # coord_fixed(ratio = 1)+
+  geom_point(shape = 0, size = 2)+
+   geom_point(aes(Dim.1.x, Dim.2.y, group = group), shape = 0, size = 2, color = "red")+
+  geom_line(aes(Dim.1.x, Dim.2.y, color = group, group = group))
+  scale_color_brewer(palette = "Dark2", direction = -1)
+  
+  # ylim(-1.5,1)+
+  geom_l(aes(x = Dim.1.x, y = Dim.1.y))
+  
+  
+  left_join(ind_coord, ind_parial_group, by = "stimuli") %>%
+    # subset(group == "autonomic")%>%
+      mutate(Dim.2centerx = Dim.2.x)%>%
+     mutate(Dim.1centery = Dim.1.y)%>%
+ ggplot(aes(x = Dim.1.x, Dim.2.x))+
+ # coord_fixed(ratio = 1)+
+# geom_point(shape = 7, size = 2, alpha = .5)+
+geom_point(aes(Dim.1.y, Dim.2.y, color = group), shape = 0, size = 2)+
+
+geom_line(aes(Dim.1.y, Dim.2.y, group = stimuli), linetype = "dashed", alpha = .3)+
+    geom_text(aes(label = stimuli, x = Dim.1.x, y = Dim.2.x))+
+    theme_classic()+
+    p$graphstyle_int
+```
+
+# just norm
+
+```{r}
+?plot.MFA
+
+res.MFA_stim_val_scale_norm<-MFA(newDFscale[,3:8],group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+plot.MFA(res.MFA_stim_val_scale_norm, 
+         geom = "point",
+         choix="ind",
+         partial='all',
+         # label = "norm",
+         lab.par=TRUE,
+         invisible= c('ind', "qua"),
+         select='cos2  0',
+         habillage='norm',
+         title="Individual factor map",
+         alpha = .2,
+         shadowtext = TRUE)+
+  theme_classic()+
+  p$graphstyle_int
+quartz()
+
+mfa_plots$ind2_cat_val<- plot.MFA(res.MFA_stim_val_scale_norm, 
+         choix="ind",
+         partial='all',
+         label = "norm",
+         lab.par=TRUE,
+         invisible= c('ind','quali'),
+         select='cos2  0',
+         habillage='group',
+         title="Individual factor map",
+         alpha = .2,
+         # ellipse= TRUE,
+         graph.type = "ggplot",
+         cex=2) + #text size
+  xlab("Dimension 1")+
+   xlab("Dimension 2")+
+  ggtitle("factor map")+
+    xlab("Dimension 1")+
+   ylab("Dimension 2")+
+  scale_color_brewer(palette = "Dark2")+
+    # scale_fill_brewer(palette = "Dark2")+
+  theme_classic()+
+  p$graphstyle_int+
+  theme(legend.position = "none",
+        plot.title = element_blank())
+
+mfa_plots$ind2_cat_val+
+  coord_fixed(ratio = 1)
+  
+  
+   ggsave("indi_factomap_catval.tiff", mfa_plots$ind2_cat_val, device = "tiff", width = 10, height = 6, dpi = 800)
+
+
+ mfa_plots$ind2_cat_val<-  mfa_plots$ind2_cat_val +scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.1))+ #force two digits in y 
+     ylim(-.2,.2)
+ 
+    ggsave("indi_factomap_catval.tiff", mfa_plots$ind2_cat_val, device = "tiff", width = 7, height = 5, dpi = 800)
+```
+
+
+
+mfa_plots$ind12<- mfa_plots$ind1+
+    annotate("text", label = normtest$norm, x = normtest$Dim.1, y =normtest$Dim.2, size = 5, color = "blue")+
+geom_point(aes(x =  normtest$Dim.1, y  = normtest$Dim.2), color = "blue", size = 5, shape = 2)
+
+mfa_plots$ind12
+
+
+# individuals
+library(tidyverse)
+newDFscale1<- newDFscale%>%
+  subset(subject!= 900)
+
+res.MFA_stim_val_scale_ssid<-MFA(newDFscale[,c(1,4:8)],group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+
+```{r}
+dev.off() 
+
+
+mfa_plots$ind13_sid<- plot.MFA(res.MFA_stim_val_scale_ssid, 
+         choix="ind",
+         # geom = c("point"),
+         partial='all',
+         lab.par=TRUE,
+         # label = "subject",
+         invisible= c("ind", "quali"),
+         select='cos2  0',
+         habillage='group',
+         title="Individual factor map"
+         # alpha = .1
+         )+
+         # ylim = c(-1,1))
+  
+    xlab("Dimension 1")+
+   ylab("Dimension 2")+
+  scale_color_brewer(palette = "Dark2")+
+    # scale_fill_brewer(palette = "Dark2")+
+  theme_classic()+
+  p$graphstyle_int+
+  theme(legend.position = "none",
+        plot.title = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+  
+  mfa_plots$ind13_sid
+    coord_fixed(ratio = 1)
+   ggsave("indi_factomap_csid.tiff",   mfa_plots$ind13_sid, device = "tiff", width = 10, height = 6, dpi = 800)
+   
+   
+      ggsave("indi_factomap_csid.pdf",   mfa_plots$ind13_sid, device = "pdf", width = 10, height = 6, dpi = 800)
+   
+   theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+mfa_plots$ind13_sid
+
+knitr::plot_crop(indi_factomap_csid.pdf)
+
+
+```
+```{r fig.height = 2, fig.width = 10}
+theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+mfa_plots$ind13_sid
+#your plot code
+```
+
+patchwork
+
+
+```{r}
+library(patchwork)
+
+mfa_plots$ind1+mfa_plots$ind2_cat_val+ mfa_plots$ind13_sid +
+  plot_layout(ncol = 3, widths = c(2,1,1), heights = c(1,1,1))
+
+fviz_mfa_var(res.mfa, "group")
+
+theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
+
+```
+
+Groups representatin
+
+
+```{r}
+mfa_plots
+
+seq(0,1,.1)
+res.MFA_stim_val_scale$group$coord.sup
+?  geom_label
+
+View(res.MFA_stim_val_scale)
+# considering setting the seize of the size of qualitatie s,aller than the others
+
+test<-bind_rows(as.data.frame(res.MFA_stim_val_scale$group$coord),
+          as.data.frame(res.MFA_stim_val_scale$group$coord.sup))%>%
+  mutate(group = rownames(bind_rows(as.data.frame(res.MFA_stim_val_scale$group$coord),
+          as.data.frame(res.MFA_stim_val_scale$group$coord.sup))))
+
+
+group_df<- bind_rows(as.data.frame(res.MFA_stim_val_scale$group$coord),
+          as.data.frame(res.MFA_stim_val_scale$group$coord.sup))%>%
+  mutate(group = rownames(bind_rows(as.data.frame(res.MFA_stim_val_scale$group$coord),
+          as.data.frame(res.MFA_stim_val_scale$group$coord.sup))))%>%
+  mutate(group = factor(group, levels = c("subjective","autonomic",  "qualitative"),
+                        labels = c("subjective","autonomic", "categorical")))
+
+group_df$tyextsize<- if_else(group_df$group == "autonomic", 2,
+                             if_else(group_df$group == "subjective", 2, 1))
+                             ))
+
+
+
+group_df$tyextsize
+
+mfa_plots$groups <- bind_rows(as.data.frame(res.MFA_stim_val_scale$group$coord),
+          as.data.frame(res.MFA_stim_val_scale$group$coord.sup))%>%
+  mutate(group = rownames(bind_rows(as.data.frame(res.MFA_stim_val_scale$group$coord),
+          as.data.frame(res.MFA_stim_val_scale$group$coord.sup))))%>%
+  mutate(group = factor(group, levels = c("autonomic", "subjective","qualitative"  ),
+                        labels = c("autonomic","subjective","categorical")))%>%
+  ggplot(aes(x = seq(0,1,.1), y =seq(0,1,.1)))+
+  geom_vline(xintercept = res.mfa_bio_vs_self2_scale$group$coord[1,1], linetype = "dashed")+
+  geom_vline(xintercept = res.mfa_bio_vs_self2_scale$group$coord[2,1], linetype = "dashed")+
+    geom_hline(yintercept = res.mfa_bio_vs_self2_scale$group$coord[1,2], linetype = "dashed")+
+  geom_hline(yintercept = res.mfa_bio_vs_self2_scale$group$coord[2,2], linetype = "dashed")+
+  geom_point(aes(x = Dim.1, y = Dim.2, shape = group, fill = group, color = group), size = 8, alpha = .5)+
+  
+   # size = tyextsize*8
+  geom_text(aes(x = Dim.1, y = Dim.2+.05, label = group, color = group 
+               ), size = 8)+
+    # annotate("text",label = group x = Dim.1, y = Dim.2))+
+  xlim(0,1)+
+      theme_classic()+
+      xlab("Dimension 1")+
+   ylab("Dimension 2")+
+  ggtitle("Groups representation")+
+  scale_color_brewer(palette = "Dark2", direction = -1)+
+    scale_fill_brewer(palette = "Dark2",direction = -1)+
+  theme(legend.position = "none",
+    
+        # axis.text.x = element_blank(),
+        # axis.text.y = element_blank(),
+        plot.title = element_text(hjust = .5, size = 16*(sf+.5)))
+
+    
+  # theme(g) = element_blank())
+  
+  mfa_plots$groups<- mfa_plots$groups+
+    scale_colour_brewer(palette = "Dark2",
+                      labels=c("categorical","autonomic","subjective"))+
+    scale_fill_brewer(palette = "Dark2",
+                      labels=c("categorical","autonomic","subjective"))
+  
+  
+  mfa_plots$groups  +p$graphstyle_int
+```
+```{r}
+  mfa_plots$groups<-   mfa_plots$groups+
+    # coord_fixed(ratio = 1)+
+    p$graphstyle_int+
+    theme(legend.title = element_blank())
+  # 
+  # 
+  mfa_plots$groups<- mfa_plots$groups+    
+    # p$graphstyle_int+
+   guides(
+  fill = guide_legend(
+   
+    override.aes = aes(label = "")
+  )
+)
+
+mfa_plots$groups<- mfa_plots$groups+
+scale_y_continuous(
+  labels = scales::number_format(accuracy = 0.2))
+mfa_plots$groups
+
+ ggsave("groups.tiff", mfa_plots$groups, device = "tiff", width = 10, height = 6, dpi = 800)
+ 
+  ggsave("groups2.tiff", mfa_plots$groups, device = "tiff", width = 10, height = 10, dpi = 800)
+    ggsave("groups3.tiff", mfa_plots$groups, device = "tiff", width = 10, height = 8, dpi = 800)
+    
+    
+    ggsave("groups5.tiff", mfa_plots$groups, device = "tiff", width = 7, height = 7, dpi = 800)
+     ggsave("groups3.tiff", mfa_plots$groups, device = "tiff", width = 7, height = 5, dpi = 800)
+     
+     ggsave("groups3.tiff", mfa_plots$groups, device = "tiff", width = 7, height = 7, dpi = 800)
+```
+
+
+```{r}
+mfa_plots$cor_circle<- plot.MFA(res.MFA_stim_val_scale, choix="var",habillage='group',title="Correlation circle",
+         cex = 2.7) +
+    xlim(-1,1)+
+  scale_color_brewer(palette = "Dark2", direction = -1)+
+  theme_classic()+
+
+      xlab("Dimension 1")+
+   ylab("Dimension 2")+
+  # ggtitle("Groups representation")+
+  scale_color_brewer(palette = "Dark2")+
+    scale_fill_brewer(palette = "Dark2")+
+    p$graphstyle_int+
+  theme(legend.position = "none",
+    
+        # axis.text.x = element_blank(),
+        # axis.text.y = element_blank(),
+        plot.title = element_text(hjust = .5, size = 16*(sf+.5)))
+
+
+
+mfa_plots$cor_circle+
+  theme(plot.margin=unit(c(0,-.4,0,-.5), "null"))
+mfa_plots$cor_circle
+
+ ggsave("cor_circle.tiff",   mfa_plots$cor_circle, device = "tiff", width = 10, height = 6, dpi = 800)
+
+```
+
+```{r}
+mfa_plots$partial<- plot.MFA(res.MFA_stim_val_scale, choix="axes",habillage='group',cex=1.35,cex.main=1.35,cex.axis=1.35)+
+  xlim(-1,1)+
+   theme_classic()+
+     xlab("Dimension 1")+
+   ylab("Dimension 2")+
+  # ggtitle("Groups representation")+
+  scale_color_brewer(palette = "Dark2")+
+    scale_fill_brewer(palette = "Dark2")+
+    p$graphstyle_int+
+  theme(legend.position = "none",
+    
+        # axis.text.x = element_blank(),
+        # axis.text.y = element_blank(),
+        plot.title = element_text(hjust = .5, size = 16*(sf+.5)))
+
+
+mfa_plots$partial
+
+ ggsave("partial.tiff",   mfa_plots$partial, device = "tiff", width = 10, height = 6, dpi = 800)
+ 
+ 
+circle_partialpatch <- (mfa_plots$cor_circle+theme(axis.text.x = element_blank(),
+                                                   axis.title.x = element_blank()))/mfa_plots$partial
+
+
+ ggsave("circle_partialpatch.tiff",   circle_partialpatch, device = "tiff", width = 5, height = 10, dpi = 800)
+
+```
+
+```{r}
+
+mfa_plots_eigen_value_boot<-
+eigen_first%>%
+  mutate(component =as.factor(substr(rownames(eigen_first), 1,6)))%>% #retrieve names for components
+   # gather(dimension, value_dimenion, -group, -sim_no) %>%
+  group_by(component)%>%
+  # subset(!is.na(eigenvalue) & component == "comp 1" )%>% #select only component 1 and remove nas I introduced in the dataframe
+  mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                               res.mfa_bio_vs_self2_scale$eig[1],
+                               res.mfa_bio_vs_self2_scale$eig[2])) %>% #create 95% to descrive interval around the observed estimate
+  mutate(Dimension =  if_else(component == "comp 1", "Dimension 1", "Dimension 2"))%>%
+  subset(Dimension == "Dimension 1")%>%
+  # also store observed eige for each dimensions
+  # mutate(probabcheck= sum(eigenvalue>=res.mfa_bio_vs_self2_k2$eig[1])/n())
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..), alpha = .3) +  # scale histogram y
+
+  geom_errorbar(aes(xmin = perc_5, xmax=perc_95, y = 1), color = "gray30", size = 1.5)+
+  geom_point(aes(x = eig_obs_dim, y = 1),size = 3, color = "red", alpha = .3)+
+
+  theme_classic()+
+    # geom_vline(aes(xintercept = perc_95),size = 2, linetype = "dashed", alpha = .6)+
+    geom_vline(xintercept = 1,size = 2, linetype = "dashed", alpha = .6)+
+  # geom_vline(aes(xintercept = perc_5), linetype = "dashed")+
+    # geom_vline(aes(xintercept = perc_95), linetype = "dashed")+
+               
+  geom_hline(yintercept = 0, linetype = "dashed")+
+  # facet_grid(~component)+
+  # coord_fixed(ratio = 1)
+  ggtitle("distribution of boostraped eigenvalues for\n largest dimension (10000 samples)")+
+  annotate("text", label = "95%CI", x = 1.15, y = 2, size = 5*(sf+.8))+
+    p$graphstyle_int
+
+
+mfa_plots_eigen_value_boot
+
+
+reshufrds<- read_rds("eigen_first_reshuf.Rds")
+
+reshufrds<- as.data.frame(reshufrds)
+# install.packages(expres)
+mfa_plots$resample<-
+reshufrds%>%
+  mutate(component =as.factor(substr(rownames(reshufrds), 1,6)))%>% #retrieve names for components
+   mutate(Dimension =  if_else(component == "comp 1", "Dimension 1", "Dimension 2"))%>%
+  subset(!is.na(eigenvalue))%>% #select only component 1 and remove nas I introduced in the dataframe
+  group_by(component)%>%
+  
+   mutate(perc_5 = quantile(eigenvalue,.025, na.rm = TRUE), 
+         perc_95 = quantile(eigenvalue,.975, na.rm = TRUE))%>%
+  ungroup()%>%
+    group_by(component)%>%
+  mutate(eig_obs_dim = if_else(component == "comp 1", 
+                               res.mfa_bio_vs_self2_scale$eig[1],
+                               res.mfa_bio_vs_self2_scale$eig[2])) %>% #store observed to visualise ion the null
+  mutate(prob = paste(((sum(eigenvalue>=eig_obs_dim))/n())*100, paste0("%"))) %>%
+  subset(Dimension == "Dimension 1")%>%
+  ggplot(aes(eigenvalue))+
+  geom_histogram(aes(y=..density..),bins = 500, alpha = .3) +  # scale histogram y
+  # geom_density(col = "red", alpha = .001)+
+  # facet_grid(~component)+
+    geom_vline(aes(xintercept = perc_95),size = 2, linetype = "dashed", alpha = .6)+
+  geom_point(aes(x = eig_obs_dim, y = 1),size = 3,  color = "red", alpha = .5)+
+
+  theme_classic()+
+  ggtitle("null distribution of eigenvalues for\n largest dimension (10000 samples)")+
+  annotate("text", label = "p < .001", x = 1.16, y = 3, hjust = .5, color = "red", size = 5*(sf+.8))+
+   annotate("text", label = paste0(expression(alpha), " < .05"), x = 1.05, y = 20, hjust = .5, size = 5*(sf+.8), parse = TRUE)+
+  p$graphstyle_int
+
+mfa_plots_eigen_value_boot+mfa_plots$resample
+
+mfa_plots$resample
+
+```
+
+
+
+```{r}
+left_join(cor_first1, cor.test_obsmfa, by = c("variable", "dimension")) %>%
+  subset(dimension == "Dim.1")%>%
+  ggplot(aes(value_dimenion.x, color = variable)) +
+  geom_histogram(aes(y=..density..), alpha=0.5,
+                 position="identity")+
+  geom_density(alpha=.2) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-2 ))+ #color = "gray30"
+  # facet_grid(~dimension)+
+  geom_point(aes(x = value_dimenion.y, y = -2))+
+    geom_vline(xintercept = 0, color = "red", linetype = "dashed", alpha = .3, size = 1)
+  # facet_grid(~dimension)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+
+  theme_classic()
+  
+  mfa_plots$cor_var_dimension<-
+  mfa_boot_corfirst%>%
+  subset(dimension == "Dim.1")%>%
+    mutate(measure = factor(measure, levels = c("pupil", "SCR", "HR", "valence", "arousal")))%>%
+  ggplot(aes(value_dimenion.x, fill =measure, color = measure)) +
+  geom_histogram(aes(y=..density..,fill =measure,color = measure, linetype = measure),alpha=0.2,
+                 position="identity")+
+  geom_density(aes(fill = measure, linetype = measure), alpha = .1) +
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-2 , linetype = measure))+ #color = "gray30"
+  # facet_grid(~dimension)+
+  geom_point(aes(x = value_dimenion.y, y = -2))+
+    geom_vline(xintercept = 0,linetype = "dashed", alpha = .5, size = 1)+
+    xlim(-1,1)+
+    xlab("correlation with largest dimension")+
+  # facet_grid(~dimension)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  scale_color_brewer(palette = "Dark2")+
+   scale_fill_brewer(palette = "Dark2")+
+
+  theme_classic()+
+  p$graphstyle_int+
+    theme(legend.title = element_blank())
+  
+    mfa_plots$cor_var_dimension<-mfa_plots$cor_var_dimension+
+      guides(colour=guide_legend(nrow=2,byrow=TRUE))
+
+
+
+```
+
+
+groups
+
+```{r}
+
+mfa_plots$group_boot<-
+
+left_join(groups_first_1boot_CIcorrected2, groups_first_obs,by = c("group", "dimension"))%>%
+  subset(!is.na(value_dimenion))%>%
+  group_by(dimension,group)%>%
+   mutate(perc_5 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 2600)[1],
+         perc_95 = bootBCa(mean(value_dimenion_obs), value_dimenion, n = 2600)[2])%>%
+  
+  subset(dimension == "Dim.1")%>%
+    mutate(group = if_else(group == "auto", "autonomic", "subjective"))%>%
+  
+   ggplot(aes(value_dimenion, color = group)) +
+  
+  
+   geom_histogram(aes(y=..density..,fill =group,color = group, linetype = group),alpha=0.2,
+                 position="identity")+
+  geom_density(aes(fill = group, linetype = group), alpha = .1) +
+  #  geom_histogram(aes(y=..density..), alpha=0.5,
+  #                position="identity")+
+  # geom_density(alpha=.2) +
+  
+   geom_errorbarh(aes(xmax = perc_95, xmin = perc_5, y =-1, fill =group,color = group, linetype = group))+
+    geom_point(aes(x = value_dimenion_obs, y = -1))+
+   # geom_point(aes(x = value_dimenion_obs, y = -3))+
+       geom_vline(xintercept = 0,linetype = "dashed", alpha = .5, size = 1)+
+  
+  # facet_grid(~dimension)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+   # geom_vline(xintercept = -.5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  theme_classic()+
+   # xlim(-1,1)+
+    xlab("correlation with largest dimension")+
+  # facet_grid(~dimension)+
+  # geom_vline(xintercept = .5, color = "red", linetype = "dashed", alpha = .1, size = 1)+
+  scale_color_brewer(palette = "Dark2")+
+   scale_fill_brewer(palette = "Dark2")+
+
+  theme_classic()+
+  p$graphstyle_int+
+    theme(legend.title = element_blank())
+
+
+mfa_plots$patchbootresample <-  (mfa_plots$resample+ mfa_plots_eigen_value_boot +
+  mfa_plots$group_boot + mfa_plots$cor_var_dimension)+
+  plot_layout(nrow = 2)
+
+ggsave("patch_res_boot.tiff", mfa_plots$patchbootresample,
+       device = "tiff",
+       width = 10, height = 10, dpi = 800)
+
+```
+
+patchwork
+
+
+
+```{r}
+?plot_layout
+((mfa_plots$ind1 +mfa_plots$ind2_cat_val/mfa_plots$ind13_sid)+ 
+    (mfa_plots$groups + mfa_plots$cor_circle / mfa_plots$partial))+
+  plot_layout(nrow = 2)+
+  plot_annotation(tag_levels = "A")
+
+ # widths = c(2,1,1), heights = c(1,1)
+
+
+```
+
+```{r}
+
+
+plot.MFA(res.MFA_stim_val_scale, choix="group",
+         cex=2.5,
+         cex.main=2.5,
+         cex.axis=1.7)+
+    theme_classic()+
+      xlab("Dimension 1")+
+   ylab("Dimension 2")+
+  
+  scale_color_brewer(palette = "Dark2", direction = -1)+
+    scale_fill_brewer(palette = "Dark2", direction = -1)+
+  geom_vline(xintercept = res.mfa_bio_vs_self2_scale$group$coord[1,1], linetype = "dashed")+
+  geom_vline(xintercept = res.mfa_bio_vs_self2_scale$group$coord[2,1], linetype = "dashed")+
+    geom_hline(yintercept = res.mfa_bio_vs_self2_scale$group$coord[1,2], linetype = "dashed")+
+  geom_hline(yintercept = res.mfa_bio_vs_self2_scale$group$coord[2,2], linetype = "dashed")+
+
+  
+  p$graphstyle_int+
+
+```
+
+
+
+ssid
+```{r}
+
+unique(as.integer(as.factor(newDFscale$subject)))
+newDFscale$subject_orig<- newDFscale$subject
+ 
+newDFscale$subject<- as.factor(as.integer(as.factor(newDFscale$subject)))
+
+newDFscale1<- newDFscale%>% subset(subject!= 49)
+res.MFA_stim_val_scale_ssid<-MFA(newDFscale1[,c(1,4:8)],group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=TRUE)
+
+plot.MFA(res.MFA_stim_val_scale_ssid, 
+choix="ind",
+         partial='all',
+         label = FALSE,
+         lab.par=FALSE,
+         invisible= c('ind','quali'),
+         select='cos2  0',
+         habillage='group',
+         title="Individual factor map",
+         alpha = .2,
+         shadowtext = FALSE,
+REPEL = TRUE)+
+  theme_classic()
+
+  p$graphstyle_int+
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank()
+        )
+
+?factoextra::fviz_mfa_ind
+
+
+factoextra::fviz_mfa_ind(res.MFA_stim_val_scale_ssid, 
+                         choice="quali",
+                         axes = c(1,2),
+                         geom = "point",
+                          habillage= 'none',
+                         col.partial = "group",
+                         repel = TRUE,
+         partial='all',
+select.ind = list(name = "subject"),
+ alpha.ind = .02
+)
+         
+
+```
+  
+  p$graphstyle_int
+
+# add the neg pos etc based on their coordiantes
+
+plot.MFA(res.MFA_stim_val, choix="ind",partial='all',lab.par=TRUE,invisible= c('ind','quali'),select='cos2  0',habillage='group',title="Individual factor map")  
+  
+plot.MFA(res.MFA, choix="var",habillage='group',title="Correlation circle")
+plot.MFA(res.MFA, choix="group")
+plot.MFA(res.MFA, choix="axes",habillage='group')
+
+
+
+```
+  
+?factoextra::fviz_mfa_ind
+factoextra::fviz_mfa_ind(res.MFA_stim_val, 
+                         axes = c(1, 2),
+                         geom = c("text"),
+
+                         select.ind = list(name = c("stimuli")),
+                         # col.ind = "cos2",
+                         habillage = "none",
+                         addEllipses = TRUE,
+             # gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             # col.partial = "group"
+             )
+
+
+```
+  
+
+facto
+
+
+
+label = "none", # hide individual labels
+             habillage = iris$Species, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE # Concentration ellipses
+
+
+fviz_mfa_ind(res.MFA_stim_val,
+             geom = "none",
+              choix=c("ind"),
+               habillage='norm',
+         lab.par=FALSE,
+         invisible= c('ind'),
+         
+         # partial = "all"
+         ) 
+
+fviz_mfa_ind(res.MFA_stim_val, partial = "norm")
+
+
+```
+
+
+plot.MFA(res.MFA, 
+         choix="ind",
+         lab.par=TRUE,
+         invisible= c('ind', 'quali'),
+         # ellipse = 'val_cut_iaps',
+         select='cos2  0.0',
+         habillage='val_cut_iaps',
+         title="Individual factor map",
+         lab.grpe	 = TRUE)+
+  theme_classic()
+# boolean, if TRUE, the labels of the groups are drawn)
+
+plot.MFA(res.MFA, choix="ind",lab.par=FALSE,invisible= c('ind','quali'),select='cos2  0',habillage='val_cut_iaps',title="Individual factor map")
+
+testplot<- plot.MFA(res.MFA, choix="ind",lab.par=FALSE,invisible= c('ind','quali'),select='cos2  0',habillage='val_cut_iaps',title="Individual factor map")+
+  theme_classic()
+
+testplot$data
+
+
+mfa_plots<- list()
+
+factoextra::fviz_mfa_ind(res.MFA, 
+                         choix="ind",
+                         
+                         title="Individual factor map")
+  theme_classic()
+  
+  
+  
+  # factor map of indivduals
+  
+
+
+quartz()
+loadfonts(dev="win")
+install.packages("extrafont")
+library(extrafont)
+extrafont::font_import()
+plot.MFA(res.MFA, choix="ind",lab.par=FALSE,invisible= c('ind','quali'),select='cos2  0',habillage='val_cut_iaps',title="Individual factor map")+
+  theme_classic()+
+  p$graphstyle_int
+
+
+# big lcuster by group
+plot.MFA(res.MFA, choix="ind",lab.par=FALSE,invisible= 'quali',select='cos2  0',habillage='val_cut_iaps',title="Individual factor map")
+
+# show that individuals are spread out
+plot.MFA(res.MFA, choix="ind",
+         lab.par=FALSE,
+         invisible= 'quali',
+         select='cos2  0',habillage='ssid',title="Individual factor map")
+
+# we can select individuals significanlty contributing to the dimensions
+
+
+newDF_sid <- clustering_new_pre_PCA3.1[,c("ssid","pup_basCor","Bio_Mean_HR_dif","log_BIO_CDA.PhasicMax","arousal","valence")]
+res.MFA_sid<-MFA(newDF_sid,group=c(1,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=FALSE)
+plot.MFA(res.MFA_sid, choix="ind",lab.par=FALSE,invisible= c('ind','quali'),select='cos2  0.2',
+         habillage= 'ssid',
+         title="Individual factor map")
+
+?factoextra::fviz_mfa_ind
+
+
+fviz_mfa_ind(res.MFA_sid, col.ind = "cos2", 
+             choix="ind",
+             invisible= c('ind','quali'),
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+
+
+
+plot.MFA(res.MFA, choix="var",habillage='group',title="Correlation circle")
+plot.MFA(res.MFA, choix="group")
+plot.MFA(res.MFA, choix="axes",habillage='group')
+
+
+newDF_sid_va <- clustering_new_pre_PCA3.1[,c("ssid","val_cut_iaps","pup_basCor","Bio_Mean_HR_dif","log_BIO_CDA.PhasicMax","arousal","valence")]
+res.MFA_sid_val<-MFA(newDF_sid_va,group=c(2,3,2), type=c("n","c","c"),name.group=c("qualitative","autonomic","subjective"),num.group.sup=c(1),graph=FALSE)
+plot.MFA(res.MFA_sid_val, choix="ind",lab.par=FALSE,invisible= c('ind','quali'),select='cos2  0.2',habillage='val_cut_iaps',title="Individual factor map")
+
+plot.MFA(res.MFA, choix="ind",lab.par=FALSE,invisible= c('ind','quali'),select='cos2  0.2',habillage='val_cut_iaps',title="Individual factor map")
+plot.MFA(res.MFA, choix="var",habillage='group',title="Correlation circle")
+plot.MFA(res.MFA, choix="group")
+plot.MFA(res.MFA, choix="axes",habillage='group')
+
+```
+
