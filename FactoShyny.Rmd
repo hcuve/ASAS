@@ -40,4 +40,7 @@ Factoshiny::MFAshiny(clustering_new_pre_PCA_2_agg_by_val_sel1)
 
 clustering_new_pre_PCA_2_agg_by_val_sel1<- clustering_new_pre_PCA_2_agg_by_val_sel%>%
   subset(!is.na(valence_split))
+
+
+
 ```
