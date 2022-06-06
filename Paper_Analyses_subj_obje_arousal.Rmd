@@ -725,6 +725,19 @@ car::scatter3d(db_full4new_stim_screen_pupil_nopract_nt$arousal_c,
           # surface = FALSE,
           # point.col = ""
           )
+
+
+pupil_arousal_findings$pupil_from_ar_vale
+
+library(insight)
+sjPlot::sjp.lmer(pupil_arousal_findings$pupil_from_ar_vale)
+
+# load packages
+devtools::install_cran("sjPlot", force = TRUE, dependencies = TRUE)
+install.packages("sjPlot")
+library(sjPlot)
+library(sjmisc)
+
 ```
 
 
