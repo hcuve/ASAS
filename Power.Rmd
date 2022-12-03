@@ -1,0 +1,105 @@
+---
+title: "Power simulations"
+author: "Helio"
+date: '2022-12-03'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+summary(pupil_arousal_findings$pupil_from_arousal)
+
+install.packages("simr")
+
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(simr)
+library(lmerTest)
+# Power for predictor 'x', (95% confidence interval):
+power_models<- list()
+
+table(is.na(db_full4new_stim_screen_pupil_nopract$arousal_c))
+table(is.na(db_full4new_stim_screen_pupil_nopract$pup_basCor))
+
+power_models$pupil <- lmer(pup_basCor ~ arousal_c +(1  | ssid), REML = FALSE,
+                      data = subset(db_full4new_stim_screen_pupil_nopract, 
+                                    # pupil_outlier == FALSE & 
+                                     Group == "NT" & !is.na(pup_basCor) &
+                                      !is.na(arousal_c)
+                                    # arousal_outler == FALSE
+                                    ))
+
+db_full4new_stim_screen_pupil_nopract
+power_models$pupil1<- power_models$pupil
+fixef(power_models$pupil1)["arousal_c"]<- .4
+sim_.4 <- powerSim(power_models$pupil1, nsim = 100)
+sim_.4
+# Power for predictor 'arousal_c', (95% confidence interval):
+#       100.0% (96.38, 100.0)
+
+?powerCurve
+
+curve<- powerCurve(power_models$pupil1, nsim = 100)
+
+plot(curve)
+
+model3 <- extend(power_models$pupil1, along="ssid", n=1)
+
+pc3 <- powerCurve(power_models$pupil1, along="ssid", nsim = 10)
+
+plot(pc3)
+
+
+extendeddata_along_ssid<- extend(power_models$pupil1, along="ssid", n=100)
+
+pc_extended100 <- powerCurve(extendeddata_along_ssid, along="ssid", nsim = 100)
+pc_extended100
+
+plot(pc_extended100)
+
+```
+SCR
+
+```{r}
+power_models$BIO_CDA.PhasicMax <- lmer(log1p(BIO_CDA.PhasicMax+.1) ~ arousal_c + (1|ssid) + (1|stimIAPS),
+                        REML = FALSE,
+                        data = subset(db_full4new_stim_screen_pupil_nopract_nt_304,
+                                      !is.na(arousal_c)&
+                                        !is.na(BIO_CDA.PhasicMax)))
+
+table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$arousal_c))
+table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$BIO_CDA.PhasicMax))
+
+summary(power_models$BIO_CDA.PhasicMax)
+power_models$BIO_CDA.PhasicMax1<- power_models$BIO_CDA.PhasicMax
+# 0.01571715 
+fixef(power_models$BIO_CDA.PhasicMax1)["arousal_c"]
+fixef(power_models$BIO_CDA.PhasicMax1)["arousal_c"] <- .1
+
+summary(power_models$BIO_CDA.PhasicMax)
+
+summary(power_models$BIO_CDA.PhasicMax1)
+sim_SCR <- powerSim(power_models$pupil1, nsim = 100)
+
+
+extendedscr100<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
+
+ pc_scr100<- powerCurve(extendedscr100, along="ssid", nsim = 100)
+ plot(pc_scr100)
+
+extendedscr1002<- extend(power_models$BIO_CDA.PhasicMax, along="ssid", n=100)
+
+pc_scr100_2<- powerCurve(extendedscr1002, along="ssid", nsim = 100)
+
+plot(pc_scr100_2)
+```
