@@ -71,7 +71,7 @@ plot(pc_extended100)
 SCR
 
 ```{r}
-power_models$BIO_CDA.PhasicMax <- lmer(log1p(BIO_CDA.PhasicMax+.1) ~ arousal_c + (1|ssid) + (1|stimIAPS),
+power_models$BIO_CDA.PhasicMax <- lmer(BIO_CDA.PhasicMax ~ valence_c + (1|ssid) + (1|stimIAPS),
                         REML = FALSE,
                         data = subset(db_full4new_stim_screen_pupil_nopract_nt_304,
                                       !is.na(arousal_c)&
@@ -83,23 +83,36 @@ table(is.na(db_full4new_stim_screen_pupil_nopract_nt_304$BIO_CDA.PhasicMax))
 summary(power_models$BIO_CDA.PhasicMax)
 power_models$BIO_CDA.PhasicMax1<- power_models$BIO_CDA.PhasicMax
 # 0.01571715 
-fixef(power_models$BIO_CDA.PhasicMax1)["arousal_c"]
-fixef(power_models$BIO_CDA.PhasicMax1)["arousal_c"] <- .1
+fixef(power_models$BIO_CDA.PhasicMax)["valence_c"]
+
+# reverse log to get proper unites wot meaninful effect size
+0.01571715
+
+ex
+
+fixef(power_models$BIO_CDA.PhasicMax1)["valence_c"] <- -.1
 
 summary(power_models$BIO_CDA.PhasicMax)
 
 summary(power_models$BIO_CDA.PhasicMax1)
-sim_SCR <- powerSim(power_models$pupil1, nsim = 100)
+sim_SCR <- powerSim(power_models$BIO_CDA.PhasicMax1,test = fixed("arousal_c:valence_c", "z"),
+                    nsim = 100)
 
 
-extendedscr100<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
+# extendedscr100<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
+# extendedscr100_int<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
 
  pc_scr100<- powerCurve(extendedscr100, along="ssid", nsim = 100)
  plot(pc_scr100)
 
-extendedscr1002<- extend(power_models$BIO_CDA.PhasicMax, along="ssid", n=100)
+extendedscr1002<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
 
-pc_scr100_2<- powerCurve(extendedscr1002, along="ssid", nsim = 100)
+# pc_scr100_2<- powerCurve(extendedscr1002, along="ssid", nsim = 100)
 
-plot(pc_scr100_2)
+# extendedscr100_int@call
+pc_scr100_int<- powerCurve(extendedscr1002,
+                           test = fixed("arousal_c:valence_c", "z"),
+                           along="ssid", nsim = 50)
+
+plot(pc_scr100_int)
 ```
