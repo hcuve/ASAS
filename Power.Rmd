@@ -95,15 +95,15 @@ fixef(power_models$BIO_CDA.PhasicMax1)["valence_c"] <- -.1
 summary(power_models$BIO_CDA.PhasicMax)
 
 summary(power_models$BIO_CDA.PhasicMax1)
-sim_SCR <- powerSim(power_models$BIO_CDA.PhasicMax1,test = fixed("arousal_c:valence_c", "z"),
+sim_SCR <- powerSim(power_models$BIO_CDA.PhasicMax1,
                     nsim = 100)
 
 
 # extendedscr100<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
 # extendedscr100_int<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
 
- pc_scr100<- powerCurve(extendedscr100, along="ssid", nsim = 100)
- plot(pc_scr100)
+# pc_scr100<- powerCurve(extendedscr100, along="ssid", nsim = 100)
+ # plot(pc_scr100)
 
 extendedscr1002<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
 
@@ -111,7 +111,7 @@ extendedscr1002<- extend(power_models$BIO_CDA.PhasicMax1, along="ssid", n=100)
 
 # extendedscr100_int@call
 pc_scr100_int<- powerCurve(extendedscr1002,
-                           test = fixed("arousal_c:valence_c", "z"),
+                           test = fixed("valence_c", "z"),
                            along="ssid", nsim = 50)
 
 plot(pc_scr100_int)
