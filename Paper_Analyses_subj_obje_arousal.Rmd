@@ -6825,7 +6825,7 @@ groups_first%>%
 ```
 
 
-Do we get the same patterns when loking at paticipants and stimuli searatelly
+Do we get the same patterns when looking at participants and stimuli separately
 
 ```{r}
 # get_eigenvalue(res.mfa): Extract the eigenvalues/variances retained by each dimension (axis)
