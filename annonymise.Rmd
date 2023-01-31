@@ -1,0 +1,21 @@
+---
+title: "Anonymise"
+author: "Helio"
+date: "2023-01-21"
+output: html_document
+---
+
+```{r}
+colnames(clustering_new_pre_PCA3.1)
+colnames(clustering_new_pre_PCA3)
+
+unique(clustering_new_pre_PCA3.1$ssid)
+clustering_new_pre_PCA3.1
+
+table(clustering_new_pre_PCA3.1$ssid)
+
+
+data_osf<- clustering_new_pre_PCA3[,c(1,4:13,16:17)]
+
+data_osf$ssid_blind<- data_osf$ssid* 
+```

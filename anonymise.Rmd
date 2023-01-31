@@ -1,0 +1,42 @@
+---
+title: "Anonymise"
+author: "Helio"
+date: "2023-01-21"
+output: html_document
+---
+
+```{r}
+colnames(clustering_new_pre_PCA3.1)
+colnames(clustering_new_pre_PCA3)
+
+unique(clustering_new_pre_PCA3.1$ssid)
+clustering_new_pre_PCA3.1
+
+table(clustering_new_pre_PCA3.1$ssid)
+
+
+data_osf<- clustering_new_pre_PCA3[,c(1,4:13,16:17)]
+
+# create a factor variable with original levels
+factor_var <- as.factor(as.character(data_osf$ssid))
+# create a vector of letters and numbers
+letters_and_numbers <- c(letters, 0:9)
+# generate unique random strings for each level
+random_strings <- lapply(levels(factor_var), function(x) paste(sample(letters_and_numbers, 10, replace = TRUE), collapse = ""))
+names(random_strings) <- levels(factor_var)
+
+
+idsnew<- data.frame(matrix(nrow=50))
+idsnew$ssid<- as.vector(unique(data_osf$ssid))
+# factor_var
+
+idsnew$ssid_rand<- as.vector(unlist(unlist(random_strings)))
+library(tidyverse)
+data_osf_v1<- left_join(data_osf,idsnew)%>%
+  select(c(15,2:13))
+
+data_osf_v1
+
+saveRDS(data_osf_v1,"data_RDS_v1.RDS", compress = F)
+
+```
